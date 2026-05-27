@@ -52,8 +52,11 @@ class PublicationMaterializer:
         self, input_data: PublicationMaterializationInput
     ) -> MaterializationReceipt:
         """Materialize from a public-boundary-safe materialization input."""
+        source_digest = getattr(input_data, "source_evidence_digest", "")
         return self._materialize_impl(
-            input_data.reconstruction, input_data.ledger_identity_digest
+            input_data.reconstruction,
+            input_data.ledger_identity_digest,
+            source_evidence_digest=source_digest,
         )
 
     def materialize_from_ledger(
@@ -81,7 +84,11 @@ class PublicationMaterializer:
         return self._materialize_impl(reconstruction, "")
 
     def _materialize_impl(
-        self, reconstruction: Any, ledger_path_hash: str
+        self,
+        reconstruction: Any,
+        ledger_path_hash: str,
+        *,
+        source_evidence_digest: str = "",
     ) -> MaterializationReceipt:
         """Core materialization logic — idempotent, single-transaction."""
         receipts = reconstruction.receipts
@@ -219,7 +226,9 @@ class PublicationMaterializer:
 
                 reconstruction_healthy = not reconstruction.corruption_detected
                 source_count = len(receipts)
-                evidence_source_sha256 = _compute_evidence_sha256(receipts)
+                evidence_source_sha256 = (
+                    source_evidence_digest or _compute_evidence_sha256(receipts)
+                )
 
                 insert_build = psql.SQL(
                     "INSERT INTO {}.{} "
@@ -358,6 +367,7 @@ def _compute_evidence_sha256(receipts: list[dict]) -> str:
             "compilation_successful": r.get("compilation_successful", False),
             "safety_passed": r.get("safety_passed", False),
             "refusal_code": r.get("refusal_code"),
+            "result_digest": r.get("result_digest", ""),
             "operation_id": r.get("operation_id", ""),
         })
 

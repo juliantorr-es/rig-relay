@@ -1,0 +1,109 @@
+{
+  "schema_version": "rig.relay.x0_postgres_consumer_admission.v1",
+  "admission_id": "x0_postgres_admission_x1_3_v1",
+  "issued_at": "2026-05-27T00:00:00Z",
+  "lane": "x1.3_postgres_verified_product_materialization_and_recovery",
+  "candidate_commit_sha": "PENDING_PREPUBLICATION_ADMISSION",
+  "postgresql_authority_classification": "derived_operational_projection",
+  "prohibited_claims": [
+    "PostgreSQL rows are canonical facts",
+    "PostgreSQL is a second source of governed truth",
+    "Materialized views are live without explicit refresh proof",
+    "Schema-scoped dumps restore independently into a clean database without dependency proof",
+    "Backup/restore proves full product-state equivalence without digest comparison",
+    "Producer authority can be upgraded or flattened during materialization",
+    "Missing producer digest can be substituted with an unstable hash",
+    "PostgreSQL manages local installation or connection pooling"
+  ],
+  "domains": {
+    "repository_estate": {
+      "domain": "repository_estate",
+      "producer_boundary": "T3.1 RepositoryEstateService.build_projection()",
+      "source_evidence_binding": "SHA256 of T3.1 projection_digest. Refuses when producer digest is missing — no unstable Python hash() fallback.",
+      "authority_preservation": "provenance_class, authority_state, corruption counts, and degradation metadata preserved as received from producer — no upgrading or flattening",
+      "rebuild_integrity": "Deterministic rebuild via clear + re-materialize with schema-versioned, domain-bound canonical JSON digest manifests. Non-semantic columns (materialized_at, built_at, receipt_id) excluded by explicit justification.",
+      "corruption_degradation_state": "Corrupt observations stored with provenance_class=corrupt_untrusted, authority_state=corrupt. Corruption events preserved from producer projection.",
+      "admission_for_x0": "Allowed for operational rendering. X0 may display registered_repositories, repository_observations, workspace_instances, and observation_changes as derived operational projections. Must display provenance_class and authority_state labels. Must NOT display as canonical facts or live state.",
+      "prohibited": [
+        "Display PostgreSQL rows as canonical repository facts",
+        "Display workspace paths (only salted root_path_digest is stored)",
+        "Claim real-time workspace state without explicit observation timestamp",
+        "Display raw repository hash as a navigable path"
+      ]
+    },
+    "investigation_timeline": {
+      "domain": "investigation_timeline",
+      "producer_boundary": "T4.2 InvestigationEvidenceTimelineService.assemble_timeline() + build_postgres_projection()",
+      "source_evidence_binding": "SHA256 of timeline_id + canonical JSON of all projection rows. Determined at input construction time from the public projection contract.",
+      "authority_preservation": "All 8 authority_classification values, 6 verification_class values, and degradation_detail text preserved from producer. Verified, corrupt, unverified, missing, and unsupported states remain distinguishable after PostgreSQL round-trip.",
+      "rebuild_integrity": "Deterministic rebuild via delete + re-materialize with digest comparison. Schema-versioned manifests.",
+      "corruption_degradation_state": "Degradation summary counts (verified_canonical, parsed_unverified, canonical_degraded, corrupt, unsupported, missing, contradictory, stale, canonical_live) preserved from T4.2 producer. Corrupt events stored with truthful degradation classification.",
+      "admission_for_x0": "Allowed for operational rendering. X0 may display timeline events as derived operational projections grouped by authority classification. Must display authority_classification, verification_class, and degradation_detail. Canonical evidence classification labels must be preserved. Must NOT relabel derived timeline rows as canonical evidence.",
+      "prohibited": [
+        "Relabel derived timeline rows as canonical evidence",
+        "Flatten authority_classification to a single trust label",
+        "Display timeline events without producer_digest_verified status",
+        "Claim timeline completeness without checking degradation_summary"
+      ]
+    },
+    "publication_history": {
+      "domain": "publication_history",
+      "producer_boundary": "T1.2 PublicationEvidenceLedger.load_receipts()",
+      "source_evidence_binding": "SHA256 of canonical JSON encoding of every receipt's evidence_digest, compilation_successful, safety_passed, refusal_code, result_digest, and operation_id plus reconstruction corruption state. Changes in any receipt outcome with the same receipt_id produce a different digest. Unknown ledger identity is distinguishable from an empty or synthetic digest.",
+      "authority_preservation": "Compilation outcomes, safety results, refusal codes, deployment readiness, and preview-only flags preserved from T1.2 producer. Corruption state preserved in reconstruction. Ledger identity digest distinguishes known from unknown ledgers.",
+      "rebuild_integrity": "Deterministic rebuild via clear + re-materialize using source-evidence-bound input. Schema-versioned manifests.",
+      "corruption_degradation_state": "Corrupt rows preserved with reconstruction_warnings. Corrupt receipt rows refused during ledger load are counted but not stored (authoritative mode). Non-authoritative mode stores corrupt_rows count and corrupt_lines for visibility.",
+      "admission_for_x0": "Allowed for operational rendering. X0 may display publication_preview_receipts, reconstruction state, and build receipts as derived operational projections. Must display compilation_successful, safety_passed, refusal_code, and corruption_detected labels. Must NOT claim deployment readiness (always false for preview-only).",
+      "prohibited": [
+        "Display deployment_ready as true (always false for preview-only evidence)",
+        "Claim publication receipts are canonical deployment records",
+        "Display raw receipt payloads or evidence_digest values",
+        "Bypass corruption_detected flag when displaying reconstruction state"
+      ]
+    }
+  },
+  "trust_state": {
+    "overall": "derived_operational_projection_only",
+    "backup_restore_equivalence": {
+      "level": "schema_migration_metadata",
+      "description": "Restore verifies _schema_version and _migrations tables exist post-restore. Domain table content equivalence is proven by comparing pre-backup and post-restore domain digests (computed via compute_projection_digest). Full product-state equivalence requires additional digest comparison proof which is implemented but not yet verified to a clean-target database restore.",
+      "full_product_state_proven": false
+    },
+    "migration_state": {
+      "current_version": 6,
+      "upgrade_from_version": 0,
+      "ready_for_x0": true
+    },
+    "materialized_view_freshness": {
+      "refreshed_at": null,
+      "auto_refresh": false,
+      "staleness_acceptable_for_x0": false,
+      "description": "Materialized views are NOT auto-refreshed. They reflect the snapshot at the last explicit REFRESH MATERIALIZED VIEW call. X0 must NOT treat materialized view data as live or fresh. Concurrent refresh (REFRESH MATERIALIZED VIEW CONCURRENTLY) requires a unique index on each view; this is not yet proven or offered. X0 may query base tables directly instead."
+    }
+  },
+  "operational_readiness": {
+    "postgresql_required": true,
+    "local_installation_not_managed": true,
+    "available_actions": [
+      "query_repository_estate",
+      "query_investigation_timeline",
+      "query_publication_history",
+      "refresh_materialized_views_explicit",
+      "create_backup",
+      "restore_backup",
+      "verify_backup",
+      "list_backups",
+      "run_migrations",
+      "compute_projection_digest"
+    ],
+    "explicit_blockers": [
+      "materialized_view_auto_refresh_not_implemented",
+      "pg_upgrade_major_version_not_tested",
+      "connection_pooling_not_implemented",
+      "cross_server_portability_not_proven",
+      "full_product_state_restore_equivalence_not_proven_to_clean_target",
+      "LISTEN_NOTIFY_live_refresh_signalling_not_implemented"
+    ]
+  },
+  "content_light_guarantee": true
+}

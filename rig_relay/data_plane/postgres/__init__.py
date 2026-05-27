@@ -23,6 +23,7 @@ from __future__ import annotations
 from rig_relay.data_plane.postgres._backup_restore import PostgresBackupService
 from rig_relay.data_plane.postgres._config import PostgresConnectionConfig
 from rig_relay.data_plane.postgres._materialization_input import (
+    MaterializationInputStatus,
     PublicationMaterializationInput,
     RepositoryEstateMaterializationInput,
     TimelineMaterializationInput,
@@ -56,6 +57,7 @@ __all__ = [
     "EvidenceSourceKind",
     "IngestionCheckpoint",
     "IngestionReceipt",
+    "MaterializationInputStatus",
     "MaterializationReceipt",
     "MigrationRecord",
     "MigrationUpgradeReceipt",

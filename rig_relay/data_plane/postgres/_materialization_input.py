@@ -11,8 +11,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 import hashlib
 from typing import Any
+
+
+class MaterializationInputStatus(StrEnum):
+    """Status of a materialization input's source evidence binding."""
+
+    VERIFIED = "verified"
+    MISSING_PRODUCER_DIGEST = "missing_producer_digest"
+    CORRUPT_SOURCE = "corrupt_source"
+    REFUSED = "refused"
 
 
 @dataclass
@@ -22,11 +32,18 @@ class RepositoryEstateMaterializationInput:
     Does NOT read JSONL files, does NOT access service._store,
     does NOT parse .build/ paths. Consumes the public projection
     contract exclusively.
+
+    When the producer projection carries a ``projection_digest``,
+    the ``source_evidence_digest`` binds that exact digest.  When
+    the digest is absent the input carries ``missing_producer_digest``
+    status — no fallback to unstable Python process/object hashing.
     """
 
     projection: Any  # RepositoryEstateProjection
     source_evidence_digest: str = ""
     source_schema_version: str = "rig.relay.repository_estate_projection.v1"
+    source_status: MaterializationInputStatus = MaterializationInputStatus.VERIFIED
+    source_status_reason: str = ""
 
     @classmethod
     def from_service(cls, service: Any) -> RepositoryEstateMaterializationInput:
@@ -35,18 +52,37 @@ class RepositoryEstateMaterializationInput:
         Does NOT read JSONL files, does NOT access service._store,
         does NOT parse .build/ paths. Consumes the public projection
         contract exclusively.
+
+        Raises:
+            ValueError: When the producer projection carries no digest
+                        and ``required=True`` is passed.
         """
         import hashlib as _h
 
         projection = service.build_projection()
-        digest = _h.sha256(
-            str(
-                projection.projection_digest
-                if hasattr(projection, "projection_digest")
-                else str(hash(projection))
-            ).encode()
-        ).hexdigest()
-        return cls(projection=projection, source_evidence_digest=f"sha256:{digest}")
+        producer_digest = (
+            getattr(projection, "projection_digest", "")
+            if hasattr(projection, "projection_digest")
+            else ""
+        )
+
+        if not producer_digest:
+            return cls(
+                projection=projection,
+                source_evidence_digest="",
+                source_status=MaterializationInputStatus.MISSING_PRODUCER_DIGEST,
+                source_status_reason=(
+                    "T3.1 projection carries no projection_digest. "
+                    "Source evidence cannot be bound."
+                ),
+            )
+
+        digest = _h.sha256(producer_digest.encode()).hexdigest()
+        return cls(
+            projection=projection,
+            source_evidence_digest=f"sha256:{digest}",
+            source_status=MaterializationInputStatus.VERIFIED,
+        )
 
 
 @dataclass
@@ -100,12 +136,23 @@ class PublicationMaterializationInput:
 
     Consumes T1.2's public PublicationEvidenceLedger.load_receipts()
     contract without accessing private internals.
+
+    Source evidence digest binds verified receipt outcome content:
+    evidence_digest, compilation_successful, safety_passed, refusal_code,
+    result_digest, operation_id, and corruption/reconstruction status
+    for every receipt in the reconstruction. Changes in any receipt
+    outcome with the same receipt_id produce a different digest.
+    Unknown ledger identity is distinguished from an empty or synthetic
+    digest.
     """
 
     reconstruction: (
         Any  # LedgerReconstruction (imported from public rig_relay.publication)
     )
+    source_evidence_digest: str = ""
     ledger_identity_digest: str = ""
+    source_status: MaterializationInputStatus = MaterializationInputStatus.VERIFIED
+    source_status_reason: str = ""
     source_schema_version: str = "rig.relay.publication_preview_event.v1"
 
     @classmethod
@@ -115,11 +162,16 @@ class PublicationMaterializationInput:
         """Create input from a PublicationEvidenceLedger using ONLY public API.
 
         Source evidence digest binds verified receipt content, not just
-        receipt IDs. Hashes evidence_digest + compilation_successful +
-        safety_passed + refusal_code for each receipt.
+        receipt IDs or a caller-supplied ledger path hash.  Hashes every
+        receipt's evidence_digest, compilation_successful, safety_passed,
+        refusal_code, result_digest, and operation_id plus the reconstruction's
+        corruption state.
 
         ledger_path_digest is supplied by the caller — we do NOT read ledger._path.
+        Unknown ledger identity is distinguishable from an empty or synthetic digest.
         """
+        import json as _json
+
         reconstruction = ledger.load_receipts(authoritative=False)
 
         content_parts = []
@@ -130,12 +182,30 @@ class PublicationMaterializationInput:
                 "compilation_successful": receipt.get("compilation_successful", False),
                 "safety_passed": receipt.get("safety_passed", False),
                 "refusal_code": receipt.get("refusal_code"),
+                "result_digest": receipt.get("result_digest", ""),
                 "operation_id": receipt.get("operation_id", ""),
             })
 
+        content_parts.append({
+            "_reconstruction": {
+                "total_rows": reconstruction.total_rows,
+                "valid_rows": reconstruction.valid_rows,
+                "corrupt_rows": reconstruction.corrupt_rows,
+                "corruption_detected": reconstruction.corruption_detected,
+            }
+        })
+
+        payload = _json.dumps(content_parts, sort_keys=True, separators=(",", ":"))
+        source_digest = f"sha256:{hashlib.sha256(payload.encode()).hexdigest()}"
+
         identity = ledger_path_digest or "unknown"
 
-        return cls(reconstruction=reconstruction, ledger_identity_digest=identity)
+        return cls(
+            reconstruction=reconstruction,
+            source_evidence_digest=source_digest,
+            ledger_identity_digest=identity,
+            source_status=MaterializationInputStatus.VERIFIED,
+        )
 
 
 def compute_projection_digest(
@@ -144,15 +214,20 @@ def compute_projection_digest(
     table: str,
     primary_key_columns: list[str] | None = None,
     exclude_columns: list[str] | None = None,
+    *,
+    manifest_schema_version: str = "rig.relay.materialization_digest_manifest.v1",
+    domain_name: str = "",
 ) -> str:
     """Compute a canonical SHA256 digest over table content.
 
-    Uses a JSON-framed manifest with table identity, column names,
-    and canonically-ordered rows. Deterministic: same content always
-    produces the same digest.
+    Uses a JSON-framed manifest with schema version, domain identity,
+    table identity, column names, and canonically-ordered rows.
+    Deterministic: same content always produces the same digest.
 
     The manifest has this structure:
     {
+      "manifest_schema": "<manifest_schema_version>",
+      "domain": "<domain_name>",
       "schema": "<schema_name>",
       "table": "<table_name>",
       "columns": ["col1", "col2", ...],
@@ -215,6 +290,8 @@ def compute_projection_digest(
             rows.append(row_dict)
 
         manifest = {
+            "manifest_schema": manifest_schema_version,
+            "domain": domain_name,
             "schema": schema,
             "table": table,
             "columns": cols,
@@ -233,6 +310,9 @@ def compute_multi_table_digest(
     schema: str,
     tables: list[tuple[str, list[str]]],
     exclude_columns: list[str] | None = None,
+    *,
+    manifest_schema_version: str = "rig.relay.materialization_digest_manifest.v1",
+    domain_name: str = "",
 ) -> str:
     """Combined digest: SHA256(table1_digest + "|" + table2_digest + ...).
 
@@ -241,7 +321,13 @@ def compute_multi_table_digest(
     sha = hashlib.sha256()
     for table_name, pk_cols in tables:
         table_digest = compute_projection_digest(
-            conn, schema, table_name, pk_cols, exclude_columns
+            conn,
+            schema,
+            table_name,
+            pk_cols,
+            exclude_columns,
+            manifest_schema_version=manifest_schema_version,
+            domain_name=domain_name,
         )
         sha.update(f"{table_name}:{table_digest}|".encode())
     return sha.hexdigest()

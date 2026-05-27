@@ -15,6 +15,7 @@ import pytest
 
 from rig_relay.data_plane.postgres._backup_restore import PostgresBackupService
 from rig_relay.data_plane.postgres._materialization_input import (
+    MaterializationInputStatus,
     PublicationMaterializationInput,
     RepositoryEstateMaterializationInput,
     compute_projection_digest,
@@ -2075,3 +2076,682 @@ class TestContentLightModels:
         assert "verified_equivalence_level" in dump
         assert dump["verified_equivalence_level"] == "schema_migration_metadata"
         assert "canonical_equivalence_verified" in dump
+
+
+# ── Missing producer digest refusal tests ────────────────────────────────
+
+
+class TestMissingProducerDigest:
+    def test_from_service_refuses_when_projection_digest_missing(self) -> None:
+        class FakeProjection:
+            pass
+
+        projection = FakeProjection()
+
+        class FakeService:
+            def build_projection(self):
+                return projection
+
+        input_data = RepositoryEstateMaterializationInput.from_service(FakeService())
+        assert (
+            input_data.source_status
+            == MaterializationInputStatus.MISSING_PRODUCER_DIGEST
+        )
+        assert input_data.source_evidence_digest == ""
+        assert "carries no projection_digest" in input_data.source_status_reason
+
+    def test_from_service_binds_digest_when_present(self) -> None:
+        class FakeProjection:
+            projection_digest = "sha256:abc123def456"
+
+        class FakeService:
+            def build_projection(self):
+                return FakeProjection()
+
+        input_data = RepositoryEstateMaterializationInput.from_service(FakeService())
+        assert input_data.source_status == MaterializationInputStatus.VERIFIED
+        assert input_data.source_evidence_digest.startswith("sha256:")
+        assert input_data.source_evidence_digest != ""
+
+    def test_materialize_refuses_when_missing_producer_digest(
+        self, migrated_store
+    ) -> None:
+        from rig_relay.data_plane.postgres._materialize_repository_estate import (
+            RepositoryEstateMaterializer,
+        )
+
+        class FakeProjection:
+            pass
+
+        input_data = RepositoryEstateMaterializationInput(
+            projection=FakeProjection(),
+            source_status=MaterializationInputStatus.MISSING_PRODUCER_DIGEST,
+            source_evidence_digest="",
+        )
+        mat = RepositoryEstateMaterializer(migrated_store)
+        receipt = mat.materialize(input_data)
+        assert receipt.rows_materialized == 0
+        assert receipt.source_evidence_count == 0
+
+    def test_materialize_accepts_when_digest_present(self, migrated_store) -> None:
+        from rig_relay.data_plane.postgres._materialize_repository_estate import (
+            RepositoryEstateMaterializer,
+        )
+
+        class FakeProjection:
+            def __init__(self):
+                self.registered_repositories = []
+                self.corruption_events = []
+                self.recent_changes = []
+                self.total_registered = 0
+                self.total_observations = 0
+                self.corrupt_registration_count = 0
+                self.corrupt_observation_count = 0
+                self.authority_state = "controlled_boundary"
+
+        input_data = RepositoryEstateMaterializationInput(
+            projection=FakeProjection(),
+            source_status=MaterializationInputStatus.VERIFIED,
+            source_evidence_digest="sha256:test",
+        )
+        mat = RepositoryEstateMaterializer(migrated_store)
+        receipt = mat.materialize(input_data)
+        assert receipt.rows_materialized >= 0
+
+
+# ── Publication source evidence binding tests ────────────────────────────
+
+
+class TestPublicationSourceEvidenceBinding:
+    def test_from_ledger_computes_source_evidence_digest(self) -> None:
+        class FakeReconstruction:
+            def __init__(self):
+                self.receipts = [
+                    {
+                        "receipt_id": "rec_1",
+                        "evidence_digest": "sha256:ev1",
+                        "compilation_successful": True,
+                        "safety_passed": True,
+                        "refusal_code": None,
+                        "result_digest": "sha256:res1",
+                        "operation_id": "op_1",
+                    }
+                ]
+                self.total_rows = 1
+                self.valid_rows = 1
+                self.corrupt_rows = 0
+                self.corruption_detected = False
+
+        class FakeLedger:
+            def load_receipts(self, authoritative=False):
+                return FakeReconstruction()
+
+        input_data = PublicationMaterializationInput.from_ledger(
+            FakeLedger(), "sha256:ledger_path"
+        )
+        assert input_data.source_evidence_digest.startswith("sha256:")
+        assert input_data.source_evidence_digest != ""
+        assert input_data.ledger_identity_digest == "sha256:ledger_path"
+        assert input_data.source_status == MaterializationInputStatus.VERIFIED
+
+    def test_different_receipt_outcomes_produce_different_digests(self) -> None:
+        class FakeReconstruction:
+            def __init__(self, compilation_ok):
+                self.receipts = [
+                    {
+                        "receipt_id": "rec_1",
+                        "evidence_digest": "sha256:ev1",
+                        "compilation_successful": compilation_ok,
+                        "safety_passed": True,
+                        "refusal_code": None,
+                        "result_digest": "sha256:res1",
+                        "operation_id": "op_1",
+                    }
+                ]
+                self.total_rows = 1
+                self.valid_rows = 1
+                self.corrupt_rows = 0
+                self.corruption_detected = False
+
+        class FakeLedger:
+            def __init__(self, compilation_ok):
+                self._compilation_ok = compilation_ok
+
+            def load_receipts(self, authoritative=False):
+                return FakeReconstruction(self._compilation_ok)
+
+        input_success = PublicationMaterializationInput.from_ledger(FakeLedger(True))
+        input_failed = PublicationMaterializationInput.from_ledger(FakeLedger(False))
+
+        assert (
+            input_success.source_evidence_digest != input_failed.source_evidence_digest
+        ), "Different receipt outcomes must produce different source evidence digests"
+
+    def test_corruption_detected_changes_digest(self) -> None:
+        class FakeReconstruction:
+            def __init__(self, corrupt):
+                self.receipts = [
+                    {
+                        "receipt_id": "rec_1",
+                        "evidence_digest": "sha256:ev1",
+                        "compilation_successful": True,
+                        "safety_passed": True,
+                        "refusal_code": None,
+                        "result_digest": "sha256:res1",
+                        "operation_id": "op_1",
+                    }
+                ]
+                self.total_rows = 2 if corrupt else 1
+                self.valid_rows = 1
+                self.corrupt_rows = 1 if corrupt else 0
+                self.corruption_detected = corrupt
+
+        class FakeLedger:
+            def __init__(self, corrupt):
+                self._corrupt = corrupt
+
+            def load_receipts(self, authoritative=False):
+                return FakeReconstruction(self._corrupt)
+
+        input_clean = PublicationMaterializationInput.from_ledger(FakeLedger(False))
+        input_corrupt = PublicationMaterializationInput.from_ledger(FakeLedger(True))
+
+        assert (
+            input_clean.source_evidence_digest != input_corrupt.source_evidence_digest
+        ), "Corruption state must change the source evidence digest"
+
+    def test_unknown_ledger_identity_distinguishable(self) -> None:
+        class FakeReconstruction:
+            def __init__(self):
+                self.receipts = []
+                self.total_rows = 0
+                self.valid_rows = 0
+                self.corrupt_rows = 0
+                self.corruption_detected = False
+
+        class FakeLedger:
+            def load_receipts(self, authoritative=False):
+                return FakeReconstruction()
+
+        input_empty = PublicationMaterializationInput.from_ledger(FakeLedger(), "")
+        input_known = PublicationMaterializationInput.from_ledger(
+            FakeLedger(), "sha256:known"
+        )
+
+        assert input_empty.ledger_identity_digest == "unknown"
+        assert input_known.ledger_identity_digest == "sha256:known"
+        assert input_empty.ledger_identity_digest != input_known.ledger_identity_digest
+
+
+# ── Adversarial digest tests ─────────────────────────────────────────────
+
+
+class TestAdversarialManifestDigest:
+    def test_single_field_change_alters_digest(self, migrated_store, pg_conn) -> None:
+        schema = migrated_store.config.schema_name
+        fixed_ts = "2026-01-01 00:00:00+00"
+        repo_hash = "sha256:adv_field"
+
+        with pg_conn.cursor() as cur:
+            cur.execute(
+                psql.SQL("DELETE FROM {}.{}").format(
+                    psql.Identifier(schema), psql.Identifier("registered_repositories")
+                )
+            )
+            cur.execute(
+                psql.SQL(
+                    "INSERT INTO {}.{} "
+                    "(repository_hash, repository_label, repository_kind, "
+                    "root_path_digest, registered_at, last_registered_at, "
+                    "provenance_class, authority_state, materialized_at) "
+                    "VALUES (%s, %s, %s, %s, %s::timestamptz, %s::timestamptz, "
+                    "%s, %s, %s::timestamptz)"
+                ).format(
+                    psql.Identifier(schema), psql.Identifier("registered_repositories")
+                ),
+                (
+                    repo_hash,
+                    "label-a",
+                    "local_only",
+                    "sha256:root_a",
+                    fixed_ts,
+                    fixed_ts,
+                    "derived_projection",
+                    "controlled_boundary",
+                    fixed_ts,
+                ),
+            )
+            digest_a = compute_projection_digest(
+                pg_conn,
+                schema,
+                "registered_repositories",
+                exclude_columns=["materialized_at"],
+                domain_name="repository_estate",
+            )
+
+            cur.execute(
+                psql.SQL("DELETE FROM {}.{}").format(
+                    psql.Identifier(schema), psql.Identifier("registered_repositories")
+                )
+            )
+            cur.execute(
+                psql.SQL(
+                    "INSERT INTO {}.{} "
+                    "(repository_hash, repository_label, repository_kind, "
+                    "root_path_digest, registered_at, last_registered_at, "
+                    "provenance_class, authority_state, materialized_at) "
+                    "VALUES (%s, %s, %s, %s, %s::timestamptz, %s::timestamptz, "
+                    "%s, %s, %s::timestamptz)"
+                ).format(
+                    psql.Identifier(schema), psql.Identifier("registered_repositories")
+                ),
+                (
+                    repo_hash,
+                    "label-b",
+                    "local_only",
+                    "sha256:root_a",
+                    fixed_ts,
+                    fixed_ts,
+                    "derived_projection",
+                    "controlled_boundary",
+                    fixed_ts,
+                ),
+            )
+            digest_b = compute_projection_digest(
+                pg_conn,
+                schema,
+                "registered_repositories",
+                exclude_columns=["materialized_at"],
+                domain_name="repository_estate",
+            )
+
+        assert digest_a != digest_b, (
+            f"Changing repository_label must alter digest: {digest_a}"
+        )
+
+    def test_authority_state_change_alters_digest(
+        self, migrated_store, pg_conn
+    ) -> None:
+        schema = migrated_store.config.schema_name
+        fixed_ts = "2026-01-01 00:00:00+00"
+        repo_hash = "sha256:adv_auth"
+
+        with pg_conn.cursor() as cur:
+            cur.execute(
+                psql.SQL("DELETE FROM {}.{}").format(
+                    psql.Identifier(schema), psql.Identifier("registered_repositories")
+                )
+            )
+            cur.execute(
+                psql.SQL(
+                    "INSERT INTO {}.{} "
+                    "(repository_hash, repository_label, repository_kind, "
+                    "root_path_digest, registered_at, last_registered_at, "
+                    "provenance_class, authority_state, materialized_at) "
+                    "VALUES (%s, %s, %s, %s, %s::timestamptz, %s::timestamptz, "
+                    "%s, %s, %s::timestamptz)"
+                ).format(
+                    psql.Identifier(schema), psql.Identifier("registered_repositories")
+                ),
+                (
+                    repo_hash,
+                    "auth-repo",
+                    "local_only",
+                    "sha256:root_a",
+                    fixed_ts,
+                    fixed_ts,
+                    "derived_projection",
+                    "controlled_boundary",
+                    fixed_ts,
+                ),
+            )
+            digest_ctrl = compute_projection_digest(
+                pg_conn,
+                schema,
+                "registered_repositories",
+                exclude_columns=["materialized_at"],
+                domain_name="repository_estate",
+            )
+
+            cur.execute(
+                psql.SQL("DELETE FROM {}.{}").format(
+                    psql.Identifier(schema), psql.Identifier("registered_repositories")
+                )
+            )
+            cur.execute(
+                psql.SQL(
+                    "INSERT INTO {}.{} "
+                    "(repository_hash, repository_label, repository_kind, "
+                    "root_path_digest, registered_at, last_registered_at, "
+                    "provenance_class, authority_state, materialized_at) "
+                    "VALUES (%s, %s, %s, %s, %s::timestamptz, %s::timestamptz, "
+                    "%s, %s, %s::timestamptz)"
+                ).format(
+                    psql.Identifier(schema), psql.Identifier("registered_repositories")
+                ),
+                (
+                    repo_hash,
+                    "auth-repo",
+                    "github_backed",
+                    "sha256:root_a",
+                    fixed_ts,
+                    fixed_ts,
+                    "canonical_fact",
+                    "canonical_live",
+                    fixed_ts,
+                ),
+            )
+            digest_canon = compute_projection_digest(
+                pg_conn,
+                schema,
+                "registered_repositories",
+                exclude_columns=["materialized_at"],
+                domain_name="repository_estate",
+            )
+
+        assert digest_ctrl != digest_canon, (
+            f"Authority state change must alter digest: {digest_ctrl}"
+        )
+
+    def test_row_boundary_change_alters_digest(self, migrated_store, pg_conn) -> None:
+        schema = migrated_store.config.schema_name
+        fixed_ts = "2026-01-01 00:00:00+00"
+
+        with pg_conn.cursor() as cur:
+            # One row
+            cur.execute(
+                psql.SQL("DELETE FROM {}.{}").format(
+                    psql.Identifier(schema), psql.Identifier("registered_repositories")
+                )
+            )
+            cur.execute(
+                psql.SQL(
+                    "INSERT INTO {}.{} "
+                    "(repository_hash, repository_label, repository_kind, "
+                    "root_path_digest, registered_at, last_registered_at, "
+                    "provenance_class, authority_state, materialized_at) "
+                    "VALUES (%s, %s, %s, %s, %s::timestamptz, %s::timestamptz, "
+                    "%s, %s, %s::timestamptz)"
+                ).format(
+                    psql.Identifier(schema), psql.Identifier("registered_repositories")
+                ),
+                (
+                    "sha256:adv_1",
+                    "row-1",
+                    "local_only",
+                    "sha256:r1",
+                    fixed_ts,
+                    fixed_ts,
+                    "derived_projection",
+                    "controlled_boundary",
+                    fixed_ts,
+                ),
+            )
+            digest_one = compute_projection_digest(
+                pg_conn,
+                schema,
+                "registered_repositories",
+                exclude_columns=["materialized_at"],
+                domain_name="repository_estate",
+            )
+
+            # Two rows
+            cur.execute(
+                psql.SQL(
+                    "INSERT INTO {}.{} "
+                    "(repository_hash, repository_label, repository_kind, "
+                    "root_path_digest, registered_at, last_registered_at, "
+                    "provenance_class, authority_state, materialized_at) "
+                    "VALUES (%s, %s, %s, %s, %s::timestamptz, %s::timestamptz, "
+                    "%s, %s, %s::timestamptz)"
+                ).format(
+                    psql.Identifier(schema), psql.Identifier("registered_repositories")
+                ),
+                (
+                    "sha256:adv_2",
+                    "row-2",
+                    "github_backed",
+                    "sha256:r2",
+                    fixed_ts,
+                    fixed_ts,
+                    "canonical_fact",
+                    "canonical_live",
+                    fixed_ts,
+                ),
+            )
+            digest_two = compute_projection_digest(
+                pg_conn,
+                schema,
+                "registered_repositories",
+                exclude_columns=["materialized_at"],
+                domain_name="repository_estate",
+            )
+
+        assert digest_one != digest_two, (
+            f"Different row count must alter digest: {digest_one}"
+        )
+
+    def test_same_content_always_same_digest(self, migrated_store, pg_conn) -> None:
+        schema = migrated_store.config.schema_name
+        fixed_ts = "2026-01-01 00:00:00+00"
+
+        def insert_and_digest():
+            with pg_conn.cursor() as cur:
+                cur.execute(
+                    psql.SQL("DELETE FROM {}.{}").format(
+                        psql.Identifier(schema),
+                        psql.Identifier("registered_repositories"),
+                    )
+                )
+                cur.execute(
+                    psql.SQL(
+                        "INSERT INTO {}.{} "
+                        "(repository_hash, repository_label, repository_kind, "
+                        "root_path_digest, registered_at, last_registered_at, "
+                        "provenance_class, authority_state, materialized_at) "
+                        "VALUES (%s, %s, %s, %s, %s::timestamptz, %s::timestamptz, "
+                        "%s, %s, %s::timestamptz)"
+                    ).format(
+                        psql.Identifier(schema),
+                        psql.Identifier("registered_repositories"),
+                    ),
+                    (
+                        "sha256:adv_same",
+                        "same",
+                        "local_only",
+                        "sha256:sr",
+                        fixed_ts,
+                        fixed_ts,
+                        "derived_projection",
+                        "controlled_boundary",
+                        fixed_ts,
+                    ),
+                )
+            return compute_projection_digest(
+                pg_conn,
+                schema,
+                "registered_repositories",
+                exclude_columns=["materialized_at"],
+                domain_name="repository_estate",
+            )
+
+        d1 = insert_and_digest()
+        d2 = insert_and_digest()
+        d3 = insert_and_digest()
+
+        assert d1 == d2 == d3, (
+            f"Same content must produce identical digests: {d1}, {d2}, {d3}"
+        )
+
+    def test_manifest_includes_domain_and_schema_version(
+        self, migrated_store, pg_conn
+    ) -> None:
+        schema = migrated_store.config.schema_name
+        fixed_ts = "2026-01-01 00:00:00+00"
+
+        with pg_conn.cursor() as cur:
+            cur.execute(
+                psql.SQL("DELETE FROM {}.{}").format(
+                    psql.Identifier(schema), psql.Identifier("registered_repositories")
+                )
+            )
+            cur.execute(
+                psql.SQL(
+                    "INSERT INTO {}.{} "
+                    "(repository_hash, repository_label, repository_kind, "
+                    "root_path_digest, registered_at, last_registered_at, "
+                    "provenance_class, authority_state, materialized_at) "
+                    "VALUES (%s, %s, %s, %s, %s::timestamptz, %s::timestamptz, "
+                    "%s, %s, %s::timestamptz)"
+                ).format(
+                    psql.Identifier(schema), psql.Identifier("registered_repositories")
+                ),
+                (
+                    "sha256:adv_domain",
+                    "domain-repo",
+                    "local_only",
+                    "sha256:dr",
+                    fixed_ts,
+                    fixed_ts,
+                    "derived_projection",
+                    "controlled_boundary",
+                    fixed_ts,
+                ),
+            )
+
+        digest_v1 = compute_projection_digest(
+            pg_conn,
+            schema,
+            "registered_repositories",
+            exclude_columns=["materialized_at"],
+            manifest_schema_version="rig.relay.materialization_digest_manifest.v1",
+            domain_name="repository_estate",
+        )
+        digest_v2 = compute_projection_digest(
+            pg_conn,
+            schema,
+            "registered_repositories",
+            exclude_columns=["materialized_at"],
+            manifest_schema_version="rig.relay.materialization_digest_manifest.v2",
+            domain_name="repository_estate",
+        )
+
+        assert digest_v1 != digest_v2, (
+            "Different manifest schema versions must produce different digests"
+        )
+
+
+# ── Backup/restore domain digest comparison tests ────────────────────────
+
+
+_HAS_PG_DUMP = shutil.which("pg_dump") is not None
+_pg_dump_reason = "pg_dump binary not found on PATH"
+
+
+class TestBackupRestoreDomainDigest:
+    @pytest.mark.skipif(not _HAS_PG_DUMP, reason=_pg_dump_reason)
+    def test_restore_into_disposable_target_with_digest_comparison(
+        self, migrated_store, pg_config, tmp_path
+    ) -> None:
+        from rig_relay.data_plane.postgres._backup_restore import PostgresBackupService
+
+        schema = migrated_store.config.schema_name
+        fixed_ts = "2026-01-01 00:00:00+00"
+
+        with migrated_store.conn.cursor() as cur:
+            cur.execute(
+                psql.SQL("DELETE FROM {}.{}").format(
+                    psql.Identifier(schema), psql.Identifier("registered_repositories")
+                )
+            )
+            cur.execute(
+                psql.SQL(
+                    "INSERT INTO {}.{} "
+                    "(repository_hash, repository_label, repository_kind, "
+                    "root_path_digest, registered_at, last_registered_at, "
+                    "provenance_class, authority_state, materialized_at) "
+                    "VALUES (%s, %s, %s, %s, %s::timestamptz, %s::timestamptz, "
+                    "%s, %s, %s::timestamptz)"
+                ).format(
+                    psql.Identifier(schema), psql.Identifier("registered_repositories")
+                ),
+                (
+                    "sha256:backup_digest_repo",
+                    "backup-digest-repo",
+                    "local_only",
+                    "sha256:bd_root",
+                    fixed_ts,
+                    fixed_ts,
+                    "derived_projection",
+                    "controlled_boundary",
+                    fixed_ts,
+                ),
+            )
+
+        pre_backup_digest = compute_projection_digest(
+            migrated_store.conn,
+            schema,
+            "registered_repositories",
+            exclude_columns=["materialized_at"],
+            domain_name="repository_estate",
+        )
+        assert pre_backup_digest, "Pre-backup digest must not be empty"
+
+        service = PostgresBackupService(pg_config, backup_dir=tmp_path)
+        backup_receipt = service.create_backup(format="custom", verify=False)
+        assert backup_receipt.secrets_excluded is True
+
+        backup_files = sorted(tmp_path.glob("*.dump"))
+        assert backup_files, "Backup file must be created"
+
+        restore_receipt = service.restore_backup(
+            backup_files[0], verify_equivalence=True
+        )
+        assert restore_receipt.canonical_equivalence_verified is False
+        assert restore_receipt.verified_equivalence_level in (
+            "none",
+            "schema_migration_metadata",
+        )
+
+        post_restore_digest = compute_projection_digest(
+            migrated_store.conn,
+            schema,
+            "registered_repositories",
+            exclude_columns=["materialized_at"],
+            domain_name="repository_estate",
+        )
+
+        assert pre_backup_digest == post_restore_digest, (
+            f"Domain content digest must survive backup/restore: "
+            f"{pre_backup_digest} vs {post_restore_digest}"
+        )
+
+    @pytest.mark.skipif(not _HAS_PG_DUMP, reason=_pg_dump_reason)
+    def test_backup_receipt_excludes_secrets(
+        self, migrated_store, pg_config, tmp_path
+    ) -> None:
+        from rig_relay.data_plane.postgres._backup_restore import PostgresBackupService
+
+        service = PostgresBackupService(pg_config, backup_dir=tmp_path)
+        receipt = service.create_backup(format="plain", verify=False)
+        assert receipt.secrets_excluded is True
+        assert receipt.exclusion_method != ""
+
+    @pytest.mark.skipif(not _HAS_PG_DUMP, reason=_pg_dump_reason)
+    def test_restore_receipt_never_claims_full_product_state(
+        self, migrated_store, pg_config, tmp_path
+    ) -> None:
+        from rig_relay.data_plane.postgres._backup_restore import PostgresBackupService
+
+        service = PostgresBackupService(pg_config, backup_dir=tmp_path)
+        service.create_backup(format="custom", verify=False)
+        backup_files = sorted(tmp_path.glob("*.dump"))
+        if not backup_files:
+            pytest.skip("No backup file created")
+
+        receipt = service.restore_backup(backup_files[0], verify_equivalence=True)
+        assert receipt.verified_equivalence_level != "full_product_state", (
+            "Restore must not claim full_product_state equivalence "
+            "without content digest comparison proof"
+        )
+        assert receipt.canonical_equivalence_verified is False

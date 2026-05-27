@@ -87,7 +87,7 @@ class RepositoryEstateMaterializer:
         exclude = ["materialized_at", "receipt_id", "built_at"]
 
         digest_before = compute_multi_table_digest(
-            self.store.conn, schema, tables, exclude
+            self.store.conn, schema, tables, exclude, domain_name="repository_estate"
         )
 
         rows_before = sum(_fetch_count(self.store.conn, schema, t[0]) for t in tables)
@@ -98,7 +98,7 @@ class RepositoryEstateMaterializer:
         _receipt = self.materialize(input_data)
 
         digest_after = compute_multi_table_digest(
-            self.store.conn, schema, tables, exclude
+            self.store.conn, schema, tables, exclude, domain_name="repository_estate"
         )
         rows_after = sum(_fetch_count(self.store.conn, schema, t[0]) for t in tables)
 
@@ -127,10 +127,31 @@ class RepositoryEstateMaterializer:
     def _materialize_impl(
         self, input_data: RepositoryEstateMaterializationInput
     ) -> MaterializationReceipt:
-        """Materialize projection rows into PostgreSQL projection tables."""
+        """Materialize projection rows into PostgreSQL projection tables.
+
+        Refuses materialization when the producer digest is missing —
+        no unstable fallback hashing is used.
+        """
         projection = input_data.projection
         schema = self.store.config.schema_name
         now = datetime.now()
+
+        source_status = getattr(input_data, "source_status", None)
+        if source_status and str(source_status) == "missing_producer_digest":
+            receipt_id = compute_receipt_id(
+                "materialize_repo_estate_missing_digest", "repository_estate", now
+            )
+            return MaterializationReceipt(
+                receipt_id=receipt_id,
+                domain="repository_estate",
+                source_evidence_count=0,
+                rows_materialized=0,
+                corrupt_rows=0,
+                duplicate_rows=0,
+                built_at=now,
+                evidence_source_sha256="",
+                deterministic=False,
+            )
 
         summaries = getattr(projection, "registered_repositories", [])
         corruption_events = getattr(projection, "corruption_events", [])

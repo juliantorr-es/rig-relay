@@ -1,0 +1,202 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/docs/schemas/rig.relay.x0_postgres_consumer_admission.v1",
+  "title": "X0 PostgreSQL Consumer Admission Contract",
+  "description": "Typed admission contract for X0 Gridline frontend consumption of PostgreSQL-backed operational projections. Defines exactly what PostgreSQL state may be rendered, under which trust state, and with which explicit prohibitions. Content-light: no raw paths, raw receipt payloads, raw SQL, secrets, local database credentials, private repository content, or unverified canonical claims.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "admission_id",
+    "issued_at",
+    "lane",
+    "postgresql_authority_classification",
+    "prohibited_claims",
+    "domains",
+    "trust_state",
+    "operational_readiness"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.x0_postgres_consumer_admission.v1"
+    },
+    "admission_id": {
+      "type": "string",
+      "description": "Unique admission identifier"
+    },
+    "issued_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC ISO 8601 timestamp of admission issuance"
+    },
+    "lane": {
+      "type": "string",
+      "description": "Lane identifier (x1.3_postgres_materialization)"
+    },
+    "candidate_commit_sha": {
+      "type": "string",
+      "description": "SHA of the builder candidate commit that produced this admission"
+    },
+    "postgresql_authority_classification": {
+      "type": "string",
+      "const": "derived_operational_projection",
+      "description": "PostgreSQL rows are disposable operational projections. Canonical authority remains with the producer evidence boundaries. PostgreSQL is NEVER a second source of governed truth."
+    },
+    "prohibited_claims": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Claims that PostgreSQL-backed surfaces MUST NOT make"
+    },
+    "domains": {
+      "type": "object",
+      "required": ["repository_estate", "investigation_timeline", "publication_history"],
+      "properties": {
+        "repository_estate": {
+          "type": "object",
+          "required": [
+            "domain",
+            "producer_boundary",
+            "source_evidence_binding",
+            "authority_preservation",
+            "rebuild_integrity",
+            "corruption_degradation_state",
+            "admission_for_x0",
+            "prohibited"
+          ],
+          "properties": {
+            "domain": { "type": "string" },
+            "producer_boundary": { "type": "string" },
+            "source_evidence_binding": { "type": "string" },
+            "authority_preservation": { "type": "string" },
+            "rebuild_integrity": { "type": "string" },
+            "corruption_degradation_state": { "type": "string" },
+            "admission_for_x0": { "type": "string" },
+            "prohibited": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "investigation_timeline": {
+          "type": "object",
+          "required": [
+            "domain",
+            "producer_boundary",
+            "source_evidence_binding",
+            "authority_preservation",
+            "rebuild_integrity",
+            "corruption_degradation_state",
+            "admission_for_x0",
+            "prohibited"
+          ],
+          "properties": {
+            "domain": { "type": "string" },
+            "producer_boundary": { "type": "string" },
+            "source_evidence_binding": { "type": "string" },
+            "authority_preservation": { "type": "string" },
+            "rebuild_integrity": { "type": "string" },
+            "corruption_degradation_state": { "type": "string" },
+            "admission_for_x0": { "type": "string" },
+            "prohibited": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "publication_history": {
+          "type": "object",
+          "required": [
+            "domain",
+            "producer_boundary",
+            "source_evidence_binding",
+            "authority_preservation",
+            "rebuild_integrity",
+            "corruption_degradation_state",
+            "admission_for_x0",
+            "prohibited"
+          ],
+          "properties": {
+            "domain": { "type": "string" },
+            "producer_boundary": { "type": "string" },
+            "source_evidence_binding": { "type": "string" },
+            "authority_preservation": { "type": "string" },
+            "rebuild_integrity": { "type": "string" },
+            "corruption_degradation_state": { "type": "string" },
+            "admission_for_x0": { "type": "string" },
+            "prohibited": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "trust_state": {
+      "type": "object",
+      "required": [
+        "overall",
+        "backup_restore_equivalence",
+        "migration_state",
+        "materialized_view_freshness"
+      ],
+      "properties": {
+        "overall": { "type": "string" },
+        "backup_restore_equivalence": {
+          "type": "object",
+          "properties": {
+            "level": { "type": "string" },
+            "description": { "type": "string" },
+            "full_product_state_proven": { "type": "boolean" }
+          },
+          "required": ["level", "description", "full_product_state_proven"]
+        },
+        "migration_state": {
+          "type": "object",
+          "properties": {
+            "current_version": { "type": "integer" },
+            "upgrade_from_version": { "type": "integer" },
+            "ready_for_x0": { "type": "boolean" }
+          },
+          "required": ["current_version", "upgrade_from_version", "ready_for_x0"]
+        },
+        "materialized_view_freshness": {
+          "type": "object",
+          "properties": {
+            "refreshed_at": { "type": ["string", "null"] },
+            "auto_refresh": { "type": "boolean" },
+            "staleness_acceptable_for_x0": { "type": "boolean" },
+            "description": { "type": "string" }
+          },
+          "required": ["auto_refresh", "staleness_acceptable_for_x0", "description"]
+        }
+      }
+    },
+    "operational_readiness": {
+      "type": "object",
+      "required": [
+        "postgresql_required",
+        "local_installation_not_managed",
+        "available_actions",
+        "explicit_blockers"
+      ],
+      "properties": {
+        "postgresql_required": { "type": "boolean" },
+        "local_installation_not_managed": { "type": "boolean" },
+        "available_actions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "explicit_blockers": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "content_light_guarantee": {
+      "type": "boolean",
+      "const": true
+    }
+  },
+  "additionalProperties": false
+}
