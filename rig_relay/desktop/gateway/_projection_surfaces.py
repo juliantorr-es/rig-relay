@@ -302,7 +302,19 @@ def REPOSITORY_ESTATE_SURFACE_PROJECTION_BUILDER(
 def PUBLISH_PREVIEW_SURFACE_PROJECTION_BUILDER(
     gateway: DeveloperStudioGatewayService,
 ) -> PublishPreviewSurfaceProjection:
-    """Build Publish Preview surface from T1.2 ProjectPagePublicationPreviewService."""
+    """Build Publish Preview surface — integration-blocked on public history API.
+
+    T1.2 does not expose a public history projection API. The PublicationEvidenceLedger
+    is a producer-internal store. The gateway must not interpret canonical publication
+    evidence without a published consumer boundary.
+
+    Integration contract required (T1.2 / X3.2):
+        ProjectPagePublicationPreviewService.build_preview_history(operation_id=None)
+            -> PublicationPreviewHistoryProjection
+        Required fields: authority_state, operation_count, terminal_success_count,
+        terminal_refusal_count, corruption_detected, reconstruction_status,
+        latest_events (content-light), deployment_authority_available.
+    """
     pub = gateway._get_publication_service()
 
     if pub is None:
@@ -312,26 +324,6 @@ def PUBLISH_PREVIEW_SURFACE_PROJECTION_BUILDER(
             trust_state=TrustState.DEFERRED,
             degraded_reason="ProjectPagePublicationPreviewService (T1.2) cannot be loaded",
         )
-
-    try:
-        from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
-
-        ledger = PublicationEvidenceLedger()
-        event_count = ledger.count_events() if ledger else 0
-        reconstruction = ledger.load_receipts(authoritative=False) if ledger else None
-        if reconstruction:
-            valid_rows = reconstruction.valid_rows
-            corrupt_rows = reconstruction.corrupt_rows
-            corruption_detected = reconstruction.corruption_detected
-        else:
-            valid_rows = 0
-            corrupt_rows = 0
-            corruption_detected = False
-    except Exception:
-        event_count = 0
-        valid_rows = 0
-        corrupt_rows = 0
-        corruption_detected = False
 
     publishable_count = 0
     j0 = gateway._get_j0_service()
@@ -343,36 +335,28 @@ def PUBLISH_PREVIEW_SURFACE_PROJECTION_BUILDER(
         except Exception:
             pass
 
-    if corruption_detected:
-        authority = "corrupt"
-        trust = TrustState.CORRUPT
-        reason = "Publication evidence ledger contains corrupt rows"
-    elif valid_rows > 0:
-        authority = "canonical_live"
-        trust = TrustState.TRUSTED_LIVE
-        reason = f"Publication ledger has {event_count} events, {valid_rows} valid"
-    elif publishable_count > 0:
-        authority = "canonical_degraded"
-        trust = TrustState.TRUSTED_LIVE
-        reason = "Publishable repositories available but no preview events recorded"
-    elif event_count == 0 and publishable_count == 0:
-        authority = "missing"
+    if publishable_count > 0:
+        authority = "integration_blocked"
         trust = TrustState.DEFERRED
-        reason = "No publication ledger events and no publishable repositories"
+        reason = (
+            "Publishable repositories exist but publication evidence history "
+            "requires a public T1.2 history projection API. See integration "
+            "contract: T1.2/X3.2 public history projection boundary."
+        )
     else:
         authority = "missing"
         trust = TrustState.DEFERRED
-        reason = "No publication ledger events and no publishable repositories"
+        reason = "No publishable repositories and no public publication history API"
 
     return PublishPreviewSurfaceProjection(
-        available=event_count > 0 or publishable_count > 0,
+        available=publishable_count > 0,
         authority_state=authority,
         trust_state=trust,
         degraded_reason=reason,
-        ledger_total_events=event_count,
-        ledger_valid_rows=valid_rows,
-        ledger_corrupt_rows=corrupt_rows,
-        ledger_corruption_detected=corruption_detected,
+        ledger_total_events=0,
+        ledger_valid_rows=0,
+        ledger_corrupt_rows=0,
+        ledger_corruption_detected=False,
         publishable_repository_count=publishable_count,
         deployment_available=False,
         deployment_deferred_reason=(

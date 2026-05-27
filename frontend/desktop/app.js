@@ -1240,21 +1240,35 @@ function renderReceiptTimeline(data) {
   if (!body) return;
   var receipts = data._receipts;
   if (!receipts || !receipts.length) {
-    body.innerHTML = '<span class="missing">No receipts available.</span>';
+    _clearEl(body);
+    body.appendChild(_makeEl('span', 'missing', 'No receipts available.'));
     return;
   }
-  var html = '';
+  _clearEl(body);
   receipts.forEach(function(r) {
     var kind = (r.kind || 'unknown').toLowerCase();
-    html += '<div class="receipt-entry">' +
-      '<div class="receipt-dot ' + kind + '"></div>' +
-      '<div class="receipt-body">' +
-      '<div class="receipt-kind">' + escapeHtml(r.kind || 'Unknown') + '</div>' +
-      '<div class="receipt-summary">' + escapeHtml(r.summary || '') + '</div>' +
-      '<div class="receipt-meta">' + escapeHtml(r.timestamp || '') + (r.sha256 ? ' &middot; ' + r.sha256.substring(0, 12) : '') + '</div>' +
-      '</div></div>';
+    var entry = _makeEl('div', 'receipt-entry');
+    entry.appendChild(_makeEl('div', 'receipt-dot ' + kind));
+    var rbody = _makeEl('div', 'receipt-body');
+    rbody.appendChild(_makeEl('div', 'receipt-kind', escapeHtml(r.kind || 'Unknown')));
+    rbody.appendChild(_makeEl('div', 'receipt-summary', escapeHtml(r.summary || '')));
+    rbody.appendChild(_makeEl('div', 'receipt-meta', escapeHtml(r.timestamp || '') + (r.sha256 ? ' \u00B7 ' + r.sha256.substring(0, 12) : '')));
+    entry.appendChild(rbody);
+    body.appendChild(entry);
   });
-  body.innerHTML = html;
+}
+  _clearEl(body);
+  receipts.forEach(function(r) {
+    var kind = (r.kind || 'unknown').toLowerCase();
+    var entry = _makeEl('div', 'receipt-entry');
+    entry.appendChild(_makeEl('div', 'receipt-dot ' + kind));
+    var rbody = _makeEl('div', 'receipt-body');
+    rbody.appendChild(_makeEl('div', 'receipt-kind', escapeHtml(r.kind || 'Unknown')));
+    rbody.appendChild(_makeEl('div', 'receipt-summary', escapeHtml(r.summary || '')));
+    rbody.appendChild(_makeEl('div', 'receipt-meta', escapeHtml(r.timestamp || '') + (r.sha256 ? ' \u00B7 ' + r.sha256.substring(0, 12) : '')));
+    entry.appendChild(rbody);
+    body.appendChild(entry);
+  });
 }
 
 function renderRefinementBacklog(data) {
@@ -1262,9 +1276,17 @@ function renderRefinementBacklog(data) {
   if (!body) return;
   var ref = data._refinement;
   if (!ref) {
-    body.innerHTML = '<span class="missing">No refinement data available.</span>';
+    _clearEl(body);
+    body.appendChild(_makeEl('span', 'missing', 'No refinement data available.'));
     return;
   }
+  _clearEl(body);
+  var table = _makeEl('table', 'kv');
+  table.appendChild(_row('Pending', String(ref.pending || 0)));
+  table.appendChild(_row('Refined', String(ref.refined || 0)));
+  table.appendChild(_row('Last', escapeHtml(ref.last_refined_at || '—')));
+  body.appendChild(table);
+}
   body.innerHTML = '<table class="kv">' +
     '<tr><td class="k">Pending</td><td>' + (ref.pending || 0) + '</td></tr>' +
     '<tr><td class="k">Refined</td><td>' + (ref.refined || 0) + '</td></tr>' +
@@ -1277,9 +1299,19 @@ function renderReviewValidation(data) {
   if (!body) return;
   var val = data._last_validation;
   if (!val) {
-    body.innerHTML = '<span class="missing">No validation history available.</span>';
+    _clearEl(body);
+    body.appendChild(_makeEl('span', 'missing', 'No validation history available.'));
     return;
   }
+  _clearEl(body);
+  var table = _makeEl('table', 'kv');
+  table.appendChild(_row('Status', escapeHtml(val.status || 'unknown')));
+  table.appendChild(_row('Passed', String(val.passed_count || 0)));
+  table.appendChild(_row('Failed', String(val.failed_count || 0)));
+  table.appendChild(_row('Duration', (val.duration_ms || '—') + ' ms'));
+  if (val.last_run_at) table.appendChild(_row('Last run', escapeHtml(val.last_run_at)));
+  body.appendChild(table);
+}
   body.innerHTML = '<table class="kv">' +
     '<tr><td class="k">Status</td><td>' + escapeHtml(val.status || 'unknown') + '</td></tr>' +
     '<tr><td class="k">Passed</td><td>' + (val.passed_count || 0) + '</td></tr>' +
@@ -1294,9 +1326,32 @@ function renderReviewStorage(data) {
   if (!body) return;
   var st = data.storage;
   if (!st || !st.available) {
-    body.innerHTML = '<span class="missing">No storage audit data available.</span>';
+    _clearEl(body);
+    body.appendChild(_makeEl('span', 'missing', 'No storage audit data available.'));
     return;
   }
+  _clearEl(body);
+  var table = _makeEl('table', 'kv');
+  table.appendChild(_row('Total', (st.total_size_mb || 0).toFixed(1) + ' MB'));
+  table.appendChild(_row('Budget', escapeHtml(st.budget_status || '—')));
+  table.appendChild(_row('Rollup candidates', String(st.rollup_candidate_count || 0)));
+  table.appendChild(_row('Prune candidates', String(st.prune_candidate_count || 0)));
+  table.appendChild(_row('Stale leases', String(st.stale_lease_count || 0)));
+  if (st.recommendations && st.recommendations.length) {
+    var ul = document.createElement('ul');
+    ul.style.cssText = 'margin:0;padding-left:16px';
+    st.recommendations.forEach(function(r) {
+      ul.appendChild(_makeEl('li', '', escapeHtml(r)));
+    });
+    var actionsRow = document.createElement('tr');
+    actionsRow.appendChild(_makeEl('td', 'k', 'Actions'));
+    var actionsTd = document.createElement('td');
+    actionsTd.appendChild(ul);
+    actionsRow.appendChild(actionsTd);
+    table.appendChild(actionsRow);
+  }
+  body.appendChild(table);
+}
   var html = '<table class="kv">' +
     '<tr><td class="k">Total</td><td>' + (st.total_size_mb || 0).toFixed(1) + ' MB</td></tr>' +
     '<tr><td class="k">Budget</td><td>' + escapeHtml(st.budget_status || '—') + '</td></tr>' +
@@ -1319,10 +1374,19 @@ function renderSemanticSnippetsInReview(data) {
   var status = document.getElementById('snippet-status');
   if (!body) return;
   if (!data || !data.available) {
-    body.innerHTML = '<span class="missing">No snippet data available.</span>';
+    _clearEl(body);
+    body.appendChild(_makeEl('span', 'missing', 'No snippet data available.'));
     if (status) { status.className = 'source-status warning'; status.textContent = '—'; }
     return;
   }
+  if (status) { status.className = 'source-status ok'; status.textContent = data.snippet_count + ' snippets'; }
+  _clearEl(body);
+  var table = _makeEl('table', 'kv');
+  table.appendChild(_row('Snippets', String(data.snippet_count || 0)));
+  table.appendChild(_row('Skipped', String(data.skipped_count || 0)));
+  table.appendChild(_row('Remote safe', data.remote_sharing_safe ? 'Yes' : 'No'));
+  body.appendChild(table);
+}
   if (status) { status.className = 'source-status ok'; status.textContent = data.snippet_count + ' snippets'; }
   body.innerHTML = '<table class="kv">' +
     '<tr><td class="k">Snippets</td><td>' + (data.snippet_count || 0) + '</td></tr>' +
@@ -1336,10 +1400,20 @@ function renderDatasetInReview(data) {
   var status = document.getElementById('dataset-status');
   if (!body) return;
   if (!data || !data.available) {
-    body.innerHTML = '<span class="missing">No dataset data available.</span>';
+    _clearEl(body);
+    body.appendChild(_makeEl('span', 'missing', 'No dataset data available.'));
     if (status) { status.className = 'source-status warning'; status.textContent = '—'; }
     return;
   }
+  if (status) { status.className = 'source-status ok'; status.textContent = 'OK'; }
+  _clearEl(body);
+  var table = _makeEl('table', 'kv');
+  table.appendChild(_row('Coordination', (data.coordination_rows || 0) + ' rows'));
+  table.appendChild(_row('Tool failures', (data.tool_failure_rows || 0) + ' rows'));
+  table.appendChild(_row('Artifact reuse', (data.artifact_reuse_rows || 0) + ' rows'));
+  table.appendChild(_row('Checkpoints', (data.checkpoint_rows || 0) + ' rows'));
+  body.appendChild(table);
+}
   if (status) { status.className = 'source-status ok'; status.textContent = 'OK'; }
   body.innerHTML = '<table class="kv">' +
     '<tr><td class="k">Coordination</td><td>' + (data.coordination_rows || 0) + ' rows</td></tr>' +
@@ -1356,10 +1430,25 @@ function renderTelemetryBundleInSystem(data) {
   var status = document.getElementById('telemetry-bundle-status');
   if (!body) return;
   if (!data || !data.available) {
-    body.innerHTML = '<span class="missing">No telemetry bundle available.</span>';
+    _clearEl(body);
+    body.appendChild(_makeEl('span', 'missing', 'No telemetry bundle available.'));
     if (status) { status.className = 'source-status warning'; status.textContent = '—'; }
     return;
   }
+  if (status) { status.className = 'source-status ok'; status.textContent = data.share_level || 'OK'; }
+  _clearEl(body);
+  var table = _makeEl('table', 'kv');
+  table.appendChild(_row('Bundle', escapeHtml(data.bundle_id || '—')));
+  table.appendChild(_row('Share level', escapeHtml(data.share_level || '—')));
+  table.appendChild(_row('Status', escapeHtml(data.status || '—')));
+  var shaCell = _makeEl('td', '', escapeHtml((data.bundle_sha256 || '').substring(0, 16) + '...'));
+  shaCell.style.cssText = 'font-family:var(--font-mono);font-size:0.7rem';
+  var shaRow = document.createElement('tr');
+  shaRow.appendChild(_makeEl('td', 'k', 'SHA256'));
+  shaRow.appendChild(shaCell);
+  table.appendChild(shaRow);
+  body.appendChild(table);
+}
   if (status) { status.className = 'source-status ok'; status.textContent = data.share_level || 'OK'; }
   body.innerHTML = '<table class="kv">' +
     '<tr><td class="k">Bundle</td><td>' + escapeHtml(data.bundle_id || '—') + '</td></tr>' +
@@ -1374,10 +1463,19 @@ function renderUpdateStatus(data) {
   var status = document.getElementById('update-status-pill');
   if (!body) return;
   if (!data || !data.available) {
-    body.innerHTML = '<span class="missing">No update data available.</span>';
+    _clearEl(body);
+    body.appendChild(_makeEl('span', 'missing', 'No update data available.'));
     if (status) { status.className = 'source-status warning'; status.textContent = '—'; }
     return;
   }
+  if (status) { status.className = 'source-status ' + (data.update_available ? 'warning' : 'ok'); status.textContent = data.update_available ? 'Update available' : 'Up to date'; }
+  _clearEl(body);
+  var table = _makeEl('table', 'kv');
+  table.appendChild(_row('Current', escapeHtml(data.current_version || '—')));
+  table.appendChild(_row('Latest', escapeHtml(data.latest_version || '—')));
+  table.appendChild(_row('Restart required', data.restart_required ? 'Yes' : 'No'));
+  body.appendChild(table);
+}
   if (status) { status.className = 'source-status ' + (data.update_available ? 'warning' : 'ok'); status.textContent = data.update_available ? 'Update available' : 'Up to date'; }
   body.innerHTML = '<table class="kv">' +
     '<tr><td class="k">Current</td><td>' + escapeHtml(data.current_version || '—') + '</td></tr>' +
@@ -1391,9 +1489,26 @@ function renderProjectionSources(data) {
   if (!body) return;
   var sources = data.source_status;
   if (!sources) {
-    body.innerHTML = '<span class="missing">No projection source data.</span>';
+    _clearEl(body);
+    body.appendChild(_makeEl('span', 'missing', 'No projection source data.'));
     return;
   }
+  _clearEl(body);
+  var table = _makeEl('table', 'kv');
+  var count = 0;
+  for (var key in sources) {
+    if (sources.hasOwnProperty(key)) {
+      var available = sources[key];
+      table.appendChild(_row(escapeHtml(key), available ? 'available' : 'missing', available ? 'ok' : 'warning'));
+      count++;
+    }
+  }
+  if (count === 0) {
+    body.appendChild(_makeEl('span', 'missing', 'No projection source data.'));
+  } else {
+    body.appendChild(table);
+  }
+}
   var html = '<table class="kv">';
   var count = 0;
   for (var key in sources) {
@@ -1413,9 +1528,26 @@ function renderStorageDiagnostics(data) {
   if (!body) return;
   var st = data.storage;
   if (!st || !st.available) {
-    body.innerHTML = '<span class="missing">No diagnostics available.</span>';
+    _clearEl(body);
+    body.appendChild(_makeEl('span', 'missing', 'No diagnostics available.'));
     return;
   }
+  _clearEl(body);
+  var table = _makeEl('table', 'kv');
+  table.appendChild(_row('Rollup candidates', String(st.rollup_candidate_count || 0)));
+  table.appendChild(_row('Prune candidates', String(st.prune_candidate_count || 0)));
+  table.appendChild(_row('Stale leases', String(st.stale_lease_count || 0)));
+  body.appendChild(table);
+
+  var actionsDiv = _makeEl('div', 'action-buttons compact');
+  actionsDiv.style.marginTop = '8px';
+  var btn = document.createElement('button');
+  btn.className = 'secondary-btn';
+  btn.setAttribute('onclick', 'runIntent(\'gc_artifacts\')');
+  btn.textContent = 'Run GC';
+  actionsDiv.appendChild(btn);
+  body.appendChild(actionsDiv);
+}
   body.innerHTML = '<table class="kv">' +
     '<tr><td class="k">Rollup candidates</td><td>' + (st.rollup_candidate_count || 0) + '</td></tr>' +
     '<tr><td class="k">Prune candidates</td><td>' + (st.prune_candidate_count || 0) + '</td></tr>' +
@@ -1478,10 +1610,44 @@ function renderModelProvidersInSystem(providerData) {
   if (!body) return;
 
   if (!providerData || !providerData.providers || !providerData.providers.length) {
-    body.innerHTML = '<tr><td class="k">No data</td><td>Run provider_status to load.</td></tr>';
+    _clearEl(body);
+    var emptyRow = document.createElement('tr');
+    emptyRow.appendChild(_makeEl('td', 'k', 'No data'));
+    emptyRow.appendChild(_makeEl('td', '', 'Run provider_status to load.'));
+    body.appendChild(emptyRow);
     if (pill) { pill.className = 'safety-indicator warn'; setText(pill.querySelector('.dot + *') || pill.lastChild, '—'); }
     return;
   }
+
+  _clearEl(body);
+  var configuredCount = 0;
+  providerData.providers.forEach(function(p) {
+    var configured = p.configured || false;
+    var keySource = p.key_source || 'missing';
+    var fingerprint = p.key_fingerprint || '';
+    var status = p.status || 'unknown';
+    if (configured) configuredCount++;
+
+    var tr = document.createElement('tr');
+    tr.appendChild(_makeEl('td', 'k', escapeHtml(p.display_name || p.provider)));
+    tr.appendChild(_makeEl('td', configured ? 'ok' : 'warning', configured ? 'Configured' : 'Missing'));
+    var srcCell = _makeEl('td', '', escapeHtml(keySource));
+    srcCell.style.cssText = 'font-size:0.7rem;color:var(--text-muted)';
+    tr.appendChild(srcCell);
+    var fpCell = _makeEl('td', '', escapeHtml(fingerprint.substring(0, 20)));
+    fpCell.style.cssText = 'font-size:0.65rem;font-family:var(--font-mono);color:var(--text-muted)';
+    tr.appendChild(fpCell);
+    var stCell = _makeEl('td', status === 'valid' ? 'ok' : 'warning', escapeHtml(status));
+    stCell.style.cssText = 'font-size:0.7rem';
+    tr.appendChild(stCell);
+    body.appendChild(tr);
+  });
+
+  if (pill) {
+    pill.className = 'safety-indicator ' + (configuredCount > 0 ? 'ok' : 'warn');
+    setText(pill.querySelector('.dot + *') || pill.lastChild, configuredCount + '/' + providerData.providers.length + ' configured');
+  }
+}
 
   var html = '';
   var configuredCount = 0;

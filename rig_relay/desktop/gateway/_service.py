@@ -651,20 +651,67 @@ class DeveloperStudioGatewayService:
         branch: str = "",
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
+        cached = self._check_idempotency(
+            f"assemble_project_profile:{project_name}", idempotency_key
+        )
+        if cached is not None:
+            return cached
+
+        if not repository_root:
+            result = _refused(
+                "assemble_project_profile",
+                GatewayErrorKind.DEPENDENCY_FAILED,
+                "repository_root is required for live intake",
+            )
+            self._record_idempotency(idempotency_key, result)
+            return result
+
         try:
-            # L0's assemble() requires IntakeFixture and InvestigationEvidenceFixture
-            # objects. J0 intake and K0 investigation boundaries are both
-            # fixture-deferred — no non-fixture intake path exists yet.
-            result = {
-                "status": "refused",
-                "intent_name": "assemble_project_profile",
-                "error_kind": "fixture_deferred",
-                "error_message": (
-                    "L0 project profile assembly requires J0 intake boundary "
-                    "(fixture-deferred) and K0 investigation boundary "
-                    "(fixture-deferred)."
-                ),
-            }
+            from pathlib import Path
+
+            from rig_relay.desktop.gateway._intake_adapter import (
+                intake_result_to_fixture,
+            )
+            from rig_relay.digestion.intake import RepositoryIntakeService
+
+            root = Path(repository_root)
+            intake_service = RepositoryIntakeService()
+            intake_result = intake_service.open_local_repository(root)
+            intake_fixture = intake_result_to_fixture(intake_result, project_name)
+
+            l0 = self._get_l0_service()
+            if l0 is _UNAVAILABLE_SENTINEL:
+                result = _refused(
+                    "assemble_project_profile",
+                    GatewayErrorKind.SERVICE_UNAVAILABLE,
+                    "L0 ProjectContextAssemblyService is unavailable",
+                )
+                self._record_idempotency(idempotency_key, result)
+                return result
+
+            understanding = l0.assemble(intake_fixture, investigation=None)
+            profile = l0.assemble_profile_candidate(understanding)
+            result = _succeeded(
+                "assemble_project_profile",
+                {
+                    "project_name": project_name,
+                    "study_status": understanding.study_status.value
+                    if hasattr(understanding, "study_status")
+                    else "unknown",
+                    "head_sha": intake_fixture.head_sha,
+                    "branch": intake_fixture.branch,
+                    "languages_detected": understanding.languages_detected
+                    if hasattr(understanding, "languages_detected")
+                    else [],
+                    "frameworks_detected": understanding.frameworks_detected
+                    if hasattr(understanding, "frameworks_detected")
+                    else [],
+                    "facts_discovered": getattr(understanding, "facts_discovered", 0),
+                    "profile_candidate_digest": getattr(profile, "digest", ""),
+                    "intake_provenance": "derived_projection",
+                    "investigation_boundary": "deferred_k0",
+                },
+            )
             self._record_idempotency(idempotency_key, result)
             return result
         except Exception as exc:
@@ -681,20 +728,74 @@ class DeveloperStudioGatewayService:
         branch: str = "",
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
+        cached = self._check_idempotency(
+            f"assemble_context_packet:{project_name}", idempotency_key
+        )
+        if cached is not None:
+            return cached
+
+        if not repository_root:
+            result = _refused(
+                "assemble_context_packet",
+                GatewayErrorKind.DEPENDENCY_FAILED,
+                "repository_root is required for live intake",
+            )
+            self._record_idempotency(idempotency_key, result)
+            return result
+
         try:
-            # L0's assemble() requires IntakeFixture and InvestigationEvidenceFixture
-            # objects. J0 intake and K0 investigation boundaries are both
-            # fixture-deferred — no non-fixture intake path exists yet.
-            result = {
-                "status": "refused",
-                "intent_name": "assemble_context_packet",
-                "error_kind": "fixture_deferred",
-                "error_message": (
-                    "L0 context packet assembly requires J0 intake boundary "
-                    "(fixture-deferred) and K0 investigation boundary "
-                    "(fixture-deferred)."
+            from pathlib import Path
+
+            from rig_relay.context_engine.context_packet import (
+                build_sanitized_context_packet,
+            )
+            from rig_relay.desktop.gateway._intake_adapter import (
+                intake_result_to_fixture,
+            )
+            from rig_relay.digestion.intake import RepositoryIntakeService
+
+            root = Path(repository_root)
+            intake_service = RepositoryIntakeService()
+            intake_result = intake_service.open_local_repository(root)
+            intake_fixture = intake_result_to_fixture(intake_result, project_name)
+
+            l0 = self._get_l0_service()
+            if l0 is _UNAVAILABLE_SENTINEL:
+                result = _refused(
+                    "assemble_context_packet",
+                    GatewayErrorKind.SERVICE_UNAVAILABLE,
+                    "L0 ProjectContextAssemblyService is unavailable",
+                )
+                self._record_idempotency(idempotency_key, result)
+                return result
+
+            understanding = l0.assemble(intake_fixture, investigation=None)
+            packet = build_sanitized_context_packet(
+                understanding_id=getattr(understanding, "understanding_id", ""),
+                project_name=project_name,
+                languages=getattr(understanding, "languages_detected", []),
+                frameworks=getattr(understanding, "frameworks_detected", []),
+                test_frameworks=getattr(understanding, "test_frameworks_detected", []),
+                build_systems=[],
+                file_count=getattr(understanding, "facts_discovered", 0),
+                has_documentation=bool(
+                    getattr(understanding, "public_ready_asset_count", 0)
                 ),
-            }
+                has_tests=bool(getattr(understanding, "test_frameworks_detected", [])),
+            )
+            result = _succeeded(
+                "assemble_context_packet",
+                {
+                    "project_name": project_name,
+                    "context_packet_digest": getattr(packet, "digest", ""),
+                    "languages": getattr(packet, "languages", []),
+                    "frameworks": getattr(packet, "frameworks", []),
+                    "test_tools": getattr(packet, "test_tools", []),
+                    "build_tools": getattr(packet, "build_tools", []),
+                    "intake_provenance": "derived_projection",
+                    "investigation_boundary": "deferred_k0",
+                },
+            )
             self._record_idempotency(idempotency_key, result)
             return result
         except Exception as exc:
@@ -947,9 +1048,14 @@ class DeveloperStudioGatewayService:
         repo_owner: str = "",
         repo_name: str = "",
         publication_policy: str = "preview_only",
+        operation_id: str | None = None,
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
         """Compile a publication preview from L0 profile + J0 readiness.
+
+        Consumes real RepositoryIntakeService output via the X0.2 intake adapter.
+        Investigation boundary (K0) remains deferred — passed as None to L0 assemble().
+        operation_id flows through to T1.2 compile_preview for exactly-once semantics.
 
         Args:
             project_name: Human-readable project name for the profile.
@@ -957,6 +1063,7 @@ class DeveloperStudioGatewayService:
             repo_owner: GitHub owner for URL construction.
             repo_name: GitHub repo name for URL construction.
             publication_policy: preview_only, developer_approved, or public_release.
+            operation_id: Canonical operation identity for T1.2 exactly-once evidence.
         """
         cached = self._check_idempotency(
             f"compile_preview:{project_name}", idempotency_key
@@ -974,20 +1081,84 @@ class DeveloperStudioGatewayService:
             self._record_idempotency(idempotency_key, result)
             return result
 
+        if not repository_root:
+            result = _refused(
+                "compile_preview",
+                GatewayErrorKind.DEPENDENCY_FAILED,
+                "repository_root is required for live intake",
+            )
+            self._record_idempotency(idempotency_key, result)
+            return result
+
         try:
-            # L0's assemble() requires IntakeFixture and InvestigationEvidenceFixture
-            # objects. J0 intake and K0 investigation boundaries are both
-            # fixture-deferred — no non-fixture intake path exists yet.
-            result = {
-                "status": "refused",
-                "intent_name": "compile_preview",
-                "error_kind": "fixture_deferred",
-                "error_message": (
-                    "L0 project profile assembly requires J0 intake boundary "
-                    "(fixture-deferred) and K0 investigation boundary "
-                    "(fixture-deferred)."
-                ),
-            }
+            from pathlib import Path
+
+            from rig_relay.desktop.gateway._intake_adapter import (
+                intake_result_to_fixture,
+            )
+            from rig_relay.digestion.intake import RepositoryIntakeService
+
+            root = Path(repository_root)
+            intake_service = RepositoryIntakeService()
+            intake_result = intake_service.open_local_repository(root)
+            intake_fixture = intake_result_to_fixture(intake_result, project_name)
+
+            l0 = self._get_l0_service()
+            if l0 is _UNAVAILABLE_SENTINEL:
+                result = _refused(
+                    "compile_preview",
+                    GatewayErrorKind.SERVICE_UNAVAILABLE,
+                    "L0 ProjectContextAssemblyService is unavailable",
+                )
+                self._record_idempotency(idempotency_key, result)
+                return result
+
+            understanding = l0.assemble(intake_fixture, investigation=None)
+            profile_candidate = l0.assemble_profile_candidate(understanding)
+            preview_result = pub.compile_preview(
+                profile_candidate,
+                publication_policy=publication_policy,
+                repo_owner=repo_owner,
+                repo_name=repo_name,
+                operation_id=operation_id,
+            )
+
+            receipt = preview_result.receipt
+            receipt_summary = (
+                {
+                    "receipt_id": receipt.receipt_id,
+                    "compiled_at": receipt.compiled_at,
+                    "compilation_successful": receipt.compilation_successful,
+                    "profile_candidate_digest": receipt.profile_candidate_digest,
+                    "safety_passed": receipt.safety_passed,
+                    "preview_only": receipt.preview_only,
+                    "deployment_ready": receipt.deployment_ready,
+                    "evidence_digest": receipt.evidence_digest,
+                }
+                if receipt
+                else {}
+            )
+
+            result = _succeeded(
+                "compile_preview",
+                {
+                    "project_name": project_name,
+                    "operation_id": getattr(
+                        preview_result, "operation_id", operation_id
+                    ),
+                    "compilation_successful": (
+                        preview_result.compiler_result.compilation_successful
+                        if preview_result.compiler_result
+                        else False
+                    ),
+                    "refused": preview_result.refused.value
+                    if preview_result.refused
+                    else None,
+                    "receipt": receipt_summary,
+                    "intake_provenance": "derived_projection",
+                    "investigation_boundary": "deferred_k0",
+                },
+            )
             self._record_idempotency(idempotency_key, result)
             return result
         except Exception as exc:
@@ -998,58 +1169,32 @@ class DeveloperStudioGatewayService:
     def get_publication_ledger_summary(
         self, *, idempotency_key: str | None = None
     ) -> dict[str, Any]:
-        """Return a content-light summary of the publication evidence ledger."""
+        """Publication evidence ledger summary — currently integration-blocked.
+
+        The desktop gateway cannot interpret canonical publication evidence
+        without a published T1.2 consumer boundary. The PublicationEvidenceLedger
+        is a producer-internal store; the gateway must consume a public
+        history projection API from the publication service.
+        """
         cached = self._check_idempotency(
             "get_publication_ledger_summary", idempotency_key
         )
         if cached is not None:
             return cached
 
-        pub = self._get_publication_service()
-        if pub is _UNAVAILABLE_SENTINEL:
-            result = _refused(
-                "get_publication_ledger_summary",
-                GatewayErrorKind.SERVICE_UNAVAILABLE,
-                "ProjectPagePublicationPreviewService (T1.2) is unavailable",
-            )
-            self._record_idempotency(idempotency_key, result)
-            return result
-        try:
-            from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
-
-            ledger = PublicationEvidenceLedger()
-            event_count = ledger.count_events() if ledger else 0
-            reconstruction = (
-                ledger.load_receipts(authoritative=False) if ledger else None
-            )
-            if reconstruction:
-                result = _succeeded(
-                    "get_publication_ledger_summary",
-                    {
-                        "total_events": reconstruction.total_rows,
-                        "valid_rows": reconstruction.valid_rows,
-                        "corrupt_rows": reconstruction.corrupt_rows,
-                        "corruption_detected": reconstruction.corruption_detected,
-                        "warnings": reconstruction.reconstruction_warnings,
-                    },
-                )
-            else:
-                result = _succeeded(
-                    "get_publication_ledger_summary",
-                    {
-                        "total_events": event_count,
-                        "valid_rows": 0,
-                        "corrupt_rows": 0,
-                        "corruption_detected": False,
-                        "warnings": [],
-                    },
-                )
-            self._record_idempotency(idempotency_key, result)
-            return result
-        except Exception as exc:
-            result = _failed("get_publication_ledger_summary", str(exc))
-            self._record_idempotency(idempotency_key, result)
-            return result
+        result = _refused(
+            "get_publication_ledger_summary",
+            GatewayErrorKind.SERVICE_UNAVAILABLE,
+            (
+                "Publication evidence ledger access requires a public T1.2 "
+                "history projection API. The desktop gateway cannot interpret "
+                "canonical publication evidence without a published consumer "
+                "boundary. See integration contract: T1.2/X3.2 public "
+                "history projection boundary."
+            ),
+        )
+        self._record_idempotency(idempotency_key, result)
+        return result
 
     # ── T4.2: Investigation Timeline Service ─────────────────────────
 

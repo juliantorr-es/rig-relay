@@ -56,7 +56,51 @@ function _getEl(id) {
   return document.getElementById(id);
 }
 
-// ── Public mode API ─────────────────────────────────────────────────
+function _clearEl(el) {
+  if (!el) return;
+  while (el.firstChild) el.firstChild.remove();
+}
+
+function _buildEvidenceTagDom(status) {
+  var span = document.createElement('span');
+  span.className = 'evidence-tag';
+  switch (status) {
+    case 'proven': span.classList.add('proven'); break;
+    case 'claimed': span.classList.add('claimed'); break;
+    case 'planned': span.classList.add('planned'); break;
+    case 'narrative': span.classList.add('narrative'); break;
+    case 'refused': span.classList.add('narrative'); break;
+    default: span.classList.add('narrative');
+  }
+  span.textContent = status;
+  return span;
+}
+
+function _makeEl(tag, cls, text) {
+  var el = document.createElement(tag);
+  if (cls) el.className = cls;
+  if (text !== undefined && text !== null) el.textContent = String(text);
+  return el;
+}
+
+function _tn(text) {
+  return document.createTextNode(String(text));
+}
+
+function _strong(text) {
+  var s = document.createElement('strong');
+  s.textContent = String(text);
+  return s;
+}
+
+function _row(label, value, cls) {
+  var tr = document.createElement('tr');
+  tr.appendChild(_makeEl('td', 'k', label));
+  tr.appendChild(_makeEl('td', cls || '', value));
+  return tr;
+}
+
+// ── Public mode API
 
 function getMode() { return _mode; }
 
@@ -451,31 +495,48 @@ function _renderConnectStatus(state) {
 function _renderConnectRepoAccess(state) {
   var el = _getEl('repo-access-status');
   if (!el) return;
+  _clearEl(el);
   if (state.status === 'unavailable' || state.status === 'deferred') {
-    el.innerHTML = _renderEvidenceTag('planned') + ' Repository access: <strong>unavailable</strong>';
+    el.appendChild(_buildEvidenceTagDom('planned'));
+    el.appendChild(_tn(' Repository access: '));
+    el.appendChild(_strong('unavailable'));
     return;
   }
   if (state.status === 'connected') {
-    el.innerHTML = _renderEvidenceTag('proven') + ' Repository access: <strong>granted</strong>' +
-      (state.token_available ? ' \u00B7 Token present' : ' \u00B7 No token') +
-      ' \u00B7 ' + _escapeHtml(String(state.accessible_repository_count || 0)) + ' repositories accessible';
+    el.appendChild(_buildEvidenceTagDom('proven'));
+    el.appendChild(_tn(' Repository access: '));
+    el.appendChild(_strong('granted'));
+    el.appendChild(_tn(state.token_available ? ' \u00B7 Token present' : ' \u00B7 No token'));
+    el.appendChild(_tn(' \u00B7 ' + String(state.accessible_repository_count || 0) + ' repositories accessible'));
     return;
   }
-  el.innerHTML = _renderEvidenceTag('claimed') + ' Repository access: <strong>' + _escapeHtml(state.status) + '</strong>';
+  el.appendChild(_buildEvidenceTagDom('claimed'));
+  el.appendChild(_tn(' Repository access: '));
+  el.appendChild(_strong(_escapeHtml(state.status)));
 }
 
 function _renderConnectPublicationApproval(state) {
   var el = _getEl('publication-approval-status');
   if (!el) return;
+  _clearEl(el);
   if (state.status === 'unavailable') {
-    el.innerHTML = _renderEvidenceTag('planned') + ' Publication approval: <strong>unavailable</strong>';
+    el.appendChild(_buildEvidenceTagDom('planned'));
+    el.appendChild(_tn(' Publication approval: '));
+    el.appendChild(_strong('unavailable'));
     return;
   }
   if (state.status === 'connected') {
-    el.innerHTML = _renderEvidenceTag('proven') + ' Publication approval: <strong>granted</strong>';
+    el.appendChild(_buildEvidenceTagDom('proven'));
+    el.appendChild(_tn(' Publication approval: '));
+    el.appendChild(_strong('granted'));
     return;
   }
-  el.innerHTML = _renderEvidenceTag('planned') + ' Publication approval: <strong>deferred</strong><br><span class="status-detail">Live integration deferred to O0 bridge aggregation milestone</span>';
+  el.appendChild(_buildEvidenceTagDom('planned'));
+  el.appendChild(_tn(' Publication approval: '));
+  el.appendChild(_strong('deferred'));
+  el.appendChild(_makeEl('br'));
+  var deferredDetail = _makeEl('span', 'status-detail', 'Live integration deferred to O0 bridge aggregation milestone');
+  el.appendChild(deferredDetail);
 }
 
 function _renderConnectFixtureBanner(state) {
@@ -532,52 +593,62 @@ function _renderRepoList(state) {
   if (!repoList) return;
 
   var repos = state.repositories || [];
+  _clearEl(repoList);
+
   if (repos.length === 0) {
     if (state.status === 'unavailable') {
-      repoList.innerHTML = '<div class="status-detail">Repository service unavailable. No live bridge projection received.</div>';
+      repoList.appendChild(_makeEl('div', 'status-detail', 'Repository service unavailable. No live bridge projection received.'));
     } else if (state.status === 'deferred') {
-      repoList.innerHTML = '<div class="status-detail">Repository discovery deferred. Awaiting live workspace integration.</div>';
+      repoList.appendChild(_makeEl('div', 'status-detail', 'Repository discovery deferred. Awaiting live workspace integration.'));
     } else {
-      repoList.innerHTML = '<div class="status-detail">No repositories discovered.</div>';
+      repoList.appendChild(_makeEl('div', 'status-detail', 'No repositories discovered.'));
     }
     return;
   }
 
-  var html = '';
   for (var i = 0; i < repos.length; i++) {
     var r = repos[i];
-    var statusTag = '';
     var importState = r.import_state || r.intake_state || 'unknown';
-    if (importState === 'imported' || importState === 'cloned') statusTag = _renderEvidenceTag('proven');
-    else if (importState === 'failed') statusTag = _renderEvidenceTag('claimed');
-    else statusTag = _renderEvidenceTag('planned');
+    var importEvidence = 'planned';
+    if (importState === 'imported' || importState === 'cloned') importEvidence = 'proven';
+    else if (importState === 'failed') importEvidence = 'claimed';
 
     var pubState = r.publication_readiness_state || 'unknown';
-    var pubTag = '';
-    if (pubState === 'ready') pubTag = ' <span class="evidence-tag proven">public-ready</span>';
-    else if (pubState === 'review_required') pubTag = ' <span class="evidence-tag claimed">review-required</span>';
-    else pubTag = ' <span class="evidence-tag planned">private</span>';
+    var pubEvidence = 'planned';
+    var pubLabel = 'private';
+    if (pubState === 'ready') { pubEvidence = 'proven'; pubLabel = 'public-ready'; }
+    else if (pubState === 'review_required') { pubEvidence = 'claimed'; pubLabel = 'review-required'; }
 
-    html += '<div class="repo-card">' +
-      '<div class="repo-name">' + _escapeHtml(r.name || r.display_name || '') + '</div>' +
-      '<div class="repo-meta">' + statusTag +
-      ' ' + _escapeHtml(r.full_name || '') + ' \u00B7 ' + _escapeHtml(r.default_branch || r.branch || '') + ' \u00B7 ' + _escapeHtml(importState) +
-      pubTag +
-      '</div></div>';
+    var card = _makeEl('div', 'repo-card');
+
+    var nameDiv = _makeEl('div', 'repo-name', r.name || r.display_name || '');
+    card.appendChild(nameDiv);
+
+    var metaDiv = _makeEl('div', 'repo-meta');
+    metaDiv.appendChild(_buildEvidenceTagDom(importEvidence));
+    metaDiv.appendChild(_tn(' ' + _escapeHtml(r.full_name || '') + ' \u00B7 ' + _escapeHtml(r.default_branch || r.branch || '') + ' \u00B7 ' + _escapeHtml(importState)));
+    metaDiv.appendChild(_tn(' '));
+    metaDiv.appendChild(_buildEvidenceTagDom(pubEvidence));
+    metaDiv.lastChild.textContent = pubLabel;
+    card.appendChild(metaDiv);
+    repoList.appendChild(card);
   }
-  repoList.innerHTML = html;
 }
 
 function _renderRepoIntake(state) {
   var el = _getEl('repo-intake-status');
   if (!el) return;
+  _clearEl(el);
   if (state.status === 'unavailable') {
-    el.innerHTML = '<span class="status-chip deferred">Intake: unavailable</span><br><div class="status-detail">No intake data available.</div>';
+    var chip = _makeEl('span', 'status-chip deferred', 'Intake: unavailable');
+    el.appendChild(chip);
+    el.appendChild(_makeEl('br'));
+    el.appendChild(_makeEl('div', 'status-detail', 'No intake data available.'));
     return;
   }
-  el.innerHTML = '<span class="status-chip">Intake: ' + _escapeHtml(String(state.selected_count || 0)) + ' selected, ' +
-    _escapeHtml(String(state.imported_count || 0)) + ' imported, ' +
-    _escapeHtml(String(state.total_discovered || 0)) + ' discovered</span>';
+  el.appendChild(_makeEl('span', 'status-chip', 'Intake: ' + String(state.selected_count || 0) + ' selected, ' +
+    String(state.imported_count || 0) + ' imported, ' +
+    String(state.total_discovered || 0) + ' discovered'));
 }
 
 function _renderProjectStudioSurface() {
@@ -612,45 +683,72 @@ function _renderStudioOperator(state) {
   var osEl = _getEl('operator-session-status');
   if (!osEl) return;
 
+  _clearEl(osEl);
+
   if (state.status === 'unavailable') {
-    osEl.innerHTML = '<span class="status-line">Operator service: <strong>unavailable</strong></span><br><span class="status-detail">No live bridge projection received.</span>';
+    var unavLine = _makeEl('span', 'status-line');
+    unavLine.appendChild(_tn('Operator service: '));
+    unavLine.appendChild(_strong('unavailable'));
+    osEl.appendChild(unavLine);
+    osEl.appendChild(_makeEl('br'));
+    osEl.appendChild(_makeEl('span', 'status-detail', 'No live bridge projection received.'));
     return;
   }
   if (state.status === 'deferred') {
-    osEl.innerHTML = '<span class="status-line">Operator service: <strong>deferred</strong></span><br><span class="status-detail">Awaiting live bridge aggregation.</span>';
+    var defLine = _makeEl('span', 'status-line');
+    defLine.appendChild(_tn('Operator service: '));
+    defLine.appendChild(_strong('deferred'));
+    osEl.appendChild(defLine);
+    osEl.appendChild(_makeEl('br'));
+    osEl.appendChild(_makeEl('span', 'status-detail', 'Awaiting live bridge aggregation.'));
     return;
   }
 
   var sessions = state.active_sessions || [];
   if (sessions.length === 0) {
-    osEl.innerHTML = '<span class="status-line">No active operator sessions</span><br><span class="status-detail">Start an investigation to begin.</span>';
+    osEl.appendChild(_makeEl('span', 'status-line', 'No active operator sessions'));
+    osEl.appendChild(_makeEl('br'));
+    osEl.appendChild(_makeEl('span', 'status-detail', 'Start an investigation to begin.'));
     return;
   }
 
-  var html = '';
   for (var i = 0; i < sessions.length; i++) {
     var s = sessions[i];
-    html += '<span class="status-line">Session: <strong>' + _escapeHtml(s.status || 'idle') + '</strong> \u00B7 Phase: ' + _escapeHtml(s.phase || 'idle') + '</span>' +
-      '<br><span class="status-detail">' + _escapeHtml(s.purpose || '') + ' on ' + _escapeHtml(s.repository_label || '') + '</span>';
+    var sLine = _makeEl('span', 'status-line');
+    sLine.appendChild(_tn('Session: '));
+    sLine.appendChild(_strong(_escapeHtml(s.status || 'idle')));
+    sLine.appendChild(_tn(' \u00B7 Phase: ' + _escapeHtml(s.phase || 'idle')));
+    osEl.appendChild(sLine);
+    osEl.appendChild(_makeEl('br'));
+    osEl.appendChild(_makeEl('span', 'status-detail', _escapeHtml(s.purpose || '') + ' on ' + _escapeHtml(s.repository_label || '')));
     if (s.pending_decisions && s.pending_decisions.length) {
-      html += '<br><span class="status-detail" style="color:var(--warning-color)">\u26A0 Pending: ' + _escapeHtml(s.pending_decisions.join(', ')) + '</span>';
+      osEl.appendChild(_makeEl('br'));
+      var pendSpan = _makeEl('span', 'status-detail', '\u26A0 Pending: ' + _escapeHtml(s.pending_decisions.join(', ')));
+      pendSpan.style.color = 'var(--warning-color)';
+      osEl.appendChild(pendSpan);
     }
     if (s.blocked_capabilities && s.blocked_capabilities.length) {
-      html += '<br><span class="status-detail" style="color:var(--error-color)">Blocked: ' + _escapeHtml(s.blocked_capabilities.join(', ')) + '</span>';
+      osEl.appendChild(_makeEl('br'));
+      var blockSpan = _makeEl('span', 'status-detail', 'Blocked: ' + _escapeHtml(s.blocked_capabilities.join(', ')));
+      blockSpan.style.color = 'var(--error-color)';
+      osEl.appendChild(blockSpan);
     }
-    html += '<br>';
+    osEl.appendChild(_makeEl('br'));
   }
-  osEl.innerHTML = html;
 
   var tsEl = _getEl('operator-tool-summary');
   if (tsEl) {
+    _clearEl(tsEl);
     var totalCalls = 0, totalSuccess = 0;
     for (var j = 0; j < sessions.length; j++) {
       totalCalls += sessions[j].tool_call_count || 0;
       totalSuccess += sessions[j].tool_success_count || 0;
     }
     if (totalCalls > 0) {
-      tsEl.innerHTML = '<table class="kv"><tr><td class="k">Total Calls</td><td>' + totalCalls + '</td></tr><tr><td class="k">Successes</td><td class="ok">' + totalSuccess + '</td></tr></table>';
+      var tsTable = _makeEl('table', 'kv');
+      tsTable.appendChild(_row('Total Calls', String(totalCalls)));
+      tsTable.appendChild(_row('Successes', String(totalSuccess), 'ok'));
+      tsEl.appendChild(tsTable);
     } else {
       _setText(tsEl, 'No tool activity yet.');
     }
@@ -658,6 +756,7 @@ function _renderStudioOperator(state) {
 
   var propEl = _getEl('operator-proposals');
   if (propEl) {
+    _clearEl(propEl);
     var totalProposals = 0, totalPending = 0, totalRefused = 0;
     for (var k = 0; k < sessions.length; k++) {
       totalProposals += sessions[k].proposal_count || 0;
@@ -665,8 +764,8 @@ function _renderStudioOperator(state) {
       totalRefused += sessions[k].refusal_count || 0;
     }
     if (totalProposals > 0) {
-      propEl.innerHTML = '<div class="status-line">Proposals: ' + totalProposals + ' (\u00B7 ' +
-        totalPending + ' pending, ' + totalRefused + ' refused)</div>';
+      propEl.appendChild(_makeEl('div', 'status-line', 'Proposals: ' + totalProposals + ' (\u00B7 ' +
+        totalPending + ' pending, ' + totalRefused + ' refused)'));
     } else {
       _setText(propEl, 'No proposals yet.');
     }
@@ -678,29 +777,40 @@ function _renderStudioUnderstanding(state) {
   if (!usEl) return;
 
   var studies = state.studies || [];
+  _clearEl(usEl);
+
   if (studies.length === 0) {
-    usEl.innerHTML = '<span class="status-line">Study status: <strong>not_started</strong></span><br><span class="status-detail">No project studies available.</span>';
+    var line = _makeEl('span', 'status-line');
+    line.appendChild(_tn('Study status: '));
+    line.appendChild(_strong('not_started'));
+    usEl.appendChild(line);
+    usEl.appendChild(_makeEl('br'));
+    usEl.appendChild(_makeEl('span', 'status-detail', 'No project studies available.'));
     _setText(_getEl('understanding-details'), '');
     return;
   }
 
   var study = studies[0];
-  usEl.innerHTML = '<span class="status-line">Study status: <strong>' + _escapeHtml(study.study_status || 'unknown') + '</strong></span>' +
-    '<br><span class="status-detail">' + (study.facts_discovered || 0) + ' facts (' + (study.facts_with_provenance || 0) + ' with provenance) \u00B7 ' +
-    (study.draft_narrative_count || 0) + ' drafts (' + (study.draft_narrative_awaiting_approval || 0) + ' awaiting approval)</span>';
+  var sLine = _makeEl('span', 'status-line');
+  sLine.appendChild(_tn('Study status: '));
+  sLine.appendChild(_strong(_escapeHtml(study.study_status || 'unknown')));
+  usEl.appendChild(sLine);
+  usEl.appendChild(_makeEl('br'));
+  usEl.appendChild(_makeEl('span', 'status-detail', (study.facts_discovered || 0) + ' facts (' + (study.facts_with_provenance || 0) + ' with provenance) \u00B7 ' +
+    (study.draft_narrative_count || 0) + ' drafts (' + (study.draft_narrative_awaiting_approval || 0) + ' awaiting approval)'));
 
   var udEl = _getEl('understanding-details');
   if (udEl) {
-    var detailsHtml = '<table class="kv">';
-    if (study.languages_detected) detailsHtml += '<tr><td class="k">Languages</td><td>' + _escapeHtml(study.languages_detected.join(', ')) + '</td></tr>';
-    if (study.frameworks_detected) detailsHtml += '<tr><td class="k">Frameworks</td><td>' + _escapeHtml(study.frameworks_detected.join(', ')) + '</td></tr>';
+    _clearEl(udEl);
+    var detailsTable = _makeEl('table', 'kv');
+    if (study.languages_detected) detailsTable.appendChild(_row('Languages', _escapeHtml(study.languages_detected.join(', '))));
+    if (study.frameworks_detected) detailsTable.appendChild(_row('Frameworks', _escapeHtml(study.frameworks_detected.join(', '))));
     if (study.withheld_reasons && study.withheld_reasons.length) {
-      detailsHtml += '<tr><td class="k warning">Withheld</td><td>' + _escapeHtml(study.withheld_material_count + ' items: ' + study.withheld_reasons.join(', ')) + '</td></tr>';
+      detailsTable.appendChild(_row('Withheld', _escapeHtml((study.withheld_material_count || 0) + ' items: ' + study.withheld_reasons.join(', ')), 'warning'));
     }
-    detailsHtml += '<tr><td class="k">Portfolio</td><td>' + _escapeHtml(study.portfolio_eligibility || 'unknown') + '</td></tr>';
-    detailsHtml += '<tr><td class="k">Approval</td><td>' + _escapeHtml(study.approval_status || 'unknown') + '</td></tr>';
-    detailsHtml += '</table>';
-    udEl.innerHTML = detailsHtml;
+    detailsTable.appendChild(_row('Portfolio', _escapeHtml(study.portfolio_eligibility || 'unknown')));
+    detailsTable.appendChild(_row('Approval', _escapeHtml(study.approval_status || 'unknown')));
+    udEl.appendChild(detailsTable);
   }
 }
 
@@ -739,7 +849,8 @@ function _renderInferenceRuntime(state) {
   if (!irEl) return;
 
   if (state.status === 'unavailable' || state.status === 'deferred') {
-    irEl.innerHTML = '<span class="status-chip disconnected">Inference Unavailable</span>';
+    _clearEl(irEl);
+    irEl.appendChild(_makeEl('span', 'status-chip disconnected', 'Inference Unavailable'));
     return;
   }
 
@@ -755,26 +866,28 @@ function _renderInferenceTasks(state) {
   if (!tasksGrid) return;
 
   var ts = state.task_suitability || [];
+  _clearEl(tasksGrid);
+
   if (ts.length === 0) {
-    if (state.status === 'unavailable') {
-      tasksGrid.innerHTML = '<div class="task-card"><div class="task-name">No tasks</div><div class="task-status">Inference service unavailable.</div></div>';
-    } else {
-      tasksGrid.innerHTML = '<div class="task-card"><div class="task-name">No tasks</div><div class="task-status">No task suitability data.</div></div>';
-    }
+    var card = _makeEl('div', 'task-card');
+    card.appendChild(_makeEl('div', 'task-name', 'No tasks'));
+    card.appendChild(_makeEl('div', 'task-status', state.status === 'unavailable' ? 'Inference service unavailable.' : 'No task suitability data.'));
+    tasksGrid.appendChild(card);
     return;
   }
 
-  var html = '';
   for (var i = 0; i < ts.length; i++) {
     var t = ts[i];
     var suitable = t.suitable;
-    html += '<div class="task-card ' + (suitable ? 'suitable' : 'unsuitable') + '">' +
-      '<div class="task-name">' + _escapeHtml(t.task_kind) + '</div>' +
-      '<div class="task-status">' + _renderEvidenceTag(suitable ? 'proven' : 'refused') + ' ' +
-      (suitable ? _escapeHtml(t.enforcement_class_required || '') + ' admitted' : _escapeHtml(t.refusal_reason || 'Refused')) +
-      '</div></div>';
+    var card = _makeEl('div', 'task-card ' + (suitable ? 'suitable' : 'unsuitable'));
+    card.appendChild(_makeEl('div', 'task-name', _escapeHtml(t.task_kind)));
+    var statusDiv = _makeEl('div', 'task-status');
+    statusDiv.appendChild(_buildEvidenceTagDom(suitable ? 'proven' : 'refused'));
+    statusDiv.appendChild(_tn(' '));
+    statusDiv.appendChild(_tn(suitable ? _escapeHtml(t.enforcement_class_required || '') + ' admitted' : _escapeHtml(t.refusal_reason || 'Refused')));
+    card.appendChild(statusDiv);
+    tasksGrid.appendChild(card);
   }
-  tasksGrid.innerHTML = html;
 }
 
 function _renderInferenceDrafts(state) {
@@ -782,21 +895,25 @@ function _renderInferenceDrafts(state) {
   if (!draftList) return;
 
   var drafts = state.drafts || [];
-  var html = '<h3>Drafts (' + drafts.length + ')</h3>';
+  _clearEl(draftList);
+  draftList.appendChild(_makeEl('h3', '', 'Drafts (' + drafts.length + ')'));
+
   if (drafts.length === 0) {
-    html += '<div class="draft-item">No drafts awaiting review.</div>';
+    draftList.appendChild(_makeEl('div', 'draft-item', 'No drafts awaiting review.'));
   } else {
     for (var i = 0; i < drafts.length; i++) {
       var d = drafts[i];
       var needsApproval = d.requires_approval !== false;
-      html += '<div class="draft-item">' +
-        '<strong>' + _escapeHtml(d.task_kind) + '</strong>: ' + _escapeHtml(d.draft_sha256 ? d.draft_sha256.substring(0, 16) + '...' : 'unknown') +
-        ' <span class="evidence-tag ' + (needsApproval ? 'claimed' : 'proven') + '">' + (needsApproval ? 'review-required' : 'approved') + '</span>' +
-        ' (' + (d.draft_byte_count || 0) + ' bytes)' +
-        '</div>';
+      var item = _makeEl('div', 'draft-item');
+      item.appendChild(_strong(_escapeHtml(d.task_kind)));
+      item.appendChild(_tn(': ' + _escapeHtml(d.draft_sha256 ? d.draft_sha256.substring(0, 16) + '...' : 'unknown')));
+      item.appendChild(_tn(' '));
+      item.appendChild(_buildEvidenceTagDom(needsApproval ? 'claimed' : 'proven'));
+      item.lastChild.textContent = needsApproval ? 'review-required' : 'approved';
+      item.appendChild(_tn(' (' + (d.draft_byte_count || 0) + ' bytes)'));
+      draftList.appendChild(item);
     }
   }
-  draftList.innerHTML = html;
 }
 
 function _renderInferenceRefusals(state) {
@@ -804,19 +921,23 @@ function _renderInferenceRefusals(state) {
   if (!refusalList) return;
 
   var refusals = state.refusals || [];
-  var html = '<h3>Refusals (' + refusals.length + ')</h3>';
+  _clearEl(refusalList);
+  refusalList.appendChild(_makeEl('h3', '', 'Refusals (' + refusals.length + ')'));
+
   if (refusals.length === 0) {
-    html += '<div class="refusal-item" style="color:var(--text-secondary)">No refusals.</div>';
+    var noRef = _makeEl('div', 'refusal-item', 'No refusals.');
+    noRef.style.color = 'var(--text-secondary)';
+    refusalList.appendChild(noRef);
   } else {
     for (var i = 0; i < refusals.length; i++) {
       var r = refusals[i];
-      html += '<div class="refusal-item">' +
-        '<strong>' + _escapeHtml(r.task_kind) + '</strong>: ' + _escapeHtml(r.refusal_reason || r.refusal_code || 'Refused') +
-        ' (code: ' + _escapeHtml(r.refusal_code || 'UNKNOWN') + ')' +
-        '</div>';
+      var item = _makeEl('div', 'refusal-item');
+      item.appendChild(_strong(_escapeHtml(r.task_kind)));
+      item.appendChild(_tn(': ' + _escapeHtml(r.refusal_reason || r.refusal_code || 'Refused')));
+      item.appendChild(_tn(' (code: ' + _escapeHtml(r.refusal_code || 'UNKNOWN') + ')'));
+      refusalList.appendChild(item);
     }
   }
-  refusalList.innerHTML = html;
 }
 
 function _renderPublishPreviewSurface() {
@@ -853,7 +974,9 @@ function _renderPublishReadiness(state) {
   if (!readinessEl) return;
 
   if (state.status === 'unavailable') {
-    readinessEl.innerHTML = '<span class="status-chip deferred">Not Available</span><div class="status-detail">Publish service unavailable. No live projection received.</div>';
+    _clearEl(readinessEl);
+    readinessEl.appendChild(_makeEl('span', 'status-chip deferred', 'Not Available'));
+    readinessEl.appendChild(_makeEl('div', 'status-detail', 'Publish service unavailable. No live projection received.'));
     return;
   }
 
@@ -870,24 +993,33 @@ function _renderPublishSections(state) {
   var sectionsGrid = _getEl('publish-sections');
   if (!sectionsGrid) return;
 
+  _clearEl(sectionsGrid);
+
   if (state.status === 'unavailable') {
-    sectionsGrid.innerHTML = '<div class="section-card not-ready"><strong>No sections</strong> <span class="evidence-tag planned">planned</span></div>';
+    var noCard = _makeEl('div', 'section-card not-ready');
+    noCard.appendChild(_strong('No sections'));
+    noCard.appendChild(_tn(' '));
+    noCard.appendChild(_buildEvidenceTagDom('planned'));
+    sectionsGrid.appendChild(noCard);
     return;
   }
 
-  // Derive sections from repositories
   var repos = state.publishable_repositories || [];
-  var html = '';
+  if (repos.length === 0) {
+    sectionsGrid.appendChild(_makeEl('div', 'section-card not-ready', ''));
+    sectionsGrid.lastChild.appendChild(_strong('No publishable sections'));
+    return;
+  }
+
   for (var i = 0; i < repos.length; i++) {
     var r = repos[i];
     var ready = r.publication_readiness_state === 'ready';
-    html += '<div class="section-card ' + (ready ? 'ready' : 'not-ready') + '">' +
-      '<strong>' + _escapeHtml(r.name || r.full_name || '') + '</strong> ' +
-      _renderEvidenceTag(ready ? 'proven' : 'claimed') +
-      '</div>';
+    var card = _makeEl('div', 'section-card ' + (ready ? 'ready' : 'not-ready'));
+    card.appendChild(_strong(_escapeHtml(r.name || r.full_name || '')));
+    card.appendChild(_tn(' '));
+    card.appendChild(_buildEvidenceTagDom(ready ? 'proven' : 'claimed'));
+    sectionsGrid.appendChild(card);
   }
-  if (html === '') html = '<div class="section-card not-ready"><strong>No publishable sections</strong></div>';
-  sectionsGrid.innerHTML = html;
 }
 
 function _renderPublishWithheld(state) {
@@ -895,22 +1027,25 @@ function _renderPublishWithheld(state) {
   if (!withheldEl) return;
 
   var studies = state.studies || [];
-  var html = '<h3>Withheld from Public Preview</h3>';
+  _clearEl(withheldEl);
+  withheldEl.appendChild(_makeEl('h3', '', 'Withheld from Public Preview'));
+
   if (studies.length > 0) {
     var study = studies[0];
     var reasons = study.withheld_reasons || [];
     if (reasons.length > 0) {
       for (var i = 0; i < reasons.length; i++) {
-        html += '<div class="withheld-item">' + _escapeHtml(reasons[i]) + ' (internal_only)</div>';
+        withheldEl.appendChild(_makeEl('div', 'withheld-item', _escapeHtml(reasons[i]) + ' (internal_only)'));
       }
     } else {
-      html += '<div class="withheld-item">No explicitly withheld sections.</div>';
+      withheldEl.appendChild(_makeEl('div', 'withheld-item', 'No explicitly withheld sections.'));
     }
   } else {
-    html += '<div class="withheld-item">No withheld data recorded.</div>';
+    withheldEl.appendChild(_makeEl('div', 'withheld-item', 'No withheld data recorded.'));
   }
-  html += '<div class="withheld-item" style="margin-top:8px;color:var(--text-muted)">Any section not listed above is withheld by default. Private/internal-only material is never rendered.</div>';
-  withheldEl.innerHTML = html;
+  var privNote = _makeEl('div', 'withheld-item', 'Any section not listed above is withheld by default. Private/internal-only material is never rendered.');
+  privNote.style.cssText = 'margin-top:8px;color:var(--text-muted)';
+  withheldEl.appendChild(privNote);
 }
 
 function _renderTimelineSurface() {
@@ -944,15 +1079,16 @@ function _renderTimelineSurface() {
 
   // Timeline events
   if (tlEvents) {
+    _clearEl(tlEvents);
     if (state.status === 'unavailable') {
-      tlEvents.innerHTML = '<div class="status-detail">Timeline service unavailable. ' + _escapeHtml(state.reason || 'No projection received.') + '</div>';
+      tlEvents.appendChild(_makeEl('div', 'status-detail', 'Timeline service unavailable. ' + _escapeHtml(state.reason || 'No projection received.')));
     } else {
       var events = state.events || [];
-      var html = '<h3>Timeline Events (' + _escapeHtml(String(state.event_count || events.length)) + ')</h3>';
+      tlEvents.appendChild(_makeEl('h3', '', 'Timeline Events (' + String(state.event_count || events.length) + ')'));
       if (events.length === 0) {
-        html += '<div class="status-detail">No timeline events recorded.</div>';
+        tlEvents.appendChild(_makeEl('div', 'status-detail', 'No timeline events recorded.'));
       } else {
-        html += '<div class="timeline-list">';
+        var tlList = _makeEl('div', 'timeline-list');
         for (var e = 0; e < events.length; e++) {
           var ev = events[e];
           var verificationCls = 'evidence-tag';
@@ -964,22 +1100,23 @@ function _renderTimelineSurface() {
             case 'unsupported': verificationCls += ' narrative'; break;
             default: verificationCls += ' planned';
           }
-          html += '<div class="timeline-event-card">' +
-            '<div class="timeline-event-domain">' + _escapeHtml(ev.domain || 'unknown') + ' / ' + _escapeHtml(ev.event_kind || ev.kind || '') + '</div>' +
-            '<div class="timeline-event-label">' + _escapeHtml(ev.label || ev.summary || '') + '</div>' +
-            '<div class="timeline-event-meta">' +
-            '<span class="' + verificationCls + '">' + _escapeHtml(ev.verification_class || 'unverified') + '</span>' +
-            ' \u00B7 ' + _escapeHtml(ev.source || '') + ' \u00B7 ' + _escapeHtml(ev.timestamp || ev.event_at || '') +
-            '</div></div>';
+          var card = _makeEl('div', 'timeline-event-card');
+          card.appendChild(_makeEl('div', 'timeline-event-domain', _escapeHtml(ev.domain || 'unknown') + ' / ' + _escapeHtml(ev.event_kind || ev.kind || '')));
+          card.appendChild(_makeEl('div', 'timeline-event-label', _escapeHtml(ev.label || ev.summary || '')));
+          var meta = _makeEl('div', 'timeline-event-meta');
+          meta.appendChild(_makeEl('span', verificationCls, _escapeHtml(ev.verification_class || 'unverified')));
+          meta.appendChild(_tn(' \u00B7 ' + _escapeHtml(ev.source || '') + ' \u00B7 ' + _escapeHtml(ev.timestamp || ev.event_at || '')));
+          card.appendChild(meta);
+          tlList.appendChild(card);
         }
-        html += '</div>';
+        tlEvents.appendChild(tlList);
       }
-      tlEvents.innerHTML = html;
     }
   }
 
   // Degradation summary
   if (tlDegradation) {
+    _clearEl(tlDegradation);
     var canDeg = state.canonical_degraded_count || 0;
     var corDeg = state.corrupt_count || 0;
     var unsDeg = state.unsupported_count || 0;
@@ -987,55 +1124,60 @@ function _renderTimelineSurface() {
     var contDeg = state.contradictory_count || 0;
     var staleDeg = state.stale_count || 0;
     var totalDegraded = canDeg + corDeg + unsDeg + missDeg + contDeg + staleDeg;
-    var degHtml = '<h3>Degradation Summary</h3>';
+    tlDegradation.appendChild(_makeEl('h3', '', 'Degradation Summary'));
     if (totalDegraded === 0) {
-      degHtml += '<div class="status-detail">No degradation detected.</div>';
+      tlDegradation.appendChild(_makeEl('div', 'status-detail', 'No degradation detected.'));
     } else {
-      degHtml += '<table class="kv">' +
-        '<tr><td class="k">Canonical degraded</td><td class="warning">' + canDeg + '</td></tr>' +
-        '<tr><td class="k">Corrupt</td><td class="' + (corDeg > 0 ? 'error' : 'ok') + '">' + corDeg + '</td></tr>' +
-        '<tr><td class="k">Unsupported</td><td>' + unsDeg + '</td></tr>' +
-        '<tr><td class="k">Missing</td><td>' + missDeg + '</td></tr>' +
-        '<tr><td class="k">Contradictory</td><td class="' + (contDeg > 0 ? 'error' : 'ok') + '">' + contDeg + '</td></tr>' +
-        '<tr><td class="k">Stale</td><td class="' + (staleDeg > 0 ? 'warning' : 'ok') + '">' + staleDeg + '</td></tr>' +
-        '</table>';
+      var degTable = _makeEl('table', 'kv');
+      degTable.appendChild(_row('Canonical degraded', String(canDeg), 'warning'));
+      degTable.appendChild(_row('Corrupt', String(corDeg), corDeg > 0 ? 'error' : 'ok'));
+      degTable.appendChild(_row('Unsupported', String(unsDeg)));
+      degTable.appendChild(_row('Missing', String(missDeg)));
+      degTable.appendChild(_row('Contradictory', String(contDeg), contDeg > 0 ? 'error' : 'ok'));
+      degTable.appendChild(_row('Stale', String(staleDeg), staleDeg > 0 ? 'warning' : 'ok'));
+      tlDegradation.appendChild(degTable);
     }
     var assemblyWarnings = state.assembly_warnings || [];
     var assemblyErrors = state.assembly_errors || [];
     if (assemblyErrors.length > 0) {
-      degHtml += '<div class="status-detail" style="color:var(--error-color)"><strong>Assembly errors:</strong> ' + _escapeHtml(assemblyErrors.join('; ')) + '</div>';
+      var errDiv = _makeEl('div', 'status-detail');
+      errDiv.style.color = 'var(--error-color)';
+      errDiv.appendChild(_strong('Assembly errors: '));
+      errDiv.appendChild(_tn(_escapeHtml(assemblyErrors.join('; '))));
+      tlDegradation.appendChild(errDiv);
     }
     if (assemblyWarnings.length > 0) {
-      degHtml += '<div class="status-detail" style="color:var(--warning-color)"><strong>Assembly warnings:</strong> ' + _escapeHtml(assemblyWarnings.join('; ')) + '</div>';
+      var warnDiv = _makeEl('div', 'status-detail');
+      warnDiv.style.color = 'var(--warning-color)';
+      warnDiv.appendChild(_strong('Assembly warnings: '));
+      warnDiv.appendChild(_tn(_escapeHtml(assemblyWarnings.join('; '))));
+      tlDegradation.appendChild(warnDiv);
     }
-    tlDegradation.innerHTML = degHtml;
   }
 
   // Domain coverage
   if (tlDomains) {
+    _clearEl(tlDomains);
     var domains = state.domain_coverage || {};
     var unsupportedDomains = state.unsupported_domains || [];
     var verifiedCanonical = state.verified_canonical_count || 0;
     var parsedUnverified = state.parsed_unverified_count || 0;
-    var domainHtml = '<h3>Domain Coverage</h3>';
+    tlDomains.appendChild(_makeEl('h3', '', 'Domain Coverage'));
     var domainKeys = Object.keys(domains);
     if (domainKeys.length > 0) {
-      domainHtml += '<table class="kv">';
+      var domTable = _makeEl('table', 'kv');
       for (var d = 0; d < domainKeys.length; d++) {
         var domainKey = domainKeys[d];
-        domainHtml += '<tr><td class="k">' + _escapeHtml(domainKey) + '</td><td>' + _escapeHtml(String(domains[domainKey])) + '</td></tr>';
+        domTable.appendChild(_row(_escapeHtml(domainKey), _escapeHtml(String(domains[domainKey]))));
       }
-      domainHtml += '</table>';
+      tlDomains.appendChild(domTable);
     }
-    domainHtml += '<div class="status-detail">' +
-      _escapeHtml(String(verifiedCanonical)) + ' verified canonical \u00B7 ' +
-      _escapeHtml(String(parsedUnverified)) + ' parsed unverified \u00B7 ' +
-      _escapeHtml(String(unsupportedDomains.length)) + ' unsupported domains' +
-      '</div>';
+    tlDomains.appendChild(_makeEl('div', 'status-detail', String(verifiedCanonical) + ' verified canonical \u00B7 ' + String(parsedUnverified) + ' parsed unverified \u00B7 ' + String(unsupportedDomains.length) + ' unsupported domains'));
     if (unsupportedDomains.length > 0) {
-      domainHtml += '<div class="status-detail" style="color:var(--warning-color)">Unsupported: ' + _escapeHtml(unsupportedDomains.join(', ')) + '</div>';
+      var unsupDiv = _makeEl('div', 'status-detail', 'Unsupported: ' + _escapeHtml(unsupportedDomains.join(', ')));
+      unsupDiv.style.color = 'var(--warning-color)';
+      tlDomains.appendChild(unsupDiv);
     }
-    tlDomains.innerHTML = domainHtml;
   }
 }
 
