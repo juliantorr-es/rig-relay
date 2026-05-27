@@ -499,14 +499,85 @@
     <div class="notification-rail-list" id="notification-rail-list" role="list" aria-label="Notification list"></div>
   </div>
 
-  <!-- P0 fixture data layer — O0-shaped projection fixtures -->
-  <script src="js/fixtures/p0-fixture-connect.js"></script>
-  <script src="js/fixtures/p0-fixture-repository-estate.js"></script>
-  <script src="js/fixtures/p0-fixture-project-studio.js"></script>
-  <script src="js/fixtures/p0-fixture-inference-studio.js"></script>
-  <script src="js/fixtures/p0-fixture-publish-preview.js"></script>
+  <!-- Fixture data layer — loaded only in explicit fixture/test mode -->
+  <script id="fixture-connect-script" data-fixture-only="1" src="js/fixtures/p0-fixture-connect.js"></script>
+  <script id="fixture-repository-estate-script" data-fixture-only="1" src="js/fixtures/p0-fixture-repository-estate.js"></script>
+  <script id="fixture-project-studio-script" data-fixture-only="1" src="js/fixtures/p0-fixture-project-studio.js"></script>
+  <script id="fixture-inference-studio-script" data-fixture-only="1" src="js/fixtures/p0-fixture-inference-studio.js"></script>
+  <script id="fixture-publish-preview-script" data-fixture-only="1" src="js/fixtures/p0-fixture-publish-preview.js"></script>
+
+  <!-- Unload fixture scripts if not in fixture mode (production default) -->
+  <script>
+    (function() {
+      var params = new URLSearchParams(window.location.search);
+      var isFixtureMode = params.get('fixture_mode') === '1' || (window.__RIG_RELAY_FIXTURE_MODE__ === true);
+      if (!isFixtureMode) {
+        var scripts = document.querySelectorAll('script[data-fixture-only]');
+        for (var i = 0; i < scripts.length; i++) {
+          try { scripts[i].parentNode.removeChild(scripts[i]); } catch(e) {}
+        }
+      }
+    })();
+  </script>
+
+  <!-- Gridline Frontend Protocol Consumer (S1) — production adapter -->
+  <script type="module" src="js/protocol/adapter.js"></script>
+  <!-- Keyboard navigation (WAI-ARIA tab panel pattern) -->
+  <script type="module" src="js/keyboardNav.js"></script>
+  <!-- Core frontend logic (surface switching, projection rendering) -->
+  <script type="module" src="app.js"></script>
 
   <script type="module" src="js/delight.js"></script>
   <script type="module" src="js/boot/orchestrator.js"></script>
+
+  <!-- S1 Bridge: expose Gridline API on window.RigRelay after module load -->
+  <script type="module">
+    import * as GridlineAdapter from './js/protocol/adapter.js';
+    import { setupKeyboardNavigation } from './js/keyboardNav.js';
+
+    // Wire keyboard navigation after DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function() {
+        setupKeyboardNavigation();
+      });
+    } else {
+      setupKeyboardNavigation();
+    }
+
+    // Expose Gridline API on window for HTML inline handlers and tests
+    window.RigRelay = window.RigRelay || {};
+    window.RigRelay.switchSurface = function(surfaceId) {
+      // Delegate to the app module's switchSurface (global)
+      if (typeof switchSurface === 'function') {
+        switchSurface(surfaceId);
+      } else {
+        // Fallback: direct adapter rendering
+        if (GridlineAdapter.isFixture()) {
+          GridlineAdapter.renderFixtureSurface(surfaceId);
+        } else {
+          GridlineAdapter._renderAllSurfaces();
+        }
+      }
+    };
+    window.RigRelay.switchMode = function(mode) {
+      if (typeof switchMode === 'function') {
+        switchMode(mode);
+      }
+    };
+    window.RigRelay.dispatchIntent = function(name, params) {
+      if (typeof emitP0Intent === 'function') {
+        return emitP0Intent(name, params);
+      }
+      // Fallback: route through adapter
+      if (name === 'studio_connect_workspace' || name === 'connect_workspace') {
+        return GridlineAdapter.emitConnectIntent(name, params);
+      }
+      if (name === 'refresh_projection') {
+        return GridlineAdapter.emitConnectIntent(name, params);
+      }
+      return null;
+    };
+    window.__GRIDLINE_ADAPTER__ = GridlineAdapter;
+  </script>
 </body>
 </html>

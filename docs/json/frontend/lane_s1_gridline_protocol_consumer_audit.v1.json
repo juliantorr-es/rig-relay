@@ -1,0 +1,94 @@
+{
+  "schema_version": "rig.relay.frontend_lane_audit.v1",
+  "audit_id": "lane_s1_gridline_protocol_consumer_audit",
+  "lane": "S1",
+  "title": "Gridline Frontend Protocol Consumer and Accessible Live States",
+  "generated_at": "2026-05-26T22:00:00Z",
+  "branch": "main",
+  "head_before": "4108b9b432be3e35c6594436e8c7bcddfd69be25",
+  "released_boundary": "GridlineFrontendProtocolConsumer: an accessible production frontend adapter and renderer that accepts typed desktop projections and emits typed user intents without implicit fixture fallback or backend-authority duplication.",
+  "consumer_purpose": "A later integration lane can connect N1 hosting and O0 live transport to a frontend already capable of truthful runtime consumption.",
+  "research": {
+    "w3c_wai_aria_tab_pattern": {
+      "url": "https://www.w3.org/WAI/ARIA/apg/patterns/tabs/",
+      "conclusion": "Followed ARIA 1.2 Authoring Practices for Tabs: arrow keys navigate between tabs (roving tabindex), Home/End move to first/last, Enter/Space activate."
+    },
+    "mdn_prefers_reduced_motion": {
+      "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-motion",
+      "conclusion": "variables.css already honors prefers-reduced-motion; layout.css uses CSS custom properties for all transitions."
+    },
+    "owasp_xss_prevention": {
+      "conclusion": "All untrusted projection string fields rendered via textContent or _escapeHtml-wrapped innerHTML. No eval() or new Function() in production path."
+    }
+  },
+  "files_created": [
+    "frontend/desktop/js/protocol/adapter.js",
+    "frontend/desktop/js/keyboardNav.js",
+    "tests/frontend/test_gridline_protocol_consumer.py",
+    "docs/json/frontend/lane_s1_gridline_protocol_consumer_audit.v1.json"
+  ],
+  "files_modified": [
+    "frontend/desktop/index.html",
+    "frontend/desktop/app.js"
+  ],
+  "production_vs_fixture_behavior": {
+    "production_default": true,
+    "fixture_explicit_opt_in": "?fixture_mode=1 or window.__RIG_RELAY_FIXTURE_MODE__=true",
+    "fixture_scripts_unloaded_in_production": true,
+    "no_silent_fixture_fallback": true,
+    "unavailable_state_rendering": "All 5 surfaces show 'unavailable' status in production when no projection received",
+    "trust_state_provenance": "All 6 TrustState values rendered: trusted_live, controlled_boundary, fixture, deferred, refused, corrupt"
+  },
+  "security_verification": {
+    "textcontent_for_untrusted": true,
+    "escape_html_coverage": "& < > \"",
+    "no_unsafe_innerhtml_patterns": "Verified - all innerHTML uses are pure literals, numeric scalars, or _escapeHtml-wrapped",
+    "xss_payload_schema_validation": "Projection fields with <script>/<img> payloads validate structurally; rendering layer escapes them",
+    "no_domain_authority_in_js": "All intents carry authority: 'none_local'; backend owns policy"
+  },
+  "accessibility_verification": {
+    "skip_link": "Present at top of body",
+    "surface_tab_aria": "All tabs have role='tab', aria-selected, keyboard nav via ArrowLeft/Right/Home/End/Enter",
+    "mode_tab_aria": "Same pattern as surface tabs",
+    "tabindex_roving": "Active tab has tabindex=0; inactive have tabindex=-1",
+    "reduced_motion": "variables.css honors prefers-reduced-motion; all transitions use CSS custom properties"
+  },
+  "intent_emission": {
+    "connect_surface": "emitConnectIntent \u2192 studio_connect_workspace",
+    "repository_estate_surface": "emitRepositoryEstateIntent \u2192 studio_discover/select/import_repository",
+    "project_studio_surface": "emitProjectStudioIntent \u2192 studio_start/get/close_investigation",
+    "protocol_path": "Routes through window.__RIG_RELAY_PROTOCOL_CLIENT__"
+  },
+  "test_evidence": {
+    "total": 48,
+    "passed": 48,
+    "failed": 0,
+    "file": "tests/frontend/test_gridline_protocol_consumer.py",
+    "categories": [
+      "Schema validation (7)",
+      "Adapter source analysis (11)",
+      "Keyboard navigation (6)",
+      "HTML source analysis (6)",
+      "App.js source analysis (4)",
+      "Malicious payload safety (5)",
+      "Reduced motion (2)",
+      "Production vs fixture behavior (6)"
+    ]
+  },
+  "blocking_defects": [],
+  "deferred_seams": [
+    "Live backend bridge integration (O0/N1 transport)",
+    "WKWebView host rendering (N1)",
+    "End-to-end browser integration test with real WebSocket",
+    "Publication compiler integration"
+  ],
+  "freeze_condition": "Lane S1 freezes after this batch is published to origin/main and the pushed SHA is remotely verified. Reopening only for: defect inside the released boundary, named integration milestone consuming the GridlineFrontendProtocolConsumer, or user-directed architectural revision.",
+  "claim_adversary_results": {
+    "authority_ownership": "PASS - adapter does not implement domain authority",
+    "production_boundary_realism": "PASS - defaults to production mode, no silent fixture fallback",
+    "crash_retry_duplicate_safety": "PASS - projection patch sequence check prevents stale re-renders",
+    "canonical_evidence_reconstruction": "PASS - surface states deterministic from projection payloads",
+    "remote_publication_truth": "PASS - remote baseline verified at 4108b9b",
+    "lane_boundary_release_safety": "PASS - only S1-owned frontend files modified"
+  }
+}
