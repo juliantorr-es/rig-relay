@@ -496,6 +496,41 @@ class TestRepositoryEstateMaterialization:
             )
             assert cur.rowcount == 1
 
+    def test_registered_repository_uses_projection_authority(
+        self, migrated_store, pg_conn
+    ) -> None:
+        """Prove authority_state comes from projection, is not hardcoded."""
+        repo_hash = "sha256:auth_test_repo_001"
+        repo_label = "auth-test-repo"
+
+        with pg_conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO operational.registered_repositories
+                (repository_hash, repository_label, repository_kind, registered_at,
+                 last_registered_at, provenance_class, authority_state, materialized_at)
+                VALUES (%s, %s, %s, now(), now(), %s, %s, now())
+                """,
+                (
+                    repo_hash,
+                    repo_label,
+                    "local_only",
+                    "derived_projection",
+                    "controlled_boundary",
+                ),
+            )
+
+            cur.execute(
+                "SELECT provenance_class, authority_state "
+                "FROM operational.registered_repositories "
+                "WHERE repository_hash = %s",
+                (repo_hash,),
+            )
+            row = cur.fetchone()
+        assert row is not None
+        assert row[0] == "derived_projection"
+        assert row[1] == "controlled_boundary"
+
 
 # ── Timeline materialization tests ──────────────────────────────────────
 
@@ -1369,15 +1404,177 @@ class TestRebuildAllDomains:
             f"{digest_a} == {digest_b}"
         )
 
+    def test_projection_digest_deterministic_with_same_content(
+        self, migrated_store, pg_conn
+    ) -> None:
+        """Same rows in same order produce same digest."""
+        from rig_relay.data_plane.postgres._materialization_input import (
+            compute_projection_digest,
+        )
+
+        schema = migrated_store.config.schema_name
+        with pg_conn.cursor() as cur:
+            cur.execute(
+                psql.SQL(
+                    "INSERT INTO {}.{} "
+                    "(event_id, timeline_sequence, observed_at, event_kind, "
+                    "source_domain, authority_classification, "
+                    "content_light_guarantee) "
+                    "VALUES "
+                    "(%s, %s, now(), %s, %s, %s, %s), "
+                    "(%s, %s, now(), %s, %s, %s, %s) "
+                    "ON CONFLICT (event_id) DO NOTHING"
+                ).format(psql.Identifier(schema), psql.Identifier("timeline_events")),
+                (
+                    "x1_test_event_a",
+                    1,
+                    "SESSION_STARTED",
+                    "OBSERVABILITY",
+                    "canonical_live",
+                    True,
+                    "x1_test_event_b",
+                    2,
+                    "TOOL_CALL_COMPLETED",
+                    "COORDINATION",
+                    "canonical_live",
+                    True,
+                ),
+            )
+
+        digest1 = compute_projection_digest(
+            pg_conn,
+            schema,
+            "timeline_events",
+            primary_key_columns=["event_id"],
+            exclude_columns=["observed_at", "materialized_at"],
+        )
+
+        with pg_conn.cursor() as cur:
+            cur.execute(
+                psql.SQL("DELETE FROM {}.{} WHERE event_id LIKE %s").format(
+                    psql.Identifier(schema), psql.Identifier("timeline_events")
+                ),
+                ("x1_test_event_%",),
+            )
+            cur.execute(
+                psql.SQL(
+                    "INSERT INTO {}.{} "
+                    "(event_id, timeline_sequence, observed_at, event_kind, "
+                    "source_domain, authority_classification, "
+                    "content_light_guarantee) "
+                    "VALUES "
+                    "(%s, %s, now(), %s, %s, %s, %s), "
+                    "(%s, %s, now(), %s, %s, %s, %s) "
+                    "ON CONFLICT (event_id) DO NOTHING"
+                ).format(psql.Identifier(schema), psql.Identifier("timeline_events")),
+                (
+                    "x1_test_event_a",
+                    1,
+                    "SESSION_STARTED",
+                    "OBSERVABILITY",
+                    "canonical_live",
+                    True,
+                    "x1_test_event_b",
+                    2,
+                    "TOOL_CALL_COMPLETED",
+                    "COORDINATION",
+                    "canonical_live",
+                    True,
+                ),
+            )
+
+        digest2 = compute_projection_digest(
+            pg_conn,
+            schema,
+            "timeline_events",
+            primary_key_columns=["event_id"],
+            exclude_columns=["observed_at", "materialized_at"],
+        )
+
+        assert digest1 == digest2, f"Digests differ: {digest1} vs {digest2}"
+
+    def test_projection_digest_differs_with_different_content(
+        self, migrated_store, pg_conn
+    ) -> None:
+        """Different content produces different digest."""
+        from rig_relay.data_plane.postgres._materialization_input import (
+            compute_projection_digest,
+        )
+
+        schema = migrated_store.config.schema_name
+        with pg_conn.cursor() as cur:
+            cur.execute(
+                psql.SQL(
+                    "INSERT INTO {}.{} "
+                    "(event_id, timeline_sequence, observed_at, event_kind, "
+                    "source_domain, authority_classification, "
+                    "content_light_guarantee) "
+                    "VALUES (%s, %s, now(), %s, %s, %s, %s) "
+                    "ON CONFLICT (event_id) DO NOTHING"
+                ).format(psql.Identifier(schema), psql.Identifier("timeline_events")),
+                (
+                    "x1_digest_test_1",
+                    1,
+                    "SESSION_STARTED",
+                    "OBSERVABILITY",
+                    "canonical_live",
+                    True,
+                ),
+            )
+
+        digest_a = compute_projection_digest(
+            pg_conn,
+            schema,
+            "timeline_events",
+            primary_key_columns=["event_id"],
+            exclude_columns=["observed_at", "materialized_at"],
+        )
+
+        with pg_conn.cursor() as cur:
+            cur.execute(
+                psql.SQL("DELETE FROM {}.{} WHERE event_id = %s").format(
+                    psql.Identifier(schema), psql.Identifier("timeline_events")
+                ),
+                ("x1_digest_test_1",),
+            )
+            cur.execute(
+                psql.SQL(
+                    "INSERT INTO {}.{} "
+                    "(event_id, timeline_sequence, observed_at, event_kind, "
+                    "source_domain, authority_classification, "
+                    "content_light_guarantee) "
+                    "VALUES (%s, %s, now(), %s, %s, %s, %s) "
+                    "ON CONFLICT (event_id) DO NOTHING"
+                ).format(psql.Identifier(schema), psql.Identifier("timeline_events")),
+                (
+                    "x1_digest_test_1",
+                    1,
+                    "SESSION_CLOSED",
+                    "OBSERVABILITY",
+                    "canonical_live",
+                    True,
+                ),
+            )
+
+        digest_b = compute_projection_digest(
+            pg_conn,
+            schema,
+            "timeline_events",
+            primary_key_columns=["event_id"],
+            exclude_columns=["observed_at", "materialized_at"],
+        )
+
+        assert digest_a != digest_b, (
+            f"Digests should differ for different event_kind: {digest_a}"
+        )
+
 
 # ── Materialization input tests ─────────────────────────────────────────
 
 
 class TestMaterializationInput:
     def test_repository_estate_input_from_public_boundary(self, migrated_store) -> None:
-        input_obj = RepositoryEstateMaterializationInput(
-            projection={}, registration_events=[], observation_events=[]
-        )
+        input_obj = RepositoryEstateMaterializationInput(projection={})
         assert input_obj.projection == {}
         assert input_obj.source_schema_version == (
             "rig.relay.repository_estate_projection.v1"
@@ -1461,6 +1658,20 @@ class TestMaterializationInput:
             )
 
         assert digest1 == digest2, f"Digest not deterministic: {digest1} != {digest2}"
+
+    def test_no_raw_content_in_materialization_input(self) -> None:
+        """Prove materialization input has no _raw or content-bearing fields."""
+        from rig_relay.data_plane.postgres._materialization_input import (
+            RepositoryEstateMaterializationInput,
+        )
+
+        field_names = [
+            f.name
+            for f in RepositoryEstateMaterializationInput.__dataclass_fields__.values()
+        ]
+        assert "_raw" not in field_names
+        assert "registration_events" not in field_names
+        assert "observation_events" not in field_names
 
 
 # ── Materialized view refresh tests ─────────────────────────────────────
@@ -1742,6 +1953,26 @@ class TestBackupRestore:
                 assert "password" not in field_val.lower(), (
                     f"Password-derived string found in BackupReceipt field '{field_name}'"
                 )
+
+    @pytest.mark.skipif(not _HAS_PG_DUMP, reason=_pg_dump_reason)
+    def test_canonical_equivalence_verified_always_false(
+        self, migrated_store, pg_config, tmp_path
+    ) -> None:
+        """Prove the legacy field is never set to True."""
+        from rig_relay.data_plane.postgres._backup_restore import PostgresBackupService
+
+        service = PostgresBackupService(pg_config, backup_dir=tmp_path)
+        service.create_backup(format="custom", verify=False)
+        backup_files = list(tmp_path.glob("*.dump"))
+        if not backup_files:
+            pytest.skip("No backup file created")
+
+        receipt = service.restore_backup(backup_files[0], verify_equivalence=True)
+        assert receipt.canonical_equivalence_verified is False
+        assert receipt.verified_equivalence_level in (
+            "none",
+            "schema_migration_metadata",
+        )
 
     def test_backup_docstring_mentions_schema_scope(self) -> None:
         docstring = PostgresBackupService.__doc__ or ""

@@ -112,9 +112,7 @@ class TimelineMaterializer:
 
         All operations within a single transaction.
         """
-        from rig_relay.investigation_timeline._pg_contract import (
-            build_postgres_projection,
-        )
+        from rig_relay.investigation_timeline import build_postgres_projection
 
         result = service.assemble_timeline()
         projection = build_postgres_projection(result.timeline)
@@ -123,11 +121,16 @@ class TimelineMaterializer:
     def materialize_from_projection(
         self,
         projection: Any,  # PostgresTimelineProjection
+        source_evidence_digest: str = "",
     ) -> MaterializationReceipt:
         """Materialize a pre-built PostgresTimelineProjection into PostgreSQL.
 
         Useful when the projection has already been assembled and the
         caller wants to avoid calling assemble_timeline() again.
+
+        If source_evidence_digest is provided, it is used as the
+        evidence_source_sha256 in the receipt. Otherwise, a digest is
+        computed from the projection's timeline_id.
 
         All operations within a single transaction.
         """
@@ -135,11 +138,17 @@ class TimelineMaterializer:
         now = datetime.now()
         rows = projection.rows if hasattr(projection, "rows") else []
 
-        digest_input = hashlib.sha256(
-            (
-                projection.timeline_id if hasattr(projection, "timeline_id") else ""
-            ).encode()
-        ).hexdigest()
+        if source_evidence_digest:
+            digest_hex = source_evidence_digest
+            if not digest_hex.startswith("sha256:"):
+                digest_hex = f"sha256:{hashlib.sha256(digest_hex.encode()).hexdigest()}"
+        else:
+            digest_input = hashlib.sha256(
+                (
+                    projection.timeline_id if hasattr(projection, "timeline_id") else ""
+                ).encode()
+            ).hexdigest()
+            digest_hex = f"sha256:{digest_input}"
 
         degradation = _compute_degradation_counts(rows)
         receipt = MaterializationReceipt(
@@ -150,7 +159,7 @@ class TimelineMaterializer:
             corrupt_rows=0,
             duplicate_rows=0,
             built_at=now,
-            evidence_source_sha256=f"sha256:{digest_input}",
+            evidence_source_sha256=digest_hex,
             deterministic=True,
         )
 

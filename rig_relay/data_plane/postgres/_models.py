@@ -312,9 +312,10 @@ class RestoreReceipt(BaseModel):
     canonical_equivalence_verified: bool = Field(
         default=False,
         description=(
-            "DEPRECATED: use verified_equivalence_level instead. "
-            "Set to True when schema_migration_metadata verification passes. "
-            "Does NOT prove full product-state equivalence."
+            "Always False. This field is retained for schema compatibility only. "
+            "Use verified_equivalence_level for actual equivalence status. "
+            "schema_migration_metadata verification sets verified_equivalence_level, "
+            "not this field."
         ),
     )
     verified_equivalence_level: str = Field(

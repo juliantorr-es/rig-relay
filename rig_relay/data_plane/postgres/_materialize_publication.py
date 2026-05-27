@@ -200,7 +200,7 @@ class PublicationMaterializer:
                 cur.execute(
                     upsert_reconstruction,
                     (
-                        ledger_path_hash or _empty_ledger_hash(),
+                        ledger_path_hash or "unknown",
                         reconstruction.total_rows,
                         reconstruction.valid_rows,
                         reconstruction.corrupt_rows,
@@ -346,15 +346,20 @@ class PublicationMaterializer:
         return total
 
 
-def _empty_ledger_hash() -> str:
-    """Return the hash for an empty/unknown ledger path."""
-    return "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-
-
 def _compute_evidence_sha256(receipts: list[dict]) -> str:
-    """Compute a combined SHA256 digest of receipt_ids for evidence provenance."""
-    from json import dumps
+    """Compute evidence source digest binding receipt content, not just IDs."""
+    import json as _json
 
-    ids = sorted(r.get("receipt_id", "") for r in receipts)
-    payload = dumps(ids, sort_keys=True, separators=(",", ":"))
+    content_parts = []
+    for r in receipts:
+        content_parts.append({
+            "receipt_id": r.get("receipt_id", ""),
+            "evidence_digest": r.get("evidence_digest", ""),
+            "compilation_successful": r.get("compilation_successful", False),
+            "safety_passed": r.get("safety_passed", False),
+            "refusal_code": r.get("refusal_code"),
+            "operation_id": r.get("operation_id", ""),
+        })
+
+    payload = _json.dumps(content_parts, sort_keys=True, separators=(",", ":"))
     return f"sha256:{hashlib.sha256(payload.encode()).hexdigest()}"

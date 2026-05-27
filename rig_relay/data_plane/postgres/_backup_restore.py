@@ -278,7 +278,7 @@ class PostgresBackupService:
             tables_restored=tables_restored,
             rows_restored=rows_restored,
             migration_version_restored=migration_version,
-            canonical_equivalence_verified=schema_metadata_restored,
+            canonical_equivalence_verified=False,  # Always False — use verified_equivalence_level instead
             verified_equivalence_level=(
                 "schema_migration_metadata" if schema_metadata_restored else "none"
             ),

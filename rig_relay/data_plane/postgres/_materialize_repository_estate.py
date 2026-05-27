@@ -1,8 +1,8 @@
 """Repository Estate materializer for PostgreSQL operational store.
 
-Materializes RepositoryEstateService evidence (registrations, observations,
-changes) into the operational PostgreSQL projection tables. Distinguishes
-logical repository identity from workspace/checkout instances.
+Materializes RepositoryEstateService evidence into the operational PostgreSQL
+projection tables from the public build_projection() contract ONLY —
+never from raw JSONL ledgers, never from private store internals.
 
 Authority: PostgreSQL is a disposable read-side projection.
 Canonical registration/observation JSONL ledgers remain the sole authority.
@@ -31,7 +31,7 @@ class RepositoryEstateMaterializer:
     """Materializes Repository Estate (T3.1) evidence into PostgreSQL.
 
     Consumes the RepositoryEstateService through its published
-    projection/evidence contract. Distinguishes logical repository
+    build_projection() contract. Distinguishes logical repository
     identity from workspace/checkout instances.
 
     Content-light: stores only digests and counts — never raw paths
@@ -47,36 +47,21 @@ class RepositoryEstateMaterializer:
         self, input_data: RepositoryEstateMaterializationInput
     ) -> MaterializationReceipt:
         """Materialize from a public-boundary-safe materialization input."""
-        return self._materialize_impl(
-            input_data.projection,
-            input_data.registration_events,
-            input_data.observation_events,
-        )
+        return self._materialize_impl(input_data)
 
     def materialize_from_service(self, service: Any) -> MaterializationReceipt:
         """Materialize from a live RepositoryEstateService (public API only).
 
         Uses RepositoryEstateMaterializationInput.from_service() which
-        reads the projection through build_projection() and evidence
-        JSONL ledgers from the filesystem. Never accesses service._store.
+        reads ONLY through build_projection(). Never accesses service._store.
         """
         input_data = RepositoryEstateMaterializationInput.from_service(service)
         return self.materialize(input_data)
 
-    def materialize_from_projection(
-        self,
-        projection: Any,
-        raw_registrations: list[dict] | None = None,
-        raw_observations: list[dict] | None = None,
-    ) -> MaterializationReceipt:
-        """Materialize from a pre-built RepositoryEstateProjection.
-
-        Raw registration/observation events are optional — without them,
-        only projection-level summaries and changes are materialized.
-        """
-        return self._materialize_impl(
-            projection, raw_registrations or [], raw_observations or []
-        )
+    def materialize_from_projection(self, projection: Any) -> MaterializationReceipt:
+        """Materialize from a pre-built RepositoryEstateProjection."""
+        input_data = RepositoryEstateMaterializationInput(projection=projection)
+        return self.materialize(input_data)
 
     def rebuild(
         self, input_data: RepositoryEstateMaterializationInput
@@ -94,10 +79,10 @@ class RepositoryEstateMaterializer:
         schema = self.store.config.schema_name
         now = datetime.now()
 
-        tables = [
-            "repository_observations",
-            "repository_workspace_instances",
-            "repository_observation_changes",
+        tables: list[tuple[str, list[str]]] = [
+            ("repository_observations", ["observation_id"]),
+            ("repository_workspace_instances", ["instance_id"]),
+            ("repository_observation_changes", ["change_id"]),
         ]
         exclude = ["materialized_at", "receipt_id", "built_at"]
 
@@ -105,8 +90,7 @@ class RepositoryEstateMaterializer:
             self.store.conn, schema, tables, exclude
         )
 
-        # Count rows for diagnostics
-        rows_before = sum(_fetch_count(self.store.conn, schema, t) for t in tables)
+        rows_before = sum(_fetch_count(self.store.conn, schema, t[0]) for t in tables)
 
         with self.store.conn.transaction():
             self._clear_estate_tables(schema)
@@ -116,7 +100,7 @@ class RepositoryEstateMaterializer:
         digest_after = compute_multi_table_digest(
             self.store.conn, schema, tables, exclude
         )
-        rows_after = sum(_fetch_count(self.store.conn, schema, t) for t in tables)
+        rows_after = sum(_fetch_count(self.store.conn, schema, t[0]) for t in tables)
 
         deterministic = digest_before == digest_after
 
@@ -141,97 +125,69 @@ class RepositoryEstateMaterializer:
     # ── Core materialization ───────────────────────────────────────────
 
     def _materialize_impl(
-        self,
-        projection: Any,
-        raw_registrations: list[dict],
-        raw_observations: list[dict],
+        self, input_data: RepositoryEstateMaterializationInput
     ) -> MaterializationReceipt:
-        """Materialize all evidence rows into PostgreSQL projection tables."""
+        """Materialize projection rows into PostgreSQL projection tables."""
+        projection = input_data.projection
         schema = self.store.config.schema_name
         now = datetime.now()
 
-        # ── Parse and deduplicate registrations ──
-        repos_by_hash: dict[str, dict] = {}
-        corrupt_reg_count = 0
-        for reg_event in raw_registrations:
-            if reg_event.get("_corrupt"):
-                corrupt_reg_count += 1
-                continue
-            payload = reg_event.get("payload", {})
-            rh = payload.get("repository_hash", "")
-            if not rh:
-                continue
-            registered_at = payload.get("registered_at", "")
-            existing = repos_by_hash.get(rh)
-            if existing is None or registered_at >= existing.get("registered_at", ""):
-                repos_by_hash[rh] = payload
+        summaries = getattr(projection, "registered_repositories", [])
+        corruption_events = getattr(projection, "corruption_events", [])
+        recent_changes = getattr(projection, "recent_changes", [])
 
-        # ── Parse observations ──
-        valid_obs: list[dict] = []
-        corrupt_obs_count = 0
-        for obs_event in raw_observations:
-            if obs_event.get("_corrupt"):
-                corrupt_obs_count += 1
-                valid_obs.append({
-                    "_corrupt": True,
-                    "observation_id": obs_event.get("event_id", ""),
-                })
-                continue
-            payload = obs_event.get("payload", {})
-            valid_obs.append(payload)
+        total_reg = getattr(projection, "total_registered", len(summaries))
+        total_obs = getattr(projection, "total_observations", 0)
+        corrupt_reg = getattr(projection, "corrupt_registration_count", 0)
+        corrupt_obs = getattr(projection, "corrupt_observation_count", 0)
 
-        # ── Materialize in a single transaction ──
         with self.store.conn.transaction():
             repos_built = self._insert_registered_repositories(
-                schema, projection, repos_by_hash, now
+                schema, projection, summaries, now
             )
-            obs_built = self._insert_observations(schema, valid_obs, now)
-            ws_built = self._insert_workspace_instances(schema, valid_obs, now)
-            changes_built = self._insert_observation_changes(schema, valid_obs, now)
+            obs_built = self._insert_observations(
+                schema, projection, summaries, corruption_events, now
+            )
+            ws_built = self._insert_workspace_instances(schema, summaries, now)
+            changes_built = self._insert_observation_changes(
+                schema, recent_changes, now
+            )
 
-            source_registration_count = len(raw_registrations)
-            source_observation_count = len(raw_observations)
+            source_total = total_reg + total_obs
             total_rows = repos_built + obs_built + ws_built + changes_built
 
             receipt = self._record_estate_build(
                 schema,
-                source_registration_count=source_registration_count,
-                source_observation_count=source_observation_count,
-                repositories_built=repos_built,
-                observations_built=obs_built,
-                workspace_instances_built=ws_built,
-                changes_built=changes_built,
-                corrupt_registration_count=corrupt_reg_count,
-                corrupt_observation_count=corrupt_obs_count,
+                source_counts=(total_reg, total_obs, corrupt_reg, corrupt_obs),
+                built_counts=(repos_built, obs_built, ws_built, changes_built),
+                corrupt_counts=(corrupt_reg, corrupt_obs),
+                source_evidence_digest=input_data.source_evidence_digest,
                 now=now,
             )
 
+        corrupt_total = corrupt_reg + corrupt_obs
         return MaterializationReceipt(
             receipt_id=receipt["receipt_id"],
             domain="repository_estate",
-            source_evidence_count=source_registration_count + source_observation_count,
+            source_evidence_count=source_total,
             rows_materialized=total_rows,
-            corrupt_rows=corrupt_reg_count + corrupt_obs_count,
-            duplicate_rows=obs_built - len(valid_obs),
+            corrupt_rows=corrupt_total,
+            duplicate_rows=0,
             built_at=now,
         )
 
     # ── Table-level inserts ────────────────────────────────────────────
 
     def _insert_registered_repositories(
-        self,
-        schema: str,
-        projection: Any,
-        repos_by_hash: dict[str, dict],
-        now: datetime,
+        self, schema: str, projection: Any, summaries: list[Any], now: datetime
     ) -> int:
         """Insert/update registered_repositories from projection summaries."""
         query = psql.SQL(
             "INSERT INTO {}.{} "
             "(repository_hash, repository_label, repository_kind, root_path_digest, "
-            "git_common_dir_digest, remote_identity_digest, registered_at, last_registered_at, "
-            "latest_observation_digest, latest_observation_at, provenance_class, "
-            "authority_state, registration_sha256, materialized_at) "
+            "git_common_dir_digest, remote_identity_digest, registered_at, "
+            "last_registered_at, latest_observation_digest, latest_observation_at, "
+            "provenance_class, authority_state, registration_sha256, materialized_at) "
             "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
             "ON CONFLICT (repository_hash) DO UPDATE SET "
             "repository_label = EXCLUDED.repository_label, "
@@ -249,137 +205,152 @@ class RepositoryEstateMaterializer:
             "materialized_at = EXCLUDED.materialized_at"
         ).format(psql.Identifier(schema), psql.Identifier("registered_repositories"))
 
+        proj_authority = getattr(projection, "authority_state", "controlled_boundary")
         count = 0
-        summaries = getattr(projection, "registered_repositories", [])
-        for summary in summaries:
-            rh = getattr(summary, "repository_hash", "")
-            full_reg = repos_by_hash.get(rh, {})
-            row = (
-                rh,
-                getattr(summary, "repository_label", ""),
-                getattr(summary, "repository_kind", "local_only"),
-                getattr(summary, "root_path_digest", ""),
-                full_reg.get("git_common_dir_digest", ""),
-                full_reg.get("remote_identity_digest", ""),
-                _parse_timestamptz(getattr(summary, "registered_at", "")),
-                _parse_timestamptz(getattr(summary, "last_registered_at", "")),
-                getattr(summary, "latest_observation_digest", "") or "",
-                _parse_timestamptz_or_none(
-                    getattr(summary, "latest_observation_at", "")
-                ),
-                getattr(summary, "provenance", "canonical_fact"),
-                "controlled_boundary",
-                "",
-                now,
-            )
-            with self.store.conn.cursor() as cur:
+        with self.store.conn.cursor() as cur:
+            for summary in summaries:
+                provenance = getattr(summary, "provenance", "derived_projection")
+                row = (
+                    getattr(summary, "repository_hash", ""),
+                    getattr(summary, "repository_label", ""),
+                    getattr(summary, "repository_kind", "local_only"),
+                    getattr(summary, "root_path_digest", ""),
+                    "",
+                    "",
+                    _parse_timestamptz(getattr(summary, "registered_at", "")),
+                    _parse_timestamptz(getattr(summary, "last_registered_at", "")),
+                    getattr(summary, "latest_observation_digest", "") or "",
+                    _parse_timestamptz_or_none(
+                        getattr(summary, "latest_observation_at", "")
+                    ),
+                    str(provenance),
+                    str(proj_authority),
+                    "",
+                    now,
+                )
                 cur.execute(query, row)
                 count += cur.rowcount
         return count
 
     def _insert_observations(
-        self, schema: str, valid_obs: list[dict], now: datetime
+        self,
+        schema: str,
+        projection: Any,
+        summaries: list[Any],
+        corruption_events: list[Any],
+        now: datetime,
     ) -> int:
-        """Insert observations into repository_observations table.
+        """Insert observations from projection summaries and corruption events.
 
-        Corrupt observations (provenance_class == 'corrupt_untrusted') are still stored.
+        For each registered repository summary: one observation row.
+        For each corruption event: one corrupt observation row.
         """
         query = psql.SQL(
             "INSERT INTO {}.{} "
             "(observation_id, repository_hash, workspace_root_digest, observed_at, "
             "status, head_sha, branch, is_detached, "
-            "dirty_modified, dirty_staged, dirty_untracked, dirty_deleted, dirty_conflicted, "
-            "tracked_file_count, is_github_backed, is_local_only, remote_count, "
-            "instruction_file_count, previous_observation_digest, observation_digest, "
-            "provenance_class, authority_state, observation_sha256, "
-            "content_light_guarantee, materialized_at) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
-            "%s, %s, %s, %s, %s, %s, %s, %s, %s) "
+            "dirty_modified, dirty_staged, dirty_untracked, dirty_deleted, "
+            "dirty_conflicted, tracked_file_count, is_github_backed, is_local_only, "
+            "remote_count, instruction_file_count, previous_observation_digest, "
+            "observation_digest, provenance_class, authority_state, "
+            "observation_sha256, content_light_guarantee, materialized_at) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
+            "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
             "ON CONFLICT (observation_id) DO NOTHING"
         ).format(psql.Identifier(schema), psql.Identifier("repository_observations"))
 
+        proj_authority = getattr(projection, "authority_state", "controlled_boundary")
         count = 0
+
         with self.store.conn.cursor() as cur:
-            for payload in valid_obs:
-                if payload.get("_corrupt"):
-                    row = (
-                        payload.get("observation_id", ""),
-                        "",
-                        "",
-                        now,
-                        "not_a_repository",
-                        "",
-                        "",
-                        False,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        False,
-                        True,
-                        0,
-                        0,
-                        "",
-                        "",
-                        "corrupt_untrusted",
-                        "corrupt",
-                        "",
-                        False,
-                        now,
-                    )
-                else:
-                    git_facts = payload.get("git_facts", {})
-                    dc = git_facts.get("dirty_counts", {})
-                    row = (
-                        payload.get("observation_id", ""),
-                        payload.get("repository_hash", ""),
-                        payload.get("root_path_digest", ""),
-                        _parse_timestamptz(payload.get("observed_at", "")),
-                        payload.get("status", "registered"),
-                        git_facts.get("head_sha", "") or "",
-                        git_facts.get("branch", "") or "",
-                        git_facts.get("is_detached", False),
-                        dc.get("modified", 0),
-                        dc.get("staged", 0),
-                        dc.get("untracked", 0),
-                        dc.get("deleted", 0),
-                        dc.get("conflicted", 0),
-                        git_facts.get("tracked_file_count", 0),
-                        git_facts.get("is_github_backed", False),
-                        git_facts.get("is_local_only", True),
-                        len(git_facts.get("remotes", [])),
-                        len(git_facts.get("instruction_files", [])),
-                        payload.get("previous_observation_digest", "") or "",
-                        payload.get("observation_digest", ""),
-                        "derived_projection",
-                        "controlled_boundary",
-                        payload.get("observation_digest", ""),
-                        payload.get("content_light_guarantee", True),
-                        now,
-                    )
+            # Summary observations from registered repositories
+            for summary in summaries:
+                observation_id = f"{getattr(summary, 'repository_hash', '')}:summary"
+                provenance = getattr(summary, "provenance", "derived_projection")
+                row = (
+                    observation_id,
+                    getattr(summary, "repository_hash", ""),
+                    getattr(summary, "root_path_digest", ""),
+                    _parse_timestamptz(
+                        getattr(summary, "latest_observation_at", "")
+                        or getattr(summary, "registered_at", "")
+                    ),
+                    getattr(summary, "latest_status", "registered"),
+                    getattr(summary, "latest_head_sha", "") or "",
+                    getattr(summary, "latest_branch", "") or "",
+                    getattr(summary, "is_detached", False),
+                    getattr(summary, "dirty_modified", 0),
+                    0,
+                    getattr(summary, "dirty_untracked", 0),
+                    0,
+                    0,
+                    getattr(summary, "tracked_file_count", 0),
+                    getattr(summary, "is_github_backed", False),
+                    getattr(summary, "is_local_only", True),
+                    getattr(summary, "remote_count", 0),
+                    getattr(summary, "instruction_file_count", 0),
+                    getattr(summary, "latest_observation_digest", "") or "",
+                    getattr(summary, "latest_observation_digest", "") or "",
+                    str(provenance),
+                    str(proj_authority),
+                    getattr(summary, "latest_observation_digest", ""),
+                    True,
+                    now,
+                )
                 cur.execute(query, row)
                 count += cur.rowcount
+
+            # Corruption event observation rows
+            for event in corruption_events:
+                obs_id = f"corrupt:{getattr(event, 'event_id', 'unknown')}"
+                row = (
+                    obs_id,
+                    getattr(event, "repository_hash", ""),
+                    "",
+                    now,
+                    "not_a_repository",
+                    "",
+                    "",
+                    False,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    False,
+                    True,
+                    0,
+                    0,
+                    "",
+                    "",
+                    "corrupt_untrusted",
+                    "corrupt",
+                    "",
+                    False,
+                    now,
+                )
+                cur.execute(query, row)
+                count += cur.rowcount
+
         return count
 
     def _insert_workspace_instances(
-        self, schema: str, valid_obs: list[dict], now: datetime
+        self, schema: str, summaries: list[Any], now: datetime
     ) -> int:
-        """Build workspace instances from observations.
+        """Build workspace instances from registered repository summaries.
 
-        Groups observations by (repository_hash, workspace_root_digest),
-        takes the latest observation per group, and inserts/updates
-        rows in repository_workspace_instances.
+        Each registered repository summary produces one workspace instance row.
         """
         query = psql.SQL(
             "INSERT INTO {}.{} "
             "(instance_id, repository_hash, workspace_root_digest, workspace_kind, "
             "git_common_dir_digest, head_sha, branch, is_detached, "
-            "dirty_modified, dirty_staged, dirty_untracked, dirty_deleted, dirty_conflicted, "
-            "tracked_file_count, remote_count, is_github_backed, "
+            "dirty_modified, dirty_staged, dirty_untracked, dirty_deleted, "
+            "dirty_conflicted, tracked_file_count, remote_count, is_github_backed, "
             "last_observed_at, last_observation_id, materialized_at) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
+            "%s, %s, %s, %s) "
             "ON CONFLICT (instance_id) DO UPDATE SET "
             "head_sha = EXCLUDED.head_sha, "
             "branch = EXCLUDED.branch, "
@@ -399,47 +370,39 @@ class RepositoryEstateMaterializer:
             psql.Identifier(schema), psql.Identifier("repository_workspace_instances")
         )
 
-        # Group by (repository_hash, workspace_root_digest)
-        groups: dict[tuple[str, str], list[dict]] = {}
-        for payload in valid_obs:
-            if payload.get("_corrupt"):
-                continue
-            rh = payload.get("repository_hash", "")
-            ws_digest = payload.get("root_path_digest", "")
-            if not rh or not ws_digest:
-                continue
-            key = (rh, ws_digest)
-            groups.setdefault(key, []).append(payload)
-
         count = 0
         with self.store.conn.cursor() as cur:
-            for (rh, ws_digest), obs_list in groups.items():
-                obs_list.sort(key=lambda o: o.get("observed_at", ""))
-                latest = obs_list[-1]
+            for summary in summaries:
+                rh = getattr(summary, "repository_hash", "")
+                ws_digest = getattr(summary, "root_path_digest", "")
+                if not rh or not ws_digest:
+                    continue
+
                 instance_id = _compute_instance_id(rh, ws_digest)
-                git_facts = latest.get("git_facts", {})
-                dc = git_facts.get("dirty_counts", {})
-                workspace_kind = _classify_workspace_kind(rh, ws_digest, git_facts)
+                workspace_kind = _classify_workspace_kind_from_summary(rh, ws_digest)
 
                 row = (
                     instance_id,
                     rh,
                     ws_digest,
                     workspace_kind,
-                    git_facts.get("git_common_dir_digest", "") or "",
-                    git_facts.get("head_sha", "") or "",
-                    git_facts.get("branch", "") or "",
-                    git_facts.get("is_detached", False),
-                    dc.get("modified", 0),
-                    dc.get("staged", 0),
-                    dc.get("untracked", 0),
-                    dc.get("deleted", 0),
-                    dc.get("conflicted", 0),
-                    git_facts.get("tracked_file_count", 0),
-                    len(git_facts.get("remotes", [])),
-                    git_facts.get("is_github_backed", False),
-                    _parse_timestamptz(latest.get("observed_at", "")),
-                    latest.get("observation_id", ""),
+                    "",
+                    getattr(summary, "latest_head_sha", "") or "",
+                    getattr(summary, "latest_branch", "") or "",
+                    getattr(summary, "is_detached", False),
+                    getattr(summary, "dirty_modified", 0),
+                    0,
+                    getattr(summary, "dirty_untracked", 0),
+                    0,
+                    0,
+                    getattr(summary, "tracked_file_count", 0),
+                    getattr(summary, "remote_count", 0),
+                    getattr(summary, "is_github_backed", False),
+                    _parse_timestamptz(
+                        getattr(summary, "latest_observation_at", "")
+                        or getattr(summary, "registered_at", "")
+                    ),
+                    f"{rh}:summary",
                     now,
                 )
                 cur.execute(query, row)
@@ -447,9 +410,9 @@ class RepositoryEstateMaterializer:
         return count
 
     def _insert_observation_changes(
-        self, schema: str, valid_obs: list[dict], now: datetime
+        self, schema: str, recent_changes: list[Any], now: datetime
     ) -> int:
-        """Compute and insert observation changes between consecutive observations."""
+        """Insert observation changes from projection recent_changes."""
         query = psql.SQL(
             "INSERT INTO {}.{} "
             "(change_id, repository_hash, prior_observation_digest, "
@@ -462,50 +425,32 @@ class RepositoryEstateMaterializer:
             psql.Identifier(schema), psql.Identifier("repository_observation_changes")
         )
 
-        # Group observations by repository_hash, index by observation_id
-        obs_by_repo: dict[str, list[dict]] = {}
-        for payload in valid_obs:
-            if payload.get("_corrupt"):
-                continue
-            rh = payload.get("repository_hash", "")
-            if not rh:
-                continue
-            obs_by_repo.setdefault(rh, []).append(payload)
-
         count = 0
         with self.store.conn.cursor() as cur:
-            for _rh, obs_list in obs_by_repo.items():
-                obs_list.sort(key=lambda o: o.get("observed_at", ""))
-                for i in range(1, len(obs_list)):
-                    prev = obs_list[i - 1]
-                    curr = obs_list[i]
-                    change_kinds = _detect_change_kinds(prev, curr)
-                    if not change_kinds:
-                        continue
+            for change in recent_changes:
+                from_obs = getattr(change, "from_observation_id", "")
+                to_obs = getattr(change, "to_observation_id", "")
+                change_id = _compute_change_id(from_obs, to_obs)
+                change_kinds = getattr(change, "change_kinds", [])
+                provenance = getattr(change, "provenance", "derived_projection")
 
-                    prev_id = prev.get("observation_id", "")
-                    curr_id = curr.get("observation_id", "")
-                    change_id = _compute_change_id(prev_id, curr_id)
-                    prev_gf = prev.get("git_facts", {})
-                    curr_gf = curr.get("git_facts", {})
-
-                    row = (
-                        change_id,
-                        curr.get("repository_hash", ""),
-                        prev.get("observation_digest", ""),
-                        curr.get("observation_digest", ""),
-                        _parse_timestamptz(curr.get("observed_at", "")),
-                        change_kinds,
-                        prev_gf.get("head_sha", "") or "",
-                        curr_gf.get("head_sha", "") or "",
-                        prev_gf.get("branch", "") or "",
-                        curr_gf.get("branch", "") or "",
-                        len(change_kinds),
-                        "derived_projection",
-                        now,
-                    )
-                    cur.execute(query, row)
-                    count += cur.rowcount
+                row = (
+                    change_id,
+                    getattr(change, "repository_hash", ""),
+                    from_obs,
+                    to_obs,
+                    _parse_timestamptz(getattr(change, "detected_at", "")),
+                    [str(k) for k in change_kinds],
+                    "",
+                    "",
+                    "",
+                    "",
+                    len(change_kinds),
+                    str(provenance),
+                    now,
+                )
+                cur.execute(query, row)
+                count += cur.rowcount
         return count
 
     # ── Build receipt ──────────────────────────────────────────────────
@@ -514,17 +459,33 @@ class RepositoryEstateMaterializer:
         self,
         schema: str,
         *,
-        source_registration_count: int,
-        source_observation_count: int,
-        repositories_built: int,
-        observations_built: int,
-        workspace_instances_built: int,
-        changes_built: int,
-        corrupt_registration_count: int,
-        corrupt_observation_count: int,
+        source_counts: tuple[int, int, int, int],
+        built_counts: tuple[int, int, int, int],
+        corrupt_counts: tuple[int, int],
+        source_evidence_digest: str,
         now: datetime,
     ) -> dict[str, Any]:
-        """Insert a repository_estate_builds row and return the receipt dict."""
+        """Insert a repository_estate_builds row and return the receipt dict.
+
+        source_counts: (source_registration_count, source_observation_count,
+                         corrupt_registration_count, corrupt_observation_count)
+        built_counts: (repositories_built, observations_built,
+                        workspace_instances_built, changes_built)
+        corrupt_counts: (corrupt_registration_count, corrupt_observation_count)
+        """
+        (
+            source_registration_count,
+            source_observation_count,
+            corrupt_registration_count,
+            corrupt_observation_count,
+        ) = source_counts
+        (
+            repositories_built,
+            observations_built,
+            workspace_instances_built,
+            changes_built,
+        ) = built_counts
+
         receipt_id = compute_receipt_id(
             "materialize_repo_estate", "repository_estate", now
         )
@@ -551,7 +512,7 @@ class RepositoryEstateMaterializer:
                     corrupt_registration_count,
                     corrupt_observation_count,
                     now,
-                    "",
+                    source_evidence_digest,
                     False,
                 ),
             )
@@ -634,6 +595,17 @@ def _classify_workspace_kind(
     ):
         return "primary_checkout"
     return "other"
+
+
+def _classify_workspace_kind_from_summary(
+    repository_hash: str, workspace_root_digest: str
+) -> str:
+    """Classify workspace kind from summary data only (no git_facts dict).
+
+    When git_facts are unavailable (projection-only materialization),
+    default to primary_checkout.
+    """
+    return "primary_checkout"
 
 
 def _detect_change_kinds(prev: dict, curr: dict) -> list[str]:

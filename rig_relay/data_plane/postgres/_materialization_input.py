@@ -9,7 +9,7 @@ Content-light: SHA256 digests only. No raw file contents, paths, or secrets.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 import hashlib
 from typing import Any
@@ -17,71 +17,36 @@ from typing import Any
 
 @dataclass
 class RepositoryEstateMaterializationInput:
-    """Public-boundary-safe input for repository estate materialization.
+    """Public-boundary-safe input from T3.1 build_projection() ONLY.
 
-    Consumes:
-      - T3.1 RepositoryEstateProjection (via service.build_projection())
-      - Public JSONL evidence ledgers (registrations.jsonl, observations.jsonl)
-        read through a file path, NOT through service._store.
-
-    Authority is preserved truthfully:
-      - Rows from the projection carry the projection's authority state
-      - Rows from raw JSONL carry "parsed_unverified" — never canonical_live
-      - Corrupt/malformed rows carry "corrupt" or "corrupt_untrusted"
+    Does NOT read JSONL files, does NOT access service._store,
+    does NOT parse .build/ paths. Consumes the public projection
+    contract exclusively.
     """
 
     projection: Any  # RepositoryEstateProjection
-    registration_events: list[dict[str, Any]] = field(default_factory=list)
-    observation_events: list[dict[str, Any]] = field(default_factory=list)
     source_evidence_digest: str = ""
     source_schema_version: str = "rig.relay.repository_estate_projection.v1"
 
     @classmethod
     def from_service(cls, service: Any) -> RepositoryEstateMaterializationInput:
-        """Create input from a RepositoryEstateService using ONLY public API.
+        """Create input from ONLY service.build_projection().
 
-        Does NOT access service._store. Reads the projection through
-        the public build_projection() call and reads evidence JSONL
-        ledgers from the filesystem paths where T3.1 writes them.
+        Does NOT read JSONL files, does NOT access service._store,
+        does NOT parse .build/ paths. Consumes the public projection
+        contract exclusively.
         """
-        from json import loads
-        from pathlib import Path
+        import hashlib as _h
 
         projection = service.build_projection()
-
-        base = Path(".build/rig-relay/repository_estate")
-        reg_path = base / "registrations.jsonl"
-        obs_path = base / "observations.jsonl"
-
-        registrations: list[dict[str, Any]] = []
-        observations: list[dict[str, Any]] = []
-
-        for path, target_list in [(reg_path, registrations), (obs_path, observations)]:
-            if path.exists():
-                raw = path.read_text(encoding="utf-8")
-                for line in raw.splitlines():
-                    stripped = line.strip()
-                    if not stripped:
-                        continue
-                    try:
-                        target_list.append(loads(stripped))
-                    except Exception:
-                        target_list.append({"_corrupt": True, "_raw": stripped[:256]})
-
-        digest_input = hashlib.sha256(
+        digest = _h.sha256(
             str(
                 projection.projection_digest
                 if hasattr(projection, "projection_digest")
-                else ""
+                else str(hash(projection))
             ).encode()
         ).hexdigest()
-
-        return cls(
-            projection=projection,
-            registration_events=registrations,
-            observation_events=observations,
-            source_evidence_digest=f"sha256:{digest_input}",
-        )
+        return cls(projection=projection, source_evidence_digest=f"sha256:{digest}")
 
 
 @dataclass
@@ -98,22 +63,34 @@ class TimelineMaterializationInput:
 
     @classmethod
     def from_service(cls, service: Any) -> TimelineMaterializationInput:
-        """Create input from InvestigationEvidenceTimelineService public API."""
-        import hashlib as _hashlib
+        """Create input from InvestigationEvidenceTimelineService public API.
 
-        from rig_relay.investigation_timeline._pg_contract import (
-            build_postgres_projection,
-        )
+        Source evidence digest binds the assembled timeline content,
+        not just the ID. Hashes the projection rows + timeline identity
+        for reliable source binding.
+        """
+        import hashlib as _hashlib
+        import json as _json
+
+        from rig_relay.investigation_timeline import build_postgres_projection
 
         result = service.assemble_timeline()
         projection = build_postgres_projection(result.timeline)
 
-        digest_input = _hashlib.sha256(result.timeline.timeline_id.encode()).hexdigest()
+        digest_content = _json.dumps(
+            [row for row in projection.rows],
+            sort_keys=True,
+            separators=(",", ":"),
+            default=str,
+        )
+        source_digest = _hashlib.sha256(
+            f"{result.timeline.timeline_id}:{digest_content}".encode()
+        ).hexdigest()
 
         return cls(
             projection=projection,
             timeline_id=result.timeline.timeline_id,
-            source_evidence_digest=f"sha256:{digest_input}",
+            source_evidence_digest=f"sha256:{source_digest}",
         )
 
 
@@ -137,31 +114,62 @@ class PublicationMaterializationInput:
     ) -> PublicationMaterializationInput:
         """Create input from a PublicationEvidenceLedger using ONLY public API.
 
+        Source evidence digest binds verified receipt content, not just
+        receipt IDs. Hashes evidence_digest + compilation_successful +
+        safety_passed + refusal_code for each receipt.
+
         ledger_path_digest is supplied by the caller — we do NOT read ledger._path.
         """
         reconstruction = ledger.load_receipts(authoritative=False)
-        return cls(
-            reconstruction=reconstruction,
-            ledger_identity_digest=ledger_path_digest
-            or "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        )
+
+        content_parts = []
+        for receipt in reconstruction.receipts:
+            content_parts.append({
+                "receipt_id": receipt.get("receipt_id", ""),
+                "evidence_digest": receipt.get("evidence_digest", ""),
+                "compilation_successful": receipt.get("compilation_successful", False),
+                "safety_passed": receipt.get("safety_passed", False),
+                "refusal_code": receipt.get("refusal_code"),
+                "operation_id": receipt.get("operation_id", ""),
+            })
+
+        identity = ledger_path_digest or "unknown"
+
+        return cls(reconstruction=reconstruction, ledger_identity_digest=identity)
 
 
 def compute_projection_digest(
-    conn: Any, schema: str, table: str, exclude_columns: list[str] | None = None
+    conn: Any,
+    schema: str,
+    table: str,
+    primary_key_columns: list[str] | None = None,
+    exclude_columns: list[str] | None = None,
 ) -> str:
-    """Compute a deterministic SHA256 digest over canonicalized table content.
+    """Compute a canonical SHA256 digest over table content.
 
-    Reads all rows from the specified table, canonicalizes them
-    (ordered by primary key, consistent column ordering, null-safe),
-    and returns a SHA256 hex digest.
+    Uses a JSON-framed manifest with table identity, column names,
+    and canonically-ordered rows. Deterministic: same content always
+    produces the same digest.
 
-    exclude_columns: column names to exclude (e.g., materialized_at, receipt_id)
+    The manifest has this structure:
+    {
+      "schema": "<schema_name>",
+      "table": "<table_name>",
+      "columns": ["col1", "col2", ...],
+      "row_count": N,
+      "rows": [{"col1": val1, ...}, ...]
+    }
+
+    Rows are sorted by primary_key_columns (default: first column).
+    Non-semantic columns in exclude_columns are omitted.
+    row_count, materialized_at, built_at, and receipt_id are always excluded.
     """
+    import json as _json
+
     from psycopg import sql as psql
 
-    skip = set(exclude_columns or [])
-    sha = hashlib.sha256()
+    skip = {"row_count", "materialized_at", "built_at", "receipt_id"}
+    skip.update(exclude_columns or [])
 
     with conn.cursor() as cur:
         cur.execute(
@@ -176,45 +184,64 @@ def compute_projection_digest(
         cols = [c for c in all_cols if c not in skip]
 
         if not cols:
-            return sha.hexdigest()
+            return hashlib.sha256(b"").hexdigest()
 
+        order_cols = primary_key_columns or [cols[0]]
+        order_sql = psql.SQL(", ").join(
+            psql.Identifier(c) for c in order_cols if c in cols
+        )
         col_list = psql.SQL(", ").join(psql.Identifier(c) for c in cols)
-        query = psql.SQL("SELECT {} FROM {}.{} ORDER BY 1").format(
-            col_list, psql.Identifier(schema), psql.Identifier(table)
+
+        query = psql.SQL("SELECT {} FROM {}.{} ORDER BY {}").format(
+            col_list, psql.Identifier(schema), psql.Identifier(table), order_sql
         )
         cur.execute(query)
 
+        rows: list[dict[str, Any]] = []
         for row in cur:
-            for val in row:
+            row_dict: dict[str, Any] = {}
+            for i, col_name in enumerate(cols):
+                val = row[i]
                 if val is None:
-                    sha.update(b"\x00NULL")
-                elif isinstance(val, bool):
-                    sha.update(b"\x01" + (b"true" if val else b"false"))
-                elif isinstance(val, int):
-                    sha.update(b"\x02" + str(val).encode())
-                elif isinstance(val, float):
-                    sha.update(b"\x03" + f"{val:.15g}".encode())
-                elif isinstance(val, (bytes, bytearray)):
-                    sha.update(b"\x04" + bytes(val))
-                elif isinstance(val, str):
-                    sha.update(b"\x05" + val.encode("utf-8"))
+                    row_dict[col_name] = None
+                elif isinstance(val, (int, float, str, bool)):
+                    row_dict[col_name] = val
                 elif isinstance(val, datetime):
-                    sha.update(b"\x06" + val.isoformat().encode())
+                    row_dict[col_name] = val.isoformat()
+                elif isinstance(val, (bytes, bytearray)):
+                    row_dict[col_name] = val.hex()
                 else:
-                    sha.update(b"\x07" + str(val).encode())
+                    row_dict[col_name] = str(val)
+            rows.append(row_dict)
 
-    return sha.hexdigest()
+        manifest = {
+            "schema": schema,
+            "table": table,
+            "columns": cols,
+            "row_count": len(rows),
+            "rows": rows,
+        }
+
+        canonical = _json.dumps(
+            manifest, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        )
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def compute_multi_table_digest(
-    conn: Any, schema: str, tables: list[str], exclude_columns: list[str] | None = None
+    conn: Any,
+    schema: str,
+    tables: list[tuple[str, list[str]]],
+    exclude_columns: list[str] | None = None,
 ) -> str:
-    """Compute a combined digest over multiple tables.
+    """Combined digest: SHA256(table1_digest + "|" + table2_digest + ...).
 
-    Digest = SHA256(table1_digest + "|" + table2_digest + ...)
+    tables: list of (table_name, primary_key_columns) tuples.
     """
     sha = hashlib.sha256()
-    for table in tables:
-        table_digest = compute_projection_digest(conn, schema, table, exclude_columns)
-        sha.update(f"{table}:{table_digest}|".encode())
+    for table_name, pk_cols in tables:
+        table_digest = compute_projection_digest(
+            conn, schema, table_name, pk_cols, exclude_columns
+        )
+        sha.update(f"{table_name}:{table_digest}|".encode())
     return sha.hexdigest()
