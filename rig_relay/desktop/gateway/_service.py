@@ -213,8 +213,16 @@ class DeveloperStudioGatewayService:
         )
         if violations:
             logger.error(
-                "gateway: content-light violations in projection: %s", violations
+                "gateway: content-light violations in projection — refusing: %s",
+                violations,
             )
+            # Fail closed: return a minimal projection with content_light=False.
+            # The content_light flag communicates that the projection failed
+            # enforcement — consumers must treat this as degraded/untrustworthy.
+            degraded = DeveloperStudioProjection(projection_id=pid, content_light=False)
+            degraded.projection_digest = degraded.compute_digest()
+            self._last_projection = degraded
+            return degraded
 
         self._last_projection = projection
         return projection
@@ -643,43 +651,20 @@ class DeveloperStudioGatewayService:
         branch: str = "",
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
-        l0 = self._get_l0_service()
         try:
-            from pathlib import Path as _Path
-
-            from rig_relay.context_engine.fixtures import (
-                IntakeFixture,
-                InvestigationEvidenceFixture,
-            )
-
-            intake = IntakeFixture(
-                project_name=project_name,
-                repository_root=_Path(repository_root)
-                if repository_root
-                else _Path("."),
-                head_sha=head_sha,
-                branch=branch,
-            )
-            investigation = InvestigationEvidenceFixture()
-            understanding = l0.assemble(intake, investigation)
-            profile_candidate = l0.assemble_profile_candidate(understanding)
-            context_packet = l0.assemble_context_packet(understanding)
-            gridline = l0.assemble_gridline_projection(understanding, context_packet)
-
-            result = _succeeded(
-                "assemble_project_profile",
-                {
-                    "project_name": project_name,
-                    "study_status": gridline.study_status.value,
-                    "facts_discovered": gridline.facts_discovered,
-                    "languages_detected": gridline.languages_detected,
-                    "profile_candidate_digest": profile_candidate.compute_digest(),
-                    "context_packet_digest": context_packet.compute_digest(),
-                    "context_packet_ready": gridline.context_packet_ready,
-                    "draft_narrative_count": gridline.draft_narrative_count,
-                    "k0_investigation_boundary": "fixture",
-                },
-            )
+            # L0's assemble() requires IntakeFixture and InvestigationEvidenceFixture
+            # objects. J0 intake and K0 investigation boundaries are both
+            # fixture-deferred — no non-fixture intake path exists yet.
+            result = {
+                "status": "refused",
+                "intent_name": "assemble_project_profile",
+                "error_kind": "fixture_deferred",
+                "error_message": (
+                    "L0 project profile assembly requires J0 intake boundary "
+                    "(fixture-deferred) and K0 investigation boundary "
+                    "(fixture-deferred)."
+                ),
+            }
             self._record_idempotency(idempotency_key, result)
             return result
         except Exception as exc:
@@ -696,37 +681,20 @@ class DeveloperStudioGatewayService:
         branch: str = "",
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
-        l0 = self._get_l0_service()
         try:
-            from pathlib import Path as _Path
-
-            from rig_relay.context_engine.fixtures import (
-                IntakeFixture,
-                InvestigationEvidenceFixture,
-            )
-
-            intake = IntakeFixture(
-                project_name=project_name,
-                repository_root=_Path(repository_root)
-                if repository_root
-                else _Path("."),
-                head_sha=head_sha,
-                branch=branch,
-            )
-            investigation = InvestigationEvidenceFixture()
-            understanding = l0.assemble(intake, investigation)
-            context_packet = l0.assemble_context_packet(understanding)
-
-            result = _succeeded(
-                "assemble_context_packet",
-                {
-                    "packet_id": context_packet.packet_id,
-                    "packet_digest": context_packet.compute_digest(),
-                    "project_identity_hash": context_packet.project_identity_hash,
-                    "tokens_remaining": context_packet.token_budget.tokens_remaining,
-                    "public_safe": True,
-                },
-            )
+            # L0's assemble() requires IntakeFixture and InvestigationEvidenceFixture
+            # objects. J0 intake and K0 investigation boundaries are both
+            # fixture-deferred — no non-fixture intake path exists yet.
+            result = {
+                "status": "refused",
+                "intent_name": "assemble_context_packet",
+                "error_kind": "fixture_deferred",
+                "error_message": (
+                    "L0 context packet assembly requires J0 intake boundary "
+                    "(fixture-deferred) and K0 investigation boundary "
+                    "(fixture-deferred)."
+                ),
+            }
             self._record_idempotency(idempotency_key, result)
             return result
         except Exception as exc:
@@ -1006,59 +974,20 @@ class DeveloperStudioGatewayService:
             self._record_idempotency(idempotency_key, result)
             return result
 
-        l0 = self._get_l0_service()
         try:
-            from rig_relay.context_engine.fixtures import (
-                IntakeFixture,
-                InvestigationEvidenceFixture,
-            )
-
-            intake = IntakeFixture(
-                project_name=project_name,
-                repository_root=Path(repository_root) if repository_root else Path("."),
-            )
-            investigation = InvestigationEvidenceFixture()
-            understanding = l0.assemble(intake, investigation)
-            profile_candidate = l0.assemble_profile_candidate(understanding)
-
-            preview_result = pub.compile_preview(
-                profile_candidate,
-                publication_policy=publication_policy,
-                repo_owner=repo_owner,
-                repo_name=repo_name,
-            )
-
-            receipt = preview_result.receipt
-            if receipt is not None:
-                receipt_summary = {
-                    "receipt_id": receipt.receipt_id,
-                    "compiled_at": receipt.compiled_at,
-                    "compilation_successful": receipt.compilation_successful,
-                    "profile_candidate_digest": receipt.profile_candidate_digest,
-                    "safety_passed": receipt.safety_passed,
-                    "preview_only": receipt.preview_only,
-                    "deployment_ready": receipt.deployment_ready,
-                    "evidence_digest": receipt.evidence_digest,
-                }
-            else:
-                receipt_summary = {}
-
-            refused = preview_result.refused.value if preview_result.refused else None
-
-            result = _succeeded(
-                "compile_preview",
-                {
-                    "project_name": project_name,
-                    "operation_id": getattr(preview_result, "operation_id", ""),
-                    "compilation_successful": (
-                        preview_result.compiler_result.compilation_successful
-                        if preview_result.compiler_result
-                        else False
-                    ),
-                    "refused": refused,
-                    "receipt": receipt_summary,
-                },
-            )
+            # L0's assemble() requires IntakeFixture and InvestigationEvidenceFixture
+            # objects. J0 intake and K0 investigation boundaries are both
+            # fixture-deferred — no non-fixture intake path exists yet.
+            result = {
+                "status": "refused",
+                "intent_name": "compile_preview",
+                "error_kind": "fixture_deferred",
+                "error_message": (
+                    "L0 project profile assembly requires J0 intake boundary "
+                    "(fixture-deferred) and K0 investigation boundary "
+                    "(fixture-deferred)."
+                ),
+            }
             self._record_idempotency(idempotency_key, result)
             return result
         except Exception as exc:
@@ -1086,7 +1015,9 @@ class DeveloperStudioGatewayService:
             self._record_idempotency(idempotency_key, result)
             return result
         try:
-            ledger = pub._ledger
+            from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
+
+            ledger = PublicationEvidenceLedger()
             event_count = ledger.count_events() if ledger else 0
             reconstruction = (
                 ledger.load_receipts(authoritative=False) if ledger else None

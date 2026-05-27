@@ -314,7 +314,9 @@ def PUBLISH_PREVIEW_SURFACE_PROJECTION_BUILDER(
         )
 
     try:
-        ledger = pub._ledger
+        from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
+
+        ledger = PublicationEvidenceLedger()
         event_count = ledger.count_events() if ledger else 0
         reconstruction = ledger.load_receipts(authoritative=False) if ledger else None
         if reconstruction:
@@ -341,19 +343,22 @@ def PUBLISH_PREVIEW_SURFACE_PROJECTION_BUILDER(
         except Exception:
             pass
 
-    if valid_rows > 0 or event_count > 0:
-        if corruption_detected:
-            authority = "canonical_degraded"
-            trust = TrustState.TRUSTED_LIVE
-            reason = "Publication ledger has events but contains corruption"
-        else:
-            authority = "canonical_live"
-            trust = TrustState.TRUSTED_LIVE
-            reason = f"Publication ledger has {event_count} events, {valid_rows} valid"
+    if corruption_detected:
+        authority = "corrupt"
+        trust = TrustState.CORRUPT
+        reason = "Publication evidence ledger contains corrupt rows"
+    elif valid_rows > 0:
+        authority = "canonical_live"
+        trust = TrustState.TRUSTED_LIVE
+        reason = f"Publication ledger has {event_count} events, {valid_rows} valid"
     elif publishable_count > 0:
         authority = "canonical_degraded"
         trust = TrustState.TRUSTED_LIVE
         reason = "Publishable repositories available but no preview events recorded"
+    elif event_count == 0 and publishable_count == 0:
+        authority = "missing"
+        trust = TrustState.DEFERRED
+        reason = "No publication ledger events and no publishable repositories"
     else:
         authority = "missing"
         trust = TrustState.DEFERRED
@@ -454,12 +459,40 @@ def TIMELINE_SURFACE_PROJECTION_BUILDER(
         )
 
     dg = getattr(timeline, "degradation_summary", None)
+    assembly_errors = result.errors if hasattr(result, "errors") else []
+
+    corrupt_count = getattr(dg, "corrupt_count", 0) if dg else 0
+    missing_count = getattr(dg, "missing_count", 0) if dg else 0
+    contradictory_count = getattr(dg, "contradictory_count", 0) if dg else 0
+    stale_count = getattr(dg, "stale_count", 0) if dg else 0
+    unsupported_count = getattr(dg, "unsupported_count", 0) if dg else 0
+
+    if assembly_errors or corrupt_count > 0:
+        authority = "corrupt"
+        trust = TrustState.CORRUPT
+        degraded_reason = "Timeline contains corrupt evidence"
+    elif missing_count > 0 or stale_count > 0:
+        authority = "canonical_degraded"
+        trust = TrustState.DEFERRED
+        degraded_reason = "Timeline has missing or stale evidence"
+    elif contradictory_count > 0:
+        authority = "canonical_degraded"
+        trust = TrustState.REFUSED
+        degraded_reason = "Timeline contains contradictory evidence"
+    elif unsupported_count > 0:
+        authority = "canonical_degraded"
+        trust = TrustState.TRUSTED_LIVE
+        degraded_reason = "Timeline has unsupported evidence domains"
+    else:
+        authority = "canonical_live"
+        trust = TrustState.TRUSTED_LIVE
+        degraded_reason = ""
 
     return TimelineSurfaceProjection(
         available=True,
-        authority_state="canonical_live",
-        trust_state=TrustState.TRUSTED_LIVE,
-        degraded_reason="",
+        authority_state=authority,
+        trust_state=trust,
+        degraded_reason=degraded_reason,
         timeline_id=getattr(timeline, "timeline_id", ""),
         assembled_at=getattr(timeline, "assembled_at", ""),
         investigation_id=getattr(timeline, "investigation_id", None),
@@ -502,10 +535,10 @@ def INFERENCE_STUDIO_SURFACE_PROJECTION_BUILDER(
             authority_state="missing",
             trust_state=TrustState.DEFERRED,
             degraded_reason="M0 inference service cannot be loaded",
-            omlx_strategy="post_v1",
+            omlx_strategy="v1_pending_x2_integration",
             omlx_available=False,
             omlx_disclosure=(
-                "OMLX Rigged runtime expansion is pending X2 integration milestone. "
+                "OMLX Rigged runtime integration is pending X2 v1 delivery. "
                 "Local inference currently supports Ollama-compatible endpoints only."
             ),
         )
@@ -567,10 +600,10 @@ def INFERENCE_STUDIO_SURFACE_PROJECTION_BUILDER(
         runtime_configured=runtime_configured,
         runtime_kind=runtime_kind,
         platform_class=platform_class,
-        omlx_strategy="post_v1",
+        omlx_strategy="v1_pending_x2_integration",
         omlx_available=False,
         omlx_disclosure=(
-            "OMLX Rigged runtime expansion is pending X2 integration milestone. "
+            "OMLX Rigged runtime integration is pending X2 v1 delivery. "
             "Local inference currently supports Ollama-compatible endpoints only."
         ),
         task_suitability_count=4,

@@ -261,10 +261,10 @@ class InferenceStudioSurfaceProjection(BaseModel):
     runtime_configured: bool = False
     runtime_kind: str = "unknown"
     platform_class: str = "unknown"
-    omlx_strategy: str = "post_v1"
+    omlx_strategy: str = "v1_pending_x2_integration"
     omlx_available: bool = False
     omlx_disclosure: str = (
-        "OMLX Rigged runtime expansion is pending X2 integration milestone. "
+        "OMLX Rigged runtime integration is pending X2 v1 delivery. "
         "Local inference currently supports Ollama-compatible endpoints only."
     )
     task_suitability_count: int = 0

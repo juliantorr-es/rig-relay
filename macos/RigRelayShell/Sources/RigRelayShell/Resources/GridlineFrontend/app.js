@@ -226,6 +226,52 @@ function renderConnectSurface(fix) {
   }
 }
 
+// ── DOM-safe rendering helpers for X0 surface functions ──
+
+function _clearEl(el) {
+  if (!el) return;
+  while (el.firstChild) el.firstChild.remove();
+}
+
+function _buildEvidenceTag(status) {
+  var span = document.createElement('span');
+  span.className = 'evidence-tag';
+  switch (status) {
+    case 'proven': span.classList.add('proven'); break;
+    case 'claimed': span.classList.add('claimed'); break;
+    case 'planned': span.classList.add('planned'); break;
+    case 'narrative': span.classList.add('narrative'); break;
+    case 'refused': span.classList.add('narrative'); break;
+    default: span.classList.add('narrative');
+  }
+  span.textContent = status;
+  return span;
+}
+
+function _makeEl(tag, cls, text) {
+  var el = document.createElement(tag);
+  if (cls) el.className = cls;
+  if (text !== undefined && text !== null) el.textContent = String(text);
+  return el;
+}
+
+function _strong(text) {
+  var s = document.createElement('strong');
+  s.textContent = String(text);
+  return s;
+}
+
+function _tn(text) {
+  return document.createTextNode(String(text));
+}
+
+function _row(label, value, cls) {
+  var tr = document.createElement('tr');
+  tr.appendChild(_makeEl('td', 'k', label));
+  tr.appendChild(_makeEl('td', cls || '', value));
+  return tr;
+}
+
 // ── Lane X0 Phase 2: Connect surface state renderer ──
 function _renderConnectFromState(state) {
   var cbEl = document.getElementById('cb-status-chip');
@@ -257,25 +303,42 @@ function _renderConnectFromState(state) {
 
   var raEl = document.getElementById('repo-access-status');
   if (raEl) {
+    _clearEl(raEl);
     if (state.status === 'unavailable' || state.status === 'deferred') {
-      raEl.innerHTML = renderEvidenceTag('planned') + ' Repository access: <strong>unavailable</strong>';
+      raEl.appendChild(_buildEvidenceTag('planned'));
+      raEl.appendChild(_tn(' Repository access: '));
+      raEl.appendChild(_strong('unavailable'));
     } else if (state.status === 'connected') {
-      raEl.innerHTML = renderEvidenceTag('proven') + ' Repository access: <strong>granted</strong>' +
-        (state.token_available ? ' \u00B7 Token present' : ' \u00B7 No token') +
-        ' \u00B7 ' + escapeHtml(String(state.accessible_repository_count || 0)) + ' repositories accessible';
+      raEl.appendChild(_buildEvidenceTag('proven'));
+      raEl.appendChild(_tn(' Repository access: '));
+      raEl.appendChild(_strong('granted'));
+      raEl.appendChild(_tn(state.token_available ? ' · Token present' : ' · No token'));
+      raEl.appendChild(_tn(' · ' + String(state.accessible_repository_count || 0) + ' repositories accessible'));
     } else {
-      raEl.innerHTML = renderEvidenceTag('claimed') + ' Repository access: <strong>' + escapeHtml(state.status) + '</strong>';
+      raEl.appendChild(_buildEvidenceTag('claimed'));
+      raEl.appendChild(_tn(' Repository access: '));
+      raEl.appendChild(_strong(state.status));
     }
   }
 
   var paEl = document.getElementById('publication-approval-status');
   if (paEl) {
+    _clearEl(paEl);
     if (state.status === 'unavailable') {
-      paEl.innerHTML = renderEvidenceTag('planned') + ' Publication approval: <strong>unavailable</strong>';
+      paEl.appendChild(_buildEvidenceTag('planned'));
+      paEl.appendChild(_tn(' Publication approval: '));
+      paEl.appendChild(_strong('unavailable'));
     } else if (state.status === 'connected') {
-      paEl.innerHTML = renderEvidenceTag('proven') + ' Publication approval: <strong>granted</strong>';
+      paEl.appendChild(_buildEvidenceTag('proven'));
+      paEl.appendChild(_tn(' Publication approval: '));
+      paEl.appendChild(_strong('granted'));
     } else {
-      paEl.innerHTML = renderEvidenceTag('planned') + ' Publication approval: <strong>deferred</strong><br><span class="status-detail">Live integration deferred to O0 bridge aggregation milestone</span>';
+      paEl.appendChild(_buildEvidenceTag('planned'));
+      paEl.appendChild(_tn(' Publication approval: '));
+      paEl.appendChild(_strong('deferred'));
+      paEl.appendChild(_makeEl('br'));
+      var deferredDetail = _makeEl('span', 'status-detail', 'Live integration deferred to O0 bridge aggregation milestone');
+      paEl.appendChild(deferredDetail);
     }
   }
 
@@ -291,22 +354,24 @@ function _renderConnectFromState(state) {
       var providerSection = document.createElement('div');
       providerSection.id = 'connect-provider-cache';
       providerSection.className = 'connect-section';
-      var providerHtml = '<h3>Provider Cache Disclosure</h3>';
-      providerHtml += '<div class="status-detail">' + escapeHtml(String(state.providers_configured || providers.length)) + ' of ' + escapeHtml(String(state.providers_total || 0)) + ' providers configured</div>';
-      providerHtml += '<table class="kv" style="margin-top:8px">';
+      providerSection.appendChild(_makeEl('h3', '', 'Provider Cache Disclosure'));
+      providerSection.appendChild(_makeEl('div', 'status-detail', String(state.providers_configured || providers.length) + ' of ' + String(state.providers_total || 0) + ' providers configured'));
+      var table = _makeEl('table', 'kv');
+      table.style.marginTop = '8px';
       for (var p = 0; p < providers.length; p++) {
         var prov = providers[p];
         var cacheMode = prov.cache_mode || 'unknown';
         var retention = prov.retention_class || 'unknown';
         var ctxDisp = prov.confidential_context_disposition || 'none';
-        providerHtml += '<tr>' +
-          '<td class="k">' + escapeHtml(prov.display_name || prov.provider_name || 'unknown') + '</td>' +
-          '<td>' + escapeHtml(cacheMode) + ' \u00B7 ' + escapeHtml(retention) + '</td>' +
-          '<td style="font-size:0.7rem;color:var(--text-muted)">' + escapeHtml(ctxDisp) + '</td>' +
-          '</tr>';
+        var tr = document.createElement('tr');
+        tr.appendChild(_makeEl('td', 'k', prov.display_name || prov.provider_name || 'unknown'));
+        tr.appendChild(_makeEl('td', '', cacheMode + ' · ' + retention));
+        var cellDetail = _makeEl('td', '', ctxDisp);
+        cellDetail.style.cssText = 'font-size:0.7rem;color:var(--text-muted)';
+        tr.appendChild(cellDetail);
+        table.appendChild(tr);
       }
-      providerHtml += '</table>';
-      providerSection.innerHTML = providerHtml;
+      providerSection.appendChild(table);
       connectCard.appendChild(providerSection);
     }
   }
@@ -362,40 +427,49 @@ function _renderRepoEstateFromState(state) {
   if (repoList) {
     var repos = state.repositories || [];
     if (repos.length === 0) {
+      _clearEl(repoList);
       if (state.status === 'unavailable') {
-        repoList.innerHTML = '<div class="status-detail">Repository service unavailable. No live bridge projection received.</div>';
+        repoList.appendChild(_makeEl('div', 'status-detail', 'Repository service unavailable. No live bridge projection received.'));
       } else if (state.status === 'deferred') {
-        repoList.innerHTML = '<div class="status-detail">Repository discovery deferred. Awaiting live workspace integration.</div>';
+        repoList.appendChild(_makeEl('div', 'status-detail', 'Repository discovery deferred. Awaiting live workspace integration.'));
       } else {
-        repoList.innerHTML = '<div class="status-detail">No registered repositories.</div>';
+        repoList.appendChild(_makeEl('div', 'status-detail', 'No registered repositories.'));
       }
     } else {
-      var html = '';
+      _clearEl(repoList);
       for (var i = 0; i < repos.length; i++) {
         var r = repos[i];
-        var statusTag = '';
         var repoStatus = r.status || r.import_state || 'unknown';
-        if (repoStatus === 'clean' || repoStatus === 'imported' || repoStatus === 'cloned') statusTag = renderEvidenceTag('proven');
-        else if (repoStatus === 'dirty') statusTag = renderEvidenceTag('claimed');
-        else if (repoStatus === 'failed' || repoStatus === 'inaccessible') statusTag = renderEvidenceTag('planned');
-        else statusTag = renderEvidenceTag('planned');
+        var evidenceStatus = 'planned';
+        if (repoStatus === 'clean' || repoStatus === 'imported' || repoStatus === 'cloned') evidenceStatus = 'proven';
+        else if (repoStatus === 'dirty') evidenceStatus = 'claimed';
+        else if (repoStatus === 'failed' || repoStatus === 'inaccessible') evidenceStatus = 'planned';
 
-        var statusBadge = '';
-        if (repoStatus === 'dirty') statusBadge = ' <span class="status-chip pending">dirty</span>';
-        else if (repoStatus === 'inaccessible') statusBadge = ' <span class="status-chip disconnected">inaccessible</span>';
-        else if (repoStatus === 'detached') statusBadge = ' <span class="status-chip disconnected">detached</span>';
-        else if (repoStatus === 'identity_mismatch') statusBadge = ' <span class="status-chip deferred">identity mismatch</span>';
-        else if (repoStatus === 'disappeared') statusBadge = ' <span class="status-chip disconnected">disappeared</span>';
-        else statusBadge = ' <span class="status-chip connected">clean</span>';
+        var statusChipClass = 'status-chip';
+        var statusChipLabel = 'clean';
+        if (repoStatus === 'dirty') { statusChipClass += ' pending'; statusChipLabel = 'dirty'; }
+        else if (repoStatus === 'inaccessible') { statusChipClass += ' disconnected'; statusChipLabel = 'inaccessible'; }
+        else if (repoStatus === 'detached') { statusChipClass += ' disconnected'; statusChipLabel = 'detached'; }
+        else if (repoStatus === 'identity_mismatch') { statusChipClass += ' deferred'; statusChipLabel = 'identity mismatch'; }
+        else if (repoStatus === 'disappeared') { statusChipClass += ' disconnected'; statusChipLabel = 'disappeared'; }
+        else { statusChipClass += ' connected'; }
 
-        html += '<div class="repo-card">' +
-          '<div class="repo-name">' + escapeHtml(r.name || r.display_name || '') + statusBadge + '</div>' +
-          '<div class="repo-meta">' + statusTag +
-          ' ' + escapeHtml(r.full_name || r.path || '') + ' \u00B7 ' + escapeHtml(r.default_branch || r.branch || '') +
-          (r.remote_origin ? ' \u00B7 ' + escapeHtml(r.remote_origin) : '') +
-          '</div></div>';
+        var card = _makeEl('div', 'repo-card');
+        var nameDiv = _makeEl('div', 'repo-name');
+        nameDiv.appendChild(_tn(r.name || r.display_name || ''));
+        var chip = _makeEl('span', statusChipClass, statusChipLabel);
+        nameDiv.appendChild(_tn(' '));
+        nameDiv.appendChild(chip);
+        card.appendChild(nameDiv);
+
+        var metaDiv = _makeEl('div', 'repo-meta');
+        metaDiv.appendChild(_buildEvidenceTag(evidenceStatus));
+        metaDiv.appendChild(_tn(' ' + (r.full_name || r.path || '') + ' · ' + (r.default_branch || r.branch || '')));
+        if (r.remote_origin) metaDiv.appendChild(_tn(' · ' + r.remote_origin));
+        card.appendChild(metaDiv);
+
+        repoList.appendChild(card);
       }
-      repoList.innerHTML = html;
     }
   }
 
@@ -408,11 +482,11 @@ function _renderRepoEstateFromState(state) {
     var dirtyCount = state.dirty_count || 0;
     var inaccessibleCount = state.inaccessible_count || 0;
     var totalObs = state.total_observations || 0;
-    intakeEl.innerHTML = '<span class="status-chip">Estate: ' + escapeHtml(String(totalReg)) + ' registered (' +
-      escapeHtml(String(localOnly)) + ' local, ' + escapeHtml(String(githubBacked)) + ' GitHub-backed)</span>' +
-      '<br><span class="status-detail">' + escapeHtml(String(dirtyCount)) + ' dirty, ' +
-      escapeHtml(String(inaccessibleCount)) + ' inaccessible \u00B7 ' +
-      escapeHtml(String(totalObs)) + ' observations</span>';
+    _clearEl(intakeEl);
+    var chip = _makeEl('span', 'status-chip', 'Estate: ' + String(totalReg) + ' registered (' + String(localOnly) + ' local, ' + String(githubBacked) + ' GitHub-backed)');
+    intakeEl.appendChild(chip);
+    intakeEl.appendChild(_makeEl('br'));
+    intakeEl.appendChild(_makeEl('span', 'status-detail', String(dirtyCount) + ' dirty, ' + String(inaccessibleCount) + ' inaccessible · ' + String(totalObs) + ' observations'));
   }
 
   // Corruption events
@@ -430,13 +504,15 @@ function _renderRepoEstateFromState(state) {
       var corrSection = document.createElement('div');
       corrSection.id = 'repo-corruption-status';
       corrSection.className = 'withheld-section';
-      corrSection.innerHTML = '<h3>Corruption Events</h3>' +
-        '<table class="kv">' +
-        '<tr><td class="k">Corrupt registrations</td><td class="warning">' + corrRegCount + '</td></tr>' +
-        '<tr><td class="k">Corrupt observations</td><td class="warning">' + corrObsCount + '</td></tr>' +
-        '<tr><td class="k">Corrupt chain links</td><td class="warning">' + corrChainLinks + '</td></tr>' +
-        '</table>' +
-        (corrEvents.length > 0 ? '<div class="status-detail">Events: ' + escapeHtml(corrEvents.slice(0, 5).join('; ')) + (corrEvents.length > 5 ? '...' : '') + '</div>' : '');
+      corrSection.appendChild(_makeEl('h3', '', 'Corruption Events'));
+      var korrTable = _makeEl('table', 'kv');
+      korrTable.appendChild(_row('Corrupt registrations', String(corrRegCount), 'warning'));
+      korrTable.appendChild(_row('Corrupt observations', String(corrObsCount), 'warning'));
+      korrTable.appendChild(_row('Corrupt chain links', String(corrChainLinks), 'warning'));
+      corrSection.appendChild(korrTable);
+      if (corrEvents.length > 0) {
+        corrSection.appendChild(_makeEl('div', 'status-detail', 'Events: ' + corrEvents.slice(0, 5).join('; ') + (corrEvents.length > 5 ? '...' : '')));
+      }
       corrSection.style.cssText = 'margin-top:16px;';
       repoContent.appendChild(corrSection);
     }
@@ -453,13 +529,11 @@ function _renderRepoEstateFromState(state) {
       var changesSection = document.createElement('div');
       changesSection.id = 'repo-recent-changes';
       changesSection.className = 'status-block';
-      changesSection.innerHTML = '<h3>Recent Changes</h3>';
-      var changesHtml = '';
+      changesSection.appendChild(_makeEl('h3', '', 'Recent Changes'));
       for (var c = 0; c < Math.min(recentChanges.length, 10); c++) {
         var ch = recentChanges[c];
-        changesHtml += '<div class="status-detail">' + escapeHtml(ch.repository_name || '') + ': ' + escapeHtml(ch.change_kind || '') + ' \u00B7 ' + escapeHtml(ch.observed_at || '') + '</div>';
+        changesSection.appendChild(_makeEl('div', 'status-detail', (ch.repository_name || '') + ': ' + (ch.change_kind || '') + ' · ' + (ch.observed_at || '')));
       }
-      changesSection.innerHTML += changesHtml;
       changesSection.style.cssText = 'margin-top:16px;';
       repoContent.appendChild(changesSection);
     }
@@ -543,24 +617,28 @@ function _renderStudioFromStateStudies(studies) {
   var usEl = document.getElementById('understanding-status');
   if (usEl && studies.length > 0) {
     var s = studies[0];
-    usEl.innerHTML = '<span class="status-line">Study status: <strong>' + escapeHtml(s.study_status || 'unknown') + '</strong></span>' +
-      '<br><span class="status-detail">' + (s.facts_discovered || 0) + ' facts (' + (s.facts_with_provenance || 0) + ' with provenance) \u00B7 ' +
-      (s.draft_narrative_count || 0) + ' drafts (' + (s.draft_narrative_awaiting_approval || 0) + ' awaiting approval)</span>';
+    _clearEl(usEl);
+    var line = _makeEl('span', 'status-line');
+    line.appendChild(_tn('Study status: '));
+    line.appendChild(_strong(s.study_status || 'unknown'));
+    usEl.appendChild(line);
+    usEl.appendChild(_makeEl('br'));
+    usEl.appendChild(_makeEl('span', 'status-detail', (s.facts_discovered || 0) + ' facts (' + (s.facts_with_provenance || 0) + ' with provenance) · ' + (s.draft_narrative_count || 0) + ' drafts (' + (s.draft_narrative_awaiting_approval || 0) + ' awaiting approval)'));
   }
 
   var udEl = document.getElementById('understanding-details');
   if (udEl && studies.length > 0) {
     var s = studies[0];
-    var detailsHtml = '<table class="kv">';
-    if (s.languages_detected) detailsHtml += '<tr><td class="k">Languages</td><td>' + escapeHtml(s.languages_detected.join(', ')) + '</td></tr>';
-    if (s.frameworks_detected) detailsHtml += '<tr><td class="k">Frameworks</td><td>' + escapeHtml(s.frameworks_detected.join(', ')) + '</td></tr>';
+    _clearEl(udEl);
+    var table = _makeEl('table', 'kv');
+    if (s.languages_detected) table.appendChild(_row('Languages', s.languages_detected.join(', ')));
+    if (s.frameworks_detected) table.appendChild(_row('Frameworks', s.frameworks_detected.join(', ')));
     if (s.withheld_reasons && s.withheld_reasons.length) {
-      detailsHtml += '<tr><td class="k warning">Withheld</td><td>' + escapeHtml((s.withheld_material_count || 0) + ' items: ' + s.withheld_reasons.join(', ')) + '</td></tr>';
+      table.appendChild(_row('Withheld', (s.withheld_material_count || 0) + ' items: ' + s.withheld_reasons.join(', '), 'warning'));
     }
-    detailsHtml += '<tr><td class="k">Portfolio</td><td>' + escapeHtml(s.portfolio_eligibility || 'unknown') + '</td></tr>';
-    detailsHtml += '<tr><td class="k">Approval</td><td>' + escapeHtml(s.approval_status || 'unknown') + '</td></tr>';
-    detailsHtml += '</table>';
-    udEl.innerHTML = detailsHtml;
+    table.appendChild(_row('Portfolio', s.portfolio_eligibility || 'unknown'));
+    table.appendChild(_row('Approval', s.approval_status || 'unknown'));
+    udEl.appendChild(table);
   }
 }
 
@@ -634,7 +712,9 @@ function _renderInferenceFromState(state) {
   var irEl = document.getElementById('inference-runtime-status');
   if (irEl) {
     if (state.status === 'unavailable' || state.status === 'deferred') {
-      irEl.innerHTML = '<span class="status-chip disconnected">Inference Unavailable</span>';
+      _clearEl(irEl);
+      var chip = _makeEl('span', 'status-chip disconnected', 'Inference Unavailable');
+      irEl.appendChild(chip);
     } else {
       var available = state.runtime_available;
       renderStatusChip(irEl.querySelector('.status-chip') || irEl, available ? 'available' : 'offline',
@@ -650,39 +730,44 @@ function _renderInferenceFromState(state) {
     var omlxDisclosure = state.omlx_disclosure || 'OMLX Rigged runtime expansion is pending X2 integration milestone.';
     var omlxStrategy = state.omlx_strategy || 'post_v1';
     var omlxAvailable = state.omlx_available || false;
-    omlxEl.innerHTML = '<div class="task-card ' + (omlxAvailable ? 'suitable' : 'unsuitable') + '">' +
-      '<div class="task-name">OMLX Expansion</div>' +
-      '<div class="task-status">' + renderEvidenceTag(omlxAvailable ? 'proven' : 'planned') + ' ' +
-      'Strategy: ' + escapeHtml(omlxStrategy) + '. ' + escapeHtml(omlxDisclosure) +
-      '</div></div>';
+    _clearEl(omlxEl);
+    var taskCard = _makeEl('div', 'task-card ' + (omlxAvailable ? 'suitable' : 'unsuitable'));
+    taskCard.appendChild(_makeEl('div', 'task-name', 'OMLX Expansion'));
+    var taskStatus = _makeEl('div', 'task-status');
+    taskStatus.appendChild(_buildEvidenceTag(omlxAvailable ? 'proven' : 'planned'));
+    taskStatus.appendChild(_tn(' Strategy: ' + omlxStrategy + '. ' + omlxDisclosure));
+    taskCard.appendChild(taskStatus);
+    omlxEl.appendChild(taskCard);
   }
 
   // Capability claims
   var draftsEl = document.getElementById('inference-drafts');
   if (draftsEl) {
-    var capHtml = '<h3>Capability Status</h3>';
-    capHtml += '<table class="kv">';
-    capHtml += '<tr><td class="k">Native Schema Claimed</td><td class="' + (state.native_schema_capability_claimed ? 'ok' : 'warning') + '">' + (state.native_schema_capability_claimed ? 'Yes' : 'No') + '</td></tr>';
-    capHtml += '<tr><td class="k">Native Schema Proven</td><td class="' + (state.native_schema_capability_proven ? 'ok' : 'warning') + '">' + (state.native_schema_capability_proven ? 'Yes' : 'No') + '</td></tr>';
-    capHtml += '<tr><td class="k">Grammar Claimed</td><td class="' + (state.grammar_capability_claimed ? 'ok' : 'warning') + '">' + (state.grammar_capability_claimed ? 'Yes' : 'No') + '</td></tr>';
-    capHtml += '<tr><td class="k">Grammar Proven</td><td class="' + (state.grammar_capability_proven ? 'ok' : 'warning') + '">' + (state.grammar_capability_proven ? 'Yes' : 'No') + '</td></tr>';
-    capHtml += '<tr><td class="k">Results</td><td>' + escapeHtml(String(state.total_results || 0)) + ' total (' + escapeHtml(String(state.total_executed || 0)) + ' executed, ' + escapeHtml(String(state.total_refused || 0)) + ' refused)</td></tr>';
-    capHtml += '<tr><td class="k">Drafts Awaiting</td><td>' + escapeHtml(String(state.drafts_awaiting_review || 0)) + '</td></tr>';
-    capHtml += '</table>';
-    draftsEl.innerHTML = capHtml;
+    _clearEl(draftsEl);
+    draftsEl.appendChild(_makeEl('h3', '', 'Capability Status'));
+    var capTable = _makeEl('table', 'kv');
+    capTable.appendChild(_row('Native Schema Claimed', state.native_schema_capability_claimed ? 'Yes' : 'No', state.native_schema_capability_claimed ? 'ok' : 'warning'));
+    capTable.appendChild(_row('Native Schema Proven', state.native_schema_capability_proven ? 'Yes' : 'No', state.native_schema_capability_proven ? 'ok' : 'warning'));
+    capTable.appendChild(_row('Grammar Claimed', state.grammar_capability_claimed ? 'Yes' : 'No', state.grammar_capability_claimed ? 'ok' : 'warning'));
+    capTable.appendChild(_row('Grammar Proven', state.grammar_capability_proven ? 'Yes' : 'No', state.grammar_capability_proven ? 'ok' : 'warning'));
+    capTable.appendChild(_row('Results', String(state.total_results || 0) + ' total (' + String(state.total_executed || 0) + ' executed, ' + String(state.total_refused || 0) + ' refused)'));
+    capTable.appendChild(_row('Drafts Awaiting', String(state.drafts_awaiting_review || 0)));
+    draftsEl.appendChild(capTable);
   }
 
   // Refusals
   var refusalList = document.getElementById('inference-refusals');
   if (refusalList) {
     var totalRefused = state.total_refused || 0;
-    var refHtml = '<h3>Runtime Refusals (' + escapeHtml(String(totalRefused)) + ')</h3>';
+    _clearEl(refusalList);
+    refusalList.appendChild(_makeEl('h3', '', 'Runtime Refusals (' + String(totalRefused) + ')'));
     if (totalRefused === 0) {
-      refHtml += '<div class="refusal-item" style="color:var(--text-secondary)">No refusals recorded.</div>';
+      var noRef = _makeEl('div', 'refusal-item', 'No refusals recorded.');
+      noRef.style.color = 'var(--text-secondary)';
+      refusalList.appendChild(noRef);
     } else {
-      refHtml += '<div class="refusal-item">' + escapeHtml(String(totalRefused)) + ' task proposals refused by runtime authority.</div>';
+      refusalList.appendChild(_makeEl('div', 'refusal-item', String(totalRefused) + ' task proposals refused by runtime authority.'));
     }
-    refusalList.innerHTML = refHtml;
   }
 }
 
@@ -740,7 +825,10 @@ function _renderPublishFromState(state) {
   var readinessEl = document.getElementById('publish-readiness');
   if (readinessEl) {
     if (state.status === 'unavailable') {
-      readinessEl.innerHTML = '<span class="status-chip deferred">Not Available</span><div class="status-detail">Publish service unavailable. ' + escapeHtml(state.reason || 'No live projection received.') + '</div>';
+      _clearEl(readinessEl);
+      var chip = _makeEl('span', 'status-chip deferred', 'Not Available');
+      readinessEl.appendChild(chip);
+      readinessEl.appendChild(_makeEl('div', 'status-detail', 'Publish service unavailable. ' + (state.reason || 'No live projection received.')));
     } else {
       var lastStatus = state.last_result_status || 'none';
       var canPublish = (state.publishable_repository_count || 0) > 0 || (state.publishable_repositories && state.publishable_repositories.length > 0);
@@ -760,53 +848,78 @@ function _renderPublishFromState(state) {
   var sectionsGrid = document.getElementById('publish-sections');
   if (sectionsGrid) {
     if (state.status === 'unavailable') {
-      sectionsGrid.innerHTML = '<div class="section-card not-ready"><strong>No sections</strong> <span class="evidence-tag planned">planned</span></div>';
+      _clearEl(sectionsGrid);
+      var noCard = _makeEl('div', 'section-card not-ready');
+      noCard.appendChild(_strong('No sections'));
+      noCard.appendChild(_tn(' '));
+      noCard.appendChild(_buildEvidenceTag('planned'));
+      sectionsGrid.appendChild(noCard);
     } else {
-      var sectionsHtml = '';
+      _clearEl(sectionsGrid);
+      var hasContent = false;
       if (state.preview_result) {
-        sectionsHtml += '<div class="section-card ready">' +
-          '<strong>Preview Result</strong> ' + renderEvidenceTag('proven') +
-          '<br><span class="status-detail" style="font-size:0.7rem">' + escapeHtml(state.preview_result.status || '') + ' \u00B7 ' + escapeHtml(state.preview_result.summary || '') + '</span>' +
-          '</div>';
+        var prCard = _makeEl('div', 'section-card ready');
+        prCard.appendChild(_strong('Preview Result'));
+        prCard.appendChild(_tn(' '));
+        prCard.appendChild(_buildEvidenceTag('proven'));
+        var prBr = _makeEl('br');
+        prCard.appendChild(prBr);
+        var prDetail = _makeEl('span', 'status-detail', (state.preview_result.status || '') + ' · ' + (state.preview_result.summary || ''));
+        prDetail.style.fontSize = '0.7rem';
+        prCard.appendChild(prDetail);
+        sectionsGrid.appendChild(prCard);
+        hasContent = true;
       }
       if (state.refusal) {
-        sectionsHtml += '<div class="section-card not-ready">' +
-          '<strong>Refusal</strong> ' + renderEvidenceTag('refused') +
-          '<br><span class="status-detail" style="font-size:0.7rem">' + escapeHtml(state.refusal.reason || '') + ' (code: ' + escapeHtml(state.refusal.code || 'UNKNOWN') + ')</span>' +
-          '</div>';
+        var refCard = _makeEl('div', 'section-card not-ready');
+        refCard.appendChild(_strong('Refusal'));
+        refCard.appendChild(_tn(' '));
+        refCard.appendChild(_buildEvidenceTag('refused'));
+        var refBr = _makeEl('br');
+        refCard.appendChild(refBr);
+        var refDetail = _makeEl('span', 'status-detail', (state.refusal.reason || '') + ' (code: ' + (state.refusal.code || 'UNKNOWN') + ')');
+        refDetail.style.fontSize = '0.7rem';
+        refCard.appendChild(refDetail);
+        sectionsGrid.appendChild(refCard);
+        hasContent = true;
       }
-      if (sectionsHtml === '') sectionsHtml = '<div class="section-card not-ready"><strong>No publishable sections</strong></div>';
-      sectionsGrid.innerHTML = sectionsHtml;
+      if (!hasContent) {
+        sectionsGrid.appendChild(_makeEl('div', 'section-card not-ready', ''));
+        sectionsGrid.lastChild.appendChild(_strong('No publishable sections'));
+      }
     }
   }
 
   // Ledger summary
   var withheldEl = document.getElementById('publish-withheld');
   if (withheldEl) {
-    var ledgerHtml = '<h3>Publication Ledger</h3>';
+    _clearEl(withheldEl);
+    withheldEl.appendChild(_makeEl('h3', '', 'Publication Ledger'));
     var totalEv = state.ledger_total_events || 0;
     var validRows = state.ledger_valid_rows || 0;
     var corruptRows = state.ledger_corrupt_rows || 0;
     var corrDetected = state.ledger_corruption_detected || false;
 
-    ledgerHtml += '<table class="kv">' +
-      '<tr><td class="k">Total events</td><td>' + escapeHtml(String(totalEv)) + '</td></tr>' +
-      '<tr><td class="k">Valid rows</td><td class="ok">' + escapeHtml(String(validRows)) + '</td></tr>' +
-      '<tr><td class="k">Corrupt rows</td><td class="' + (corruptRows > 0 ? 'error' : 'ok') + '">' + escapeHtml(String(corruptRows)) + '</td></tr>' +
-      '<tr><td class="k">Corruption detected</td><td class="' + (corrDetected ? 'error' : 'ok') + '">' + (corrDetected ? '⚠ Yes' : 'No') + '</td></tr>' +
-      '</table>';
+    var ledgerTable = _makeEl('table', 'kv');
+    ledgerTable.appendChild(_row('Total events', String(totalEv)));
+    ledgerTable.appendChild(_row('Valid rows', String(validRows), 'ok'));
+    ledgerTable.appendChild(_row('Corrupt rows', String(corruptRows), corruptRows > 0 ? 'error' : 'ok'));
+    ledgerTable.appendChild(_row('Corruption detected', corrDetected ? '⚠ Yes' : 'No', corrDetected ? 'error' : 'ok'));
+    withheldEl.appendChild(ledgerTable);
 
     // Deployment status
     var depAvailable = state.deployment_available || false;
     var depReason = state.deployment_deferred_reason || 'Deployment not available in this release';
-    ledgerHtml += '<h3>Deployment</h3>';
-    ledgerHtml += '<div class="status-detail">' +
-      _renderEvidenceTag(depAvailable ? 'proven' : 'planned') + ' ' +
-      (depAvailable ? 'Deployment available' : escapeHtml(depReason)) +
-      '</div>';
+    withheldEl.appendChild(_makeEl('h3', '', 'Deployment'));
+    var depDiv = _makeEl('div', 'status-detail');
+    depDiv.appendChild(_buildEvidenceTag(depAvailable ? 'proven' : 'planned'));
+    depDiv.appendChild(_tn(' '));
+    depDiv.appendChild(_tn(depAvailable ? 'Deployment available' : depReason));
+    withheldEl.appendChild(depDiv);
 
-    ledgerHtml += '<div class="withheld-item" style="margin-top:8px;color:var(--text-muted)">Private/internal-only material is never included in publication preview.</div>';
-    withheldEl.innerHTML = ledgerHtml;
+    var privNote = _makeEl('div', 'withheld-item', 'Private/internal-only material is never included in publication preview.');
+    privNote.style.cssText = 'margin-top:8px;color:var(--text-muted)';
+    withheldEl.appendChild(privNote);
   }
 }
 
@@ -893,14 +1006,16 @@ function _renderTimelineFromState(state) {
   var tlEvents = document.getElementById('timeline-events');
   if (tlEvents) {
     if (state.status === 'unavailable') {
-      tlEvents.innerHTML = '<div class="status-detail">Timeline service unavailable. ' + escapeHtml(state.reason || 'No projection received.') + '</div>';
+      _clearEl(tlEvents);
+      tlEvents.appendChild(_makeEl('div', 'status-detail', 'Timeline service unavailable. ' + (state.reason || 'No projection received.')));
     } else {
+      _clearEl(tlEvents);
       var events = state.events || [];
-      var html = '<h3>Timeline Events (' + escapeHtml(String(state.event_count || events.length)) + ')</h3>';
+      tlEvents.appendChild(_makeEl('h3', '', 'Timeline Events (' + String(state.event_count || events.length) + ')'));
       if (events.length === 0) {
-        html += '<div class="status-detail">No timeline events recorded.</div>';
+        tlEvents.appendChild(_makeEl('div', 'status-detail', 'No timeline events recorded.'));
       } else {
-        html += '<div class="timeline-list">';
+        var tlList = _makeEl('div', 'timeline-list');
         for (var e = 0; e < events.length; e++) {
           var ev = events[e];
           var verificationCls = 'evidence-tag';
@@ -912,17 +1027,17 @@ function _renderTimelineFromState(state) {
             case 'unsupported': verificationCls += ' narrative'; break;
             default: verificationCls += ' planned';
           }
-          html += '<div class="timeline-event-card">' +
-            '<div class="timeline-event-domain">' + escapeHtml(ev.domain || 'unknown') + ' / ' + escapeHtml(ev.event_kind || ev.kind || '') + '</div>' +
-            '<div class="timeline-event-label">' + escapeHtml(ev.label || ev.summary || '') + '</div>' +
-            '<div class="timeline-event-meta">' +
-            '<span class="' + verificationCls + '">' + escapeHtml(ev.verification_class || 'unverified') + '</span>' +
-            ' \u00B7 ' + escapeHtml(ev.source || '') + ' \u00B7 ' + escapeHtml(ev.timestamp || ev.event_at || '') +
-            '</div></div>';
+          var card = _makeEl('div', 'timeline-event-card');
+          card.appendChild(_makeEl('div', 'timeline-event-domain', (ev.domain || 'unknown') + ' / ' + (ev.event_kind || ev.kind || '')));
+          card.appendChild(_makeEl('div', 'timeline-event-label', ev.label || ev.summary || ''));
+          var meta = _makeEl('div', 'timeline-event-meta');
+          meta.appendChild(_makeEl('span', verificationCls, ev.verification_class || 'unverified'));
+          meta.appendChild(_tn(' · ' + (ev.source || '') + ' · ' + (ev.timestamp || ev.event_at || '')));
+          card.appendChild(meta);
+          tlList.appendChild(card);
         }
-        html += '</div>';
+        tlEvents.appendChild(tlList);
       }
-      tlEvents.innerHTML = html;
     }
   }
 
@@ -936,28 +1051,36 @@ function _renderTimelineFromState(state) {
     var contDeg = state.contradictory_count || 0;
     var staleDeg = state.stale_count || 0;
     var totalDegraded = canDeg + corDeg + unsDeg + missDeg + contDeg + staleDeg;
-    var degHtml = '<h3>Degradation Summary</h3>';
+    _clearEl(tlDegradation);
+    tlDegradation.appendChild(_makeEl('h3', '', 'Degradation Summary'));
     if (totalDegraded === 0) {
-      degHtml += '<div class="status-detail">No degradation detected.</div>';
+      tlDegradation.appendChild(_makeEl('div', 'status-detail', 'No degradation detected.'));
     } else {
-      degHtml += '<table class="kv">' +
-        '<tr><td class="k">Canonical degraded</td><td class="warning">' + canDeg + '</td></tr>' +
-        '<tr><td class="k">Corrupt</td><td class="' + (corDeg > 0 ? 'error' : 'ok') + '">' + corDeg + '</td></tr>' +
-        '<tr><td class="k">Unsupported</td><td>' + unsDeg + '</td></tr>' +
-        '<tr><td class="k">Missing</td><td>' + missDeg + '</td></tr>' +
-        '<tr><td class="k">Contradictory</td><td class="' + (contDeg > 0 ? 'error' : 'ok') + '">' + contDeg + '</td></tr>' +
-        '<tr><td class="k">Stale</td><td class="' + (staleDeg > 0 ? 'warning' : 'ok') + '">' + staleDeg + '</td></tr>' +
-        '</table>';
+      var degTable = _makeEl('table', 'kv');
+      degTable.appendChild(_row('Canonical degraded', String(canDeg), 'warning'));
+      degTable.appendChild(_row('Corrupt', String(corDeg), corDeg > 0 ? 'error' : 'ok'));
+      degTable.appendChild(_row('Unsupported', String(unsDeg)));
+      degTable.appendChild(_row('Missing', String(missDeg)));
+      degTable.appendChild(_row('Contradictory', String(contDeg), contDeg > 0 ? 'error' : 'ok'));
+      degTable.appendChild(_row('Stale', String(staleDeg), staleDeg > 0 ? 'warning' : 'ok'));
+      tlDegradation.appendChild(degTable);
     }
     var assemblyWarnings = state.assembly_warnings || [];
     var assemblyErrors = state.assembly_errors || [];
     if (assemblyErrors.length > 0) {
-      degHtml += '<div class="status-detail" style="color:var(--error-color)"><strong>Assembly errors:</strong> ' + escapeHtml(assemblyErrors.join('; ')) + '</div>';
+      var errDiv = _makeEl('div', 'status-detail');
+      errDiv.style.color = 'var(--error-color)';
+      errDiv.appendChild(_strong('Assembly errors: '));
+      errDiv.appendChild(_tn(assemblyErrors.join('; ')));
+      tlDegradation.appendChild(errDiv);
     }
     if (assemblyWarnings.length > 0) {
-      degHtml += '<div class="status-detail" style="color:var(--warning-color)"><strong>Assembly warnings:</strong> ' + escapeHtml(assemblyWarnings.join('; ')) + '</div>';
+      var warnDiv = _makeEl('div', 'status-detail');
+      warnDiv.style.color = 'var(--warning-color)';
+      warnDiv.appendChild(_strong('Assembly warnings: '));
+      warnDiv.appendChild(_tn(assemblyWarnings.join('; ')));
+      tlDegradation.appendChild(warnDiv);
     }
-    tlDegradation.innerHTML = degHtml;
   }
 
   // Domain coverage
@@ -967,25 +1090,23 @@ function _renderTimelineFromState(state) {
     var unsupportedDomains = state.unsupported_domains || [];
     var verifiedCanonical = state.verified_canonical_count || 0;
     var parsedUnverified = state.parsed_unverified_count || 0;
-    var domainHtml = '<h3>Domain Coverage</h3>';
+    _clearEl(tlDomains);
+    tlDomains.appendChild(_makeEl('h3', '', 'Domain Coverage'));
     var domainKeys = Object.keys(domains);
     if (domainKeys.length > 0) {
-      domainHtml += '<table class="kv">';
+      var domTable = _makeEl('table', 'kv');
       for (var d = 0; d < domainKeys.length; d++) {
         var domainKey = domainKeys[d];
-        domainHtml += '<tr><td class="k">' + escapeHtml(domainKey) + '</td><td>' + escapeHtml(String(domains[domainKey])) + '</td></tr>';
+        domTable.appendChild(_row(domainKey, String(domains[domainKey])));
       }
-      domainHtml += '</table>';
+      tlDomains.appendChild(domTable);
     }
-    domainHtml += '<div class="status-detail">' +
-      escapeHtml(String(verifiedCanonical)) + ' verified canonical \u00B7 ' +
-      escapeHtml(String(parsedUnverified)) + ' parsed unverified \u00B7 ' +
-      escapeHtml(String(unsupportedDomains.length)) + ' unsupported domains' +
-      '</div>';
+    tlDomains.appendChild(_makeEl('div', 'status-detail', String(verifiedCanonical) + ' verified canonical · ' + String(parsedUnverified) + ' parsed unverified · ' + String(unsupportedDomains.length) + ' unsupported domains'));
     if (unsupportedDomains.length > 0) {
-      domainHtml += '<div class="status-detail" style="color:var(--warning-color)">Unsupported: ' + escapeHtml(unsupportedDomains.join(', ')) + '</div>';
+      var unsupDiv = _makeEl('div', 'status-detail', 'Unsupported: ' + unsupportedDomains.join(', '));
+      unsupDiv.style.color = 'var(--warning-color)';
+      tlDomains.appendChild(unsupDiv);
     }
-    tlDomains.innerHTML = domainHtml;
   }
 }
 
