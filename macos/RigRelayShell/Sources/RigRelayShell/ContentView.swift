@@ -1,212 +1,179 @@
 import SwiftUI
 
+// MARK: - Main Content Shell
+
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
 
     var body: some View {
+        NavigationSplitView {
+            sidebar
+                .navigationSplitViewColumnWidth(min: 200, ideal: 220, max: 260)
+        } detail: {
+            detailContent
+        }
+        .frame(minWidth: 720, minHeight: 520)
+    }
+
+    // MARK: - Sidebar
+
+    var sidebar: some View {
         VStack(spacing: 0) {
-            // ── Header ─────────────────────────────────────────
-            headerView
+            // App header
+            VStack(spacing: GridlineDesign.spacingXS) {
+                HStack(spacing: GridlineDesign.spacingSM) {
+                    Image(systemName: "shield.lefthalf.filled")
+                        .font(.system(size: 24))
+                        .foregroundColor(GridlineDesign.accent)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Rig Relay")
+                            .font(GridlineDesign.fontHeadline)
+                        Text("Gridline Developer Studio")
+                            .font(GridlineDesign.fontCaption2)
+                            .foregroundColor(GridlineDesign.textTertiary)
+                    }
+                }
+            }
+            .padding(.horizontal, GridlineDesign.spacingMD)
+            .padding(.vertical, GridlineDesign.spacingLG)
 
             Divider()
 
-            // ── Safety badges ──────────────────────────────────
-            badgesView
-                .padding(.horizontal, 24)
-                .padding(.vertical, 12)
+            // Navigation tabs
+            List(selection: $appState.selectedTab) {
+                ForEach(GridlineTab.allCases, id: \.self) { tab in
+                    NavigationLink(value: tab) {
+                        Label {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(tab.rawValue)
+                                    .font(GridlineDesign.fontBody)
+                                Text(tab.description)
+                                    .font(GridlineDesign.fontCaption2)
+                                    .foregroundColor(GridlineDesign.textTertiary)
+                                    .lineLimit(1)
+                            }
+                        } icon: {
+                            Image(systemName: tab.iconName)
+                                .foregroundColor(tab == appState.selectedTab ? GridlineDesign.accent : GridlineDesign.textSecondary)
+                        }
+                    }
+                }
+            }
+            .listStyle(.sidebar)
 
             Divider()
 
-            // ── Buttons ────────────────────────────────────────
-            buttonsView
-                .padding(.horizontal, 24)
-                .padding(.vertical, 16)
+            // Provider evidence mini-section (C lane — published)
+            providerEvidenceMini
 
             Divider()
 
-            // ── Status area ────────────────────────────────────
-            statusView
-                .padding(.horizontal, 24)
-                .padding(.vertical, 12)
-
-            Spacer(minLength: 0)
-
-            // ── Footer ─────────────────────────────────────────
+            // Footer
             footerView
         }
-        .frame(minWidth: 520, minHeight: 480)
     }
 
-    // ── Header ────────────────────────────────────────────────────
+    // MARK: - Provider Evidence Mini (Lane C)
 
-    var headerView: some View {
-        HStack(spacing: 16) {
-            Image(systemName: "shield.lefthalf.filled")
-                .font(.system(size: 36))
-                .foregroundColor(.accentColor)
-                .frame(width: 48, height: 48)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Rig Relay")
-                    .font(.title)
-                    .fontWeight(.semibold)
-                Text("Local governed runtime for agent work")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-
-            Spacer()
-
-            Text("v0.2")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(.quaternary, in: RoundedRectangle(cornerRadius: 4))
-        }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 20)
-    }
-
-    // ── Badges ────────────────────────────────────────────────────
-
-    var badgesView: some View {
-        HStack(spacing: 8) {
-            BadgeView(label: "Local Demo", value: "On", color: .green)
-            BadgeView(label: "Network", value: "Off", color: .secondary)
-            BadgeView(label: "OAuth", value: "None", color: .secondary)
-            BadgeView(label: "API Keys", value: "Not required", color: .green)
-            BadgeView(label: "Merge", value: "Disabled", color: .orange)
-            BadgeView(label: "Push", value: "Disabled", color: .orange)
-        }
-    }
-
-    // ── Buttons ───────────────────────────────────────────────────
-
-    var buttonsView: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 8) {
-                actionButton("Run Doctor", systemImage: "stethoscope") {
-                    appState.runDoctor()
+    @ViewBuilder
+    var providerEvidenceMini: some View {
+        if let providers = appState.projection.providerEvidence {
+            VStack(alignment: .leading, spacing: GridlineDesign.spacingXS) {
+                HStack {
+                    Image(systemName: providers.integrityVerified ? "checkmark.shield" : "xmark.shield")
+                        .font(.system(size: 10))
+                        .foregroundColor(providers.integrityVerified ? GridlineDesign.statusOk : GridlineDesign.statusError)
+                    Text("Provider Evidence")
+                        .font(GridlineDesign.fontCaption2)
+                        .foregroundColor(GridlineDesign.textSecondary)
                 }
-                actionButton("Start Demo", systemImage: "play.fill") {
-                    appState.startDemo()
+
+                ForEach(providers.providers.prefix(3)) { provider in
+                    HStack(spacing: GridlineDesign.spacingXS) {
+                        Circle()
+                            .fill(provider.degraded ? GridlineDesign.statusWarn : GridlineDesign.statusOk)
+                            .frame(width: 4, height: 4)
+                        Text(provider.name)
+                            .font(GridlineDesign.fontCaption2)
+                            .foregroundColor(GridlineDesign.textPrimary)
+                        Spacer()
+                        Text("\(provider.modelsAvailable) models")
+                            .font(.system(size: 9))
+                            .foregroundColor(GridlineDesign.textTertiary)
+                    }
+                }
+
+                if providers.corruptEvents > 0 {
+                    HStack(spacing: GridlineDesign.spacingXS) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(GridlineDesign.statusError)
+                            .font(.system(size: 9))
+                        Text("\(providers.corruptEvents) corrupt events")
+                            .font(.system(size: 9))
+                            .foregroundColor(GridlineDesign.statusError)
+                    }
                 }
             }
-            HStack(spacing: 8) {
-                actionButton("Launch Cockpit", systemImage: "rectangle.inset.filled.and.person.filled") {
-                    appState.launchCockpit()
-                }
-                .disabled(appState.cockpitRunning)
-
-                actionButton("Build Docs", systemImage: "doc.text.fill") {
-                    appState.renderDocs()
-                }
-            }
-            HStack(spacing: 8) {
-                actionButton("Open Docs", systemImage: "book.fill") {
-                    appState.openDocs()
-                }
-                actionButton("Reveal Logs", systemImage: "folder.fill") {
-                    appState.revealLogs()
-                }
-            }
+            .padding(.horizontal, GridlineDesign.spacingMD)
+            .padding(.vertical, GridlineDesign.spacingSM)
         }
     }
 
-    func actionButton(_ title: String, systemImage: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Label(title, systemImage: systemImage)
-                .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.bordered)
-        .controlSize(.large)
-        .disabled(appState.isRunning)
-    }
+    // MARK: - Footer
 
-    // ── Status ────────────────────────────────────────────────────
+    var footerView: some View {
+        VStack(alignment: .leading, spacing: GridlineDesign.spacingXS) {
+            if appState.isFixtureMode {
+                HStack(spacing: GridlineDesign.spacingXS) {
+                    Image(systemName: "square.dotted")
+                        .font(.system(size: 8))
+                        .foregroundColor(.purple)
+                    Text("Fixture mode")
+                        .font(.system(size: 9))
+                        .foregroundColor(.purple)
+                }
+            }
 
-    var statusView: some View {
-        VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Circle()
-                    .fill(appState.helperFound ? Color.green : Color.red)
-                    .frame(width: 8, height: 8)
-                Text("Helper: \(appState.helperFound ? "Found" : "Missing")")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                Text("v0.2.0-dev")
+                    .font(.system(size: 9))
+                    .foregroundColor(GridlineDesign.textTertiary)
 
                 Spacer()
 
-                if appState.isRunning {
-                    ProgressView()
-                        .scaleEffect(0.7)
-                        .frame(width: 16, height: 16)
+                Button("Quit") {
+                    NSApplication.shared.terminate(nil)
                 }
+                .buttonStyle(.borderless)
+                .font(.system(size: 9))
             }
 
-            if !appState.statusOutput.isEmpty {
-                Text(appState.statusOutput)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .lineLimit(3)
-            }
-
-            if !appState.doctorResult.isEmpty {
-                ScrollView {
-                    Text(appState.doctorResult)
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundColor(.secondary)
-                        .textSelection(.enabled)
-                }
-                .frame(maxHeight: 100)
-                .padding(8)
-                .background(.quinary, in: RoundedRectangle(cornerRadius: 6))
+            if !appState.statusMessage.isEmpty {
+                Text(appState.statusMessage)
+                    .font(.system(size: 8))
+                    .foregroundColor(GridlineDesign.textTertiary)
+                    .lineLimit(2)
             }
         }
+        .padding(.horizontal, GridlineDesign.spacingMD)
+        .padding(.vertical, GridlineDesign.spacingSM)
     }
 
-    // ── Footer ────────────────────────────────────────────────────
+    // MARK: - Detail Content
 
-    var footerView: some View {
-        HStack {
-            Text("Runs locally. No account, API key, network, merge, or push required.")
-                .font(.caption2)
-                .foregroundColor(.secondary)
-
-            Spacer()
-
-            Button("Quit") {
-                NSApplication.shared.terminate(nil)
-            }
-            .buttonStyle(.borderless)
-            .font(.caption)
-        }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 10)
-        .background(.regularMaterial)
-    }
-}
-
-// ── Badge ────────────────────────────────────────────────────────
-
-struct BadgeView: View {
-    let label: String
-    let value: String
-    let color: Color
-
-    var body: some View {
-        HStack(spacing: 4) {
-            Text(label)
-                .font(.caption2)
-                .foregroundColor(.secondary)
-            Text(value)
-                .font(.caption2)
-                .fontWeight(.medium)
-                .foregroundColor(color)
-                .padding(.horizontal, 4)
-                .padding(.vertical, 2)
-                .background(color.opacity(0.15), in: RoundedRectangle(cornerRadius: 3))
+    @ViewBuilder
+    var detailContent: some View {
+        switch appState.selectedTab {
+        case .connect:
+            ConnectView()
+        case .repositories:
+            RepositoryEstateView()
+        case .projectStudio:
+            ProjectStudioView()
+        case .inference:
+            InferenceStudioView()
+        case .publish:
+            PublishPreviewView()
         }
     }
 }

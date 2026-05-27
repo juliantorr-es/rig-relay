@@ -1,159 +1,165 @@
-import Foundation
+import SwiftUI
 import Combine
 
-@MainActor
-final class AppState: ObservableObject {
-    @Published var stage: String = "ready"
-    @Published var statusOutput: String = ""
-    @Published var doctorResult: String = ""
-    @Published var isRunning: Bool = false
-    @Published var helperFound: Bool = false
-    @Published var demoSeeded: Bool = false
-    @Published var docsBuilt: Bool = false
-    @Published var cockpitRunning: Bool = false
+// MARK: - Navigation Tab
 
-    private let resourceLocator = ResourceLocator()
+enum GridlineTab: String, CaseIterable, Sendable {
+    case connect = "Connect"
+    case repositories = "Repositories"
+    case projectStudio = "Project Studio"
+    case inference = "Inference"
+    case publish = "Publish"
 
-    init() {
-        checkHelper()
-        checkFirstRun()
-        // Auto-seed demo data on first launch
-        if helperFound && !demoSeeded {
-            startDemo()
+    var iconName: String {
+        switch self {
+        case .connect: "link"
+        case .repositories: "folder"
+        case .projectStudio: "text.magnifyingglass"
+        case .inference: "cpu"
+        case .publish: "paperplane"
         }
     }
 
-    func checkHelper() {
-        helperFound = resourceLocator.helperExists()
-        if !helperFound {
-            statusOutput = "Helper not found at \(resourceLocator.helperPath)"
-        }
-    }
-
-    func checkFirstRun() {
-        let marker = resourceLocator.firstRunMarkerURL()
-        demoSeeded = marker.isFileURL && FileManager.default.fileExists(atPath: marker.path)
-    }
-
-    // ── Commands ──────────────────────────────────────────────────
-
-    func runDoctor() {
-        stage = "doctor"
-        isRunning = true
-        statusOutput = "Running doctor..."
-        runHelper(arg: "--demo-doctor") { [weak self] result in
-            DispatchQueue.main.async {
-                self?.isRunning = false
-                self?.doctorResult = result.output
-                self?.statusOutput = result.success ? "Doctor: all checks passed ✅" : "Doctor: issues found"
-                self?.stage = "ready"
-            }
-        }
-    }
-
-    func startDemo() {
-        stage = "seed"
-        isRunning = true
-        statusOutput = "Seeding demo data..."
-        runHelper(arg: "--demo-seed") { [weak self] result in
-            DispatchQueue.main.async {
-                self?.isRunning = false
-                self?.demoSeeded = result.success
-                self?.statusOutput = result.success ? "Demo data seeded ✅" : "Seed failed: \(result.output)"
-                self?.stage = "ready"
-            }
-        }
-    }
-
-    func renderDocs() {
-        stage = "docs"
-        isRunning = true
-        statusOutput = "Building docs site..."
-        runHelper(arg: "--demo-render-docs") { [weak self] result in
-            DispatchQueue.main.async {
-                self?.isRunning = false
-                self?.docsBuilt = result.success
-                self?.statusOutput = result.success ? "Docs built ✅" : "Docs build failed"
-                self?.stage = "ready"
-            }
-        }
-    }
-
-    func launchCockpit() {
-        guard !cockpitRunning else {
-            statusOutput = "Cockpit already running"
-            return
-        }
-        stage = "cockpit"
-        isRunning = true
-        cockpitRunning = true
-        statusOutput = "Launching cockpit..."
-
-        let helperURL = resourceLocator.helperExecutableURL()
-        let process = Process()
-        process.executableURL = helperURL
-        process.arguments = ["--launch-cockpit"]
-        process.environment = [
-            "RIG_RELAY_PACKAGED_APP": "1",
-            "RIG_RELAY_APP_SUPPORT": resourceLocator.applicationSupportURL().path,
-        ]
-
-        do {
-            try process.run()
-            DispatchQueue.main.async { [weak self] in
-                self?.isRunning = false
-                self?.statusOutput = "Cockpit launched"
-                self?.stage = "ready"
-            }
-        } catch {
-            DispatchQueue.main.async { [weak self] in
-                self?.isRunning = false
-                self?.cockpitRunning = false
-                self?.statusOutput = "Launch failed: \(error.localizedDescription)"
-                self?.stage = "ready"
-            }
-        }
-    }
-
-    func openDocs() {
-        resourceLocator.openDocs()
-    }
-
-    func revealLogs() {
-        resourceLocator.revealLogs()
-    }
-
-    // ── Internal ──────────────────────────────────────────────────
-
-    private nonisolated func runHelper(arg: String, completion: @escaping (HelperResult) -> Void) {
-        let helperURL = resourceLocator.helperExecutableURL()
-        let process = Process()
-        process.executableURL = helperURL
-        process.arguments = [arg]
-        process.environment = [
-            "RIG_RELAY_PACKAGED_APP": "1",
-            "RIG_RELAY_APP_SUPPORT": resourceLocator.applicationSupportURL().path,
-        ]
-
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-
-        do {
-            try process.run()
-            process.waitUntilExit()
-
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            let output = String(data: data, encoding: .utf8) ?? ""
-            let success = process.terminationStatus == 0
-            completion(HelperResult(success: success, output: output))
-        } catch {
-            completion(HelperResult(success: false, output: error.localizedDescription))
+    var description: String {
+        switch self {
+        case .connect: "Carte Blanche connection and permissions"
+        case .repositories: "Repository estate — import, study, classify"
+        case .projectStudio: "AgentLoop investigation and project understanding"
+        case .inference: "Local inference capability and admission"
+        case .publish: "Public-safe project page preview and approval"
         }
     }
 }
 
-struct HelperResult {
-    let success: Bool
-    let output: String
+// MARK: - App State
+
+@MainActor
+final class AppState: ObservableObject {
+    @Published var selectedTab: GridlineTab = .connect
+    @Published var projection: GridlineProjection
+    @Published var isFixtureMode: Bool = true
+    @Published var statusMessage: String = ""
+    @Published var intentLog: [IntentLogEntry] = []
+
+    private let sessionId = "gridline_session_\(UUID().uuidString.prefix(8))"
+
+    init() {
+        projection = GridlineFixture.fullProjection
+        isFixtureMode = projection.isFixture
+        statusMessage = "DEVELOPMENT — Fixture mode. No live backend connected."
+    }
+
+    // MARK: — Projection Loading
+
+    func loadProjection(_ newProjection: GridlineProjection) {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            projection = newProjection
+            isFixtureMode = newProjection.isFixture
+        }
+    }
+
+    func loadFixtureForDemo() {
+        loadProjection(GridlineFixture.fullProjection)
+        statusMessage = "Demo projection loaded (fixture mode)."
+    }
+
+    func simulateConnectFlow() {
+        var p = projection
+        p.connectState = GridlineFixture.connectAfterConnection
+        p.repositoryEstate = GridlineFixture.repositoryEstate
+        p.identityState = GridlineFixture.identity
+        loadProjection(p)
+        statusMessage = "Carte Blanche connected (fixture simulation)."
+    }
+
+    func simulateRepositoryImport() {
+        loadProjection(GridlineFixture.projectionForState(
+            connectState: GridlineFixture.connectAfterConnection,
+            estate: GridlineFixture.repositoryEstateImporting,
+            studio: GridlineFixture.projectStudioIdle,
+            inference: GridlineFixture.inferenceStudioUnavailable,
+            publish: GridlineFixture.publishPreviewEmpty
+        ))
+        statusMessage = "Repository import in progress (fixture simulation)."
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            loadProjection(GridlineFixture.projectionForState(
+                connectState: GridlineFixture.connectAfterConnection,
+                estate: GridlineFixture.repositoryEstate,
+                studio: GridlineFixture.projectStudioIdle,
+                inference: GridlineFixture.inferenceStudioUnavailable,
+                publish: GridlineFixture.publishPreviewEmpty
+            ))
+            statusMessage = "Repository import complete (fixture simulation)."
+        }
+    }
+
+    func simulateInvestigation() {
+        var p = projection
+        p.projectStudio = GridlineFixture.projectStudioInvestigating
+        loadProjection(p)
+        statusMessage = "AgentLoop investigation started (fixture simulation)."
+        Task {
+            try? await Task.sleep(for: .seconds(3))
+            var completed = projection
+            completed.projectStudio = GridlineFixture.projectStudioDraftReady
+            completed.inferenceStudio = GridlineFixture.inferenceStudioDegraded
+            completed.publishPreview = GridlineFixture.publishPreviewReady
+            loadProjection(completed)
+            statusMessage = "Investigation complete — draft ready for review (fixture simulation)."
+        }
+    }
+
+    // MARK: — Intent Dispatch (simulated — no backend authority)
+
+    func dispatchIntent(_ intent: GridlineIntent) {
+        let entry = IntentLogEntry(
+            timestamp: Date(),
+            intentKind: intent.intentKind.rawValue,
+            traceId: intent.traceId,
+            mutationClass: intent.mutationClass.rawValue
+        )
+        intentLog.append(entry)
+
+        statusMessage = "Intent dispatched: \(intent.intentKind.rawValue) [FIXTURE — no backend]"
+
+        switch intent.intentKind {
+        case .connectGitHub:
+            simulateConnectFlow()
+        case .importRepository:
+            simulateRepositoryImport()
+        case .startInvestigation:
+            simulateInvestigation()
+        case .previewPublish:
+            var p = projection
+            p.publishPreview = GridlineFixture.publishPreviewReady
+            loadProjection(p)
+        default:
+            break
+        }
+    }
+
+    func makeTraceId() -> String {
+        "trace_\(UUID().uuidString.prefix(12))"
+    }
+
+    func makeIntent(kind: IntentKind, mutationClass: MutationClass = .safeLocalMutation) -> GridlineIntent {
+        GridlineIntent(
+            traceId: makeTraceId(),
+            frontendSessionId: sessionId,
+            intentKind: kind,
+            mutationClass: mutationClass,
+            capabilityRequired: nil,
+            intentPayloadHash: nil,
+            redactionStatus: "content_light"
+        )
+    }
+}
+
+struct IntentLogEntry: Identifiable, Sendable {
+    let id = UUID()
+    let timestamp: Date
+    let intentKind: String
+    let traceId: String
+    let mutationClass: String
 }

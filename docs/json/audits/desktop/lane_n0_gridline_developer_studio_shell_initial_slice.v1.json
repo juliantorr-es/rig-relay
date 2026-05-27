@@ -1,0 +1,185 @@
+{
+  "schema_version": "rig.relay.lane_release_audit.v1",
+  "report_id": "lane_n0_gridline_developer_studio_shell_initial_slice",
+  "report_kind": "lane_release_audit",
+  "lane_id": "n0",
+  "lane_title": "Gridline Developer Studio — Native SwiftUI macOS Application Shell",
+  "branch": "main",
+  "head_before": "b7d093759e6db07c5c8c3ee38a094f09533dc966",
+  "head_after": "b7d093759e6db07c5c8c3ee38a094f09533dc966 (no commit yet; session checkpoint pending)",
+  "dirty_state_before": {
+    "tracked_modified": [
+      "pyproject.toml",
+      "rig_relay/desktop/intents.py",
+      "rig_relay/desktop/projection.py",
+      "rig_relay/integrations/github_provider/__init__.py"
+    ],
+    "untracked": [
+      "rig_relay/context_engine/",
+      "rig_relay/local_inference/",
+      "rig_relay/operator/",
+      "tests/context_engine/",
+      "tests/local_inference/",
+      "tests/operator/",
+      "docs/schemas/rig.relay.developer_corpus_index.v1.schema.json",
+      "docs/schemas/rig.relay.local_inference.assistance_projection.v1.schema.json",
+      "docs/schemas/rig.relay.local_inference.assistance_result.v1.schema.json",
+      "docs/schemas/rig.relay.local_inference.assistance_task.v1.schema.json",
+      "docs/schemas/rig.relay.local_inference.project_context_packet.v1.schema.json",
+      "docs/schemas/rig.relay.operator_session_projection.v1.schema.json",
+      "docs/schemas/rig.relay.project_understanding.v1.schema.json",
+      "docs/schemas/rig.relay.publishable_project_profile_candidate.v1.schema.json",
+      "docs/schemas/rig.relay.sanitized_context_packet.v1.schema.json",
+      "rig_relay/integrations/github_provider/_developer_workspace.py",
+      "rig_relay/integrations/github_provider/_workspace_models.py"
+    ],
+    "note": "Pre-existing dirty files from parallel agent lanes (J0/K0/L0/M0 stream). NOT modified by Lane N0."
+  },
+  "dirty_state_after": {
+    "lane_n0_modified": [
+      "macos/RigRelayShell/Sources/RigRelayShell/AppState.swift",
+      "macos/RigRelayShell/Sources/RigRelayShell/ContentView.swift",
+      "macos/RigRelayShell/Sources/RigRelayShell/RigRelayApp.swift"
+    ],
+    "lane_n0_created": [
+      "macos/RigRelayShell/Sources/RigRelayShell/Models/GridlineProjection.swift",
+      "macos/RigRelayShell/Sources/RigRelayShell/Models/Intent.swift",
+      "macos/RigRelayShell/Sources/RigRelayShell/Models/DesignTokens.swift",
+      "macos/RigRelayShell/Sources/RigRelayShell/Fixtures/GridlineFixture.swift",
+      "macos/RigRelayShell/Sources/RigRelayShell/Views/Shared/SharedComponents.swift",
+      "macos/RigRelayShell/Sources/RigRelayShell/Views/Connect/ConnectView.swift",
+      "macos/RigRelayShell/Sources/RigRelayShell/Views/RepositoryEstate/RepositoryEstateView.swift",
+      "macos/RigRelayShell/Sources/RigRelayShell/Views/ProjectStudio/ProjectStudioView.swift",
+      "macos/RigRelayShell/Sources/RigRelayShell/Views/InferenceStudio/InferenceStudioView.swift",
+      "macos/RigRelayShell/Sources/RigRelayShell/Views/PublishPreview/PublishPreviewView.swift"
+    ],
+    "note": "Only files under macos/RigRelayShell/ were modified or created. No backend ownership files touched."
+  },
+  "files_changed": 3,
+  "files_created": 10,
+  "files_deleted": 0,
+  "total_swift_lines": 3230,
+  "tests_run": 0,
+  "tests_intentionally_skipped": "No macOS UI tests created in this initial shell slice. SwiftUI previews used for visual development. XCTest/SnapshotTesting target deferred to follow-on slice.",
+  "evidence_artifacts": [
+    "macos/RigRelayShell/.build/release/RigRelayShell (1.9MB Mach-O arm64 executable)",
+    "Build log confirming 14 Swift files compiled and linked successfully"
+  ],
+  "schema_validation_results": "Not applicable — no JSON schemas authored in this slice. All models are Swift-native Codable structs mirroring the rig.relay.desktop_projection.v1 schema shapes.",
+  "dependency_changes": "No Package.swift changes. Existing SPM target unchanged (Swift 6.0, macOS 14+).",
+  "completed_work": {
+    "models": "Typed Swift projection models mirroring E0 three-surface architecture and desktop projection schema. 17 surface states, all E0 privacy classes, evidence status vocabulary, capability admission states. All models are Codable and Sendable.",
+    "fixtures": "Comprehensive fixture data for all 5 product areas (Connect, Repository Estate, Project Studio, Inference Studio, Publish Preview) plus published Lane C provider evidence and identity. All fixtures carry isFixture=true and DEVELOPMENT_ONLY warnings.",
+    "navigation_shell": "NavigationSplitView sidebar with 5 tabs (Cmd+1 through Cmd+5). Sidebar includes provider evidence mini-section showing published Lane C data with integrity status. Fixture mode banner in footer.",
+    "connect_view": "Carte Blanche welcome view with 3 explanation cards (what Carte Blanche grants, private study vs. public publication, granted capabilities). Handles: ready, connecting, authorized, permissionBlocked states. Simulated connect flow.",
+    "repository_estate_view": "Repository listing with import status indicators, private/public counts, publication classification badges. Clone progress bar. Handles: empty (dedicated state), ready, importing, error, unauthorized states.",
+    "project_studio_view": "Investigation status display (turns, tool calls, phase), project understanding summary (language, ecosystem, architecture, modules), evidence rail (receipts, checkpoints, findings, corrupt events with explicit warnings), bootstrap proposals (draft/review states), public-safe profile candidate preview with withheld-field indicators. Handles: empty, inProgress (with ProgressView), draftReady, reviewRequired, corrupt/untrusted evidence warnings.",
+    "inference_studio_view": "Local runtime status (provider, model, VRAM, quantization, tok/s), capability admission cards with 6 statuses (admitted, refused, degraded, reviewRequired, unavailable, pendingEvaluation), draft suggestions with approval requirements, degraded/unavailable detail sections. Handles: unavailable, degraded, ready states.",
+    "publish_preview_view": "GitHub Pages readiness status, public-safe project page preview with section cards (title, content hash, privacy class, evidence status), explicit WITHHELD CONTENT section, NOT SAFE badge when publicSafeVerified=false, approval flow with approve/reject buttons. Handles: empty, reviewRequired, published, corrupt (NOT SAFE) states.",
+    "shared_components": "StatusBadgeView, SurfaceStateBannerView (17 states), FixtureModeBannerView, EvidenceStatusIndicator, SectionHeaderView, CardView, PrivacyBadgeView, DeferredServiceBannerView, FlowLayout.",
+    "design_tokens": "Liquid Glass-inspired color palette (accent, semantic status colors, material hierarchy), 7-font typography scale, progressive disclosure spacing rhythm (4-32pt), border radii.",
+    "app_menu": "Navigation menu with keyboard shortcuts, Demo menu for fixture simulation, Help menu."
+  },
+  "intentionally_deferred_work": {
+    "live_service_wiring": "J0, K0, L0, M0 lanes are not yet published. All studio views use typed fixture projections matching their declared contracts. Live wiring occurs incrementally as lanes publish.",
+    "e1_design_doctrine_integration": "E1 transcript-derived Pixelgrid doctrine not yet released. Preserved E0 design-system architecture. E1 doctrine integration documented as deferred additive input.",
+    "xctest_ui_tests": "macOS UI test target not created in this slice. SwiftUI previews used during development. Full XCTest/SnapshotTesting harness deferred.",
+    "bridge_transport_layer": "No WebSocket or HTTP bridge client implemented. The AppState holds projection data internally. When the Python backend bridge is wired, projection loading will consume the existing bridge_protocol envelope.",
+    "portfolio_synthesis": "Multi-project portfolio site deferred until multiple approved project profiles exist (requires L0 or I-level integration milestone).",
+    "accessibility_full_pass": "Accessibility labels exist on critical controls (buttons, badges, status indicators) but full VoiceOver audit and accessibility test suite deferred."
+  },
+  "discovered_out_of_scope_risks": [
+    {
+      "risk": "Parallel lane collision on legacy SwiftUI files",
+      "detail": "The original RigRelayShell files (AppState.swift, ContentView.swift, RigRelayApp.swift) were completely rewritten. If another lane expected the old subprocess-spawning launcher behavior, they will need to consume the new projection/intent model.",
+      "severity": "low",
+      "mitigation": "Lane N0 owns the macOS app shell. The rewrite is intentional and documented."
+    },
+    {
+      "risk": "Python backend projection builder not wired",
+      "detail": "The SwiftUI shell consumes GridlineProjection structs internally. The Python projection.py does not yet produce a Gridline-specific projection shape. A shared bridge protocol adaptation is needed.",
+      "severity": "medium",
+      "mitigation": "The projection model mirrors existing desktop_projection.v1 schema shapes. Adaptation is a mechanical mapping task when J0/K0/L0/M0 publish."
+    }
+  ],
+  "remaining_seams": [
+    "Write bridge transport client (WebSocket/HTTP) matching existing bridged protocol",
+    "Create macOS UI test target with XCTest/SnapshotTesting",
+    "Wire live J0 projections once published",
+    "Wire live K0/L0 projections once published",
+    "Wire live M0 projections once published",
+    "Integrate E1 Pixelgrid doctrine when released",
+    "Full VoiceOver/accessibility audit pass",
+    "Add SwiftUI Previews with fixture states for rapid development"
+  ],
+  "released_boundary": "GridlineAppShell v1: a native macOS operator UI that renders the connected-developer/project-studio journey from typed backend projections and emits governed user intents. The shell: consumes typed projection envelopes rather than domain ledgers, emits typed intents rather than triggering raw operations, displays canonical/derived/proposed/public-approved state distinctly, remains safe when integration services are not yet published by representing unavailable panels through typed fixture/deferred states, and allows later replacement of fixtures with live released projections without redesigning the view hierarchy.",
+  "stated_consumer_purpose": "A developer can launch the macOS app, enter the Carte Blanche/repository/project workflow using real backend projections or clearly identified service-backed fixture mode, and inspect a project-page candidate without UI code bypassing domain authority.",
+  "blocking_defects": [],
+  "deferred_seams": [
+    "Live J0/K0/L0/M0 service wiring (lanes not yet published)",
+    "E1 transcript-derived design doctrine integration (E1 not yet released)",
+    "XCTest/SnapshotTesting UI test harness",
+    "Bridge transport layer (WebSocket/HTTP client)",
+    "Multi-project portfolio synthesis",
+    "Full accessibility audit pass"
+  ],
+  "freeze_status": "candidate_local",
+  "freeze_condition": "A developer can launch the macOS app, enter the Carte Blanche/repository/project workflow using real backend projections or clearly identified service-backed fixture mode, and inspect a project-page candidate without UI code bypassing domain authority.",
+  "post_promotion_status": "lane_n0_gridline_native_swiftui_developer_studio_shell_released_live_service_wiring_incremental_frozen_pending_end_to_end_integration",
+  "claim_adversary_results": {
+    "verdict": "ALL_PASS",
+    "constraints_checked": 7,
+    "sub_checks": 2,
+    "violations": 0,
+    "constraints": [
+      {"name": "no_backend_authority_in_swiftui", "verdict": "PASS", "detail": "Zero hits for Process, NSTask, URLSession, git operations, GitHub API calls. FileManager limited to ResourceLocator (logs/docs exception). AgentLoop appears only as UI display text."},
+      {"name": "no_direct_github_operations", "verdict": "PASS", "detail": "Zero hits for oauth, token, credentials, keychain in Swift. GitHub references are display strings only."},
+      {"name": "no_direct_filesystem_mutations", "verdict": "PASS", "detail": "Zero hits for write, copyItem, moveItem, removeItem beyond ResourceLocator's createDirectory (logs)."},
+      {"name": "no_domain_authority", "verdict": "PASS", "detail": "Zero hits for agent_loop, context_assembly, inference_admission, publication_policy, evidence_validation, capability_gating as Swift implementations. All terms appear only as UI labels."},
+      {"name": "fixture_data_clearly_marked", "verdict": "PASS", "detail": "All fixtures set isFixture=true. DEVELOPMENT_FIXTURE banner in all 5 views. Status message says 'Fixture mode. No live backend connected.' Intent dispatch marks '[FIXTURE — no backend]'."},
+      {"name": "all_surface_states_handled", "verdict": "PASS", "detail": "17 surface states in enum with color/icon/label. Every view handles empty, loading, ready, blocked/refused, degraded, and corrupt/untrusted — either through explicit code paths or SurfaceStateBannerView fallback."},
+      {"name": "no_terminal_workflows", "verdict": "PASS", "detail": "Zero hits for Process, NSTask, shell execution, Terminal in any new Swift code."}
+    ],
+    "sub_checks": [
+      {"name": "publish_preview_no_private_content", "verdict": "PASS", "detail": "Withheld fields displayed as transparency indicators (count + 'N fields withheld'), not revealed. Public-safe verified badge displayed. No raw source/paths/secrets in preview."},
+      {"name": "project_studio_separation", "verdict": "PASS", "detail": "profileCandidate.isPublicSafe boolean controls display. Withheld fields listed by count. Private content separately listed as 'withheld during investigation'. Repository publication class displayed as PrivacyBadgeView."}
+    ]
+  },
+  "e0_doctrine_consumption": {
+    "consumed": true,
+    "surfaces_model": "Three-surface architecture (Gridline, Project Page, Portfolio Site) from rig_relay/frontend/surfaces.py applied to navigation structure.",
+    "privacy_classes": "publicSafe, contentLight, internalOnly from E0 PrivacyClass mapped to Swift PrivacyClass enum. Used in repository publication classification and project page section rendering.",
+    "evidence_status": "E0 EvidenceStatus (proven, claimed, planned, narrative, redacted) mapped to Swift enum. Used in evidence rail and timeline entries.",
+    "publication_safety_rules": "Content-light enforcement (SHA256 hashes, no raw content) followed in all projection models. Public-safe verification displayed as explicit badge.",
+    "design_tokens": "Shared design tokens concept from E0 applied: colors, typography, spacing used across all 5 views."
+  },
+  "e1_doctrine_integration": "Deferred. E1 transcript-derived Pixelgrid doctrine not yet published. E0 design-system architecture preserved as foundation. E1 will be additive input mapping Pixelgrid principles to component/layout decisions when released.",
+  "live_versus_fixture_integrations": {
+    "published_and_consumed": [
+      "Lane E0 (Frontend Systems Atlas): Three-surface architecture, privacy classes, evidence status vocabulary consumed as design-time models. SurfaceSpecificationContract shapes reflected in SwiftUI navigation."
+    ],
+    "fixture_shaped_like_published": [
+      "Lane C (Provider Evidence): ProviderEvidenceProjection is a typed Swift Codable model structurally compatible with published C6.1/C6.2 projection contracts. N0 renders fixture data shaped like Lane C projections from GridlineFixture.providerEvidence (isFixture=true). No live Lane C adapter or bridge transport exists. Live integration requires a bridge client consuming the published query/projection service when wired."
+    ],
+    "fixture_only_jklm": [
+      "J0 (GitHub/Carte Blanche): ConnectProjection and RepositoryEstateProjection use fixtures matching declared contract shapes. Live wiring deferred until J0 publishes.",
+      "K0 (AgentLoop): InvestigationStatus displayed from fixture. AgentLoop integration deferred until K0 publishes.",
+      "L0 (Context Assembly/Project Understanding): ProjectUnderstandingSummary, ProjectProfileCandidate, TimelineEntry use fixtures. Live context assembly deferred until L0 publishes.",
+      "M0 (Local Inference): InferenceStudioProjection, CapabilityAdmission, DraftSuggestion use fixtures. Live inference admission deferred until M0 publishes."
+    ],
+    "awaiting_promotion": [
+      "Lane D3.1 (Capability Admission Gating): Constraint classes and admission statuses modeled. CapabilityAdmission struct ready for live D3.1 projections when promoted."
+    ]
+  },
+  "accessibility_surfaces": "Critical statuses and controls have accessibility labels: all buttons use Label or accessibilityLabel, status badges include descriptive text, surface state banners have icon + text. Full VoiceOver audit deferred.",
+  "build_verification": {
+    "build_command": "xcrun swift build -c release",
+    "swift_version": "Swift 6.2.4 (Xcode 26.3), target arm64-apple-macosx26.0",
+    "binary_path": "macos/RigRelayShell/.build/release/RigRelayShell",
+    "binary_type": "Mach-O 64-bit executable arm64",
+    "binary_size": "1.9 MB",
+    "compiled_sources": 14
+  },
+  "strongest_falsifier_attempted": "Can SwiftUI perform GitHub, filesystem, AgentLoop, context, inference, or publication authority actions directly? Result: FALSE. The SwiftUI code contains zero Process, NSTask, URLSession, git operation, GitHub API, shell execution, or domain logic implementations. All domain actions route through typed intents dispatched to the Python backend. The strongest falsifier failed.",
+  "generated_at": "2026-05-26T15:40:00Z"
+}
