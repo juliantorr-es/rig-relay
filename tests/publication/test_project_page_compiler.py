@@ -1095,14 +1095,15 @@ class TestEvidenceReceiptPersistence:
         )
         receipt.evidence_digest = receipt.compute_digest()
 
-        row_digest = ledger.append_receipt(receipt.model_dump())
+        row_digest = ledger.append_event("op-persist-1", receipt.model_dump())
         assert row_digest.startswith("sha256:")
 
-        loaded = ledger.load_receipts()
-        assert len(loaded) == 1
-        assert loaded[0]["receipt_id"] == "r-persist"
-        assert loaded[0]["evidence_digest"] == receipt.evidence_digest
-        assert loaded[0]["compilation_successful"] is True
+        result = ledger.load_receipts()
+        assert not result.corruption_detected
+        assert result.valid_rows == 1
+        assert len(result.receipts) == 1
+        assert result.receipts[0]["receipt_id"] == "r-persist"
+        assert result.receipts[0]["evidence_digest"] == receipt.evidence_digest
 
     def test_ledger_persists_refusal_receipt(self, tmp_path: Path) -> None:
         from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
@@ -1123,28 +1124,110 @@ class TestEvidenceReceiptPersistence:
         )
         receipt.evidence_digest = receipt.compute_digest()
 
-        ledger.append_receipt(receipt.model_dump())
-        loaded = ledger.load_receipts()
-        assert loaded[0]["refusal_code"] == "profile_absent"
-        assert loaded[0]["refusal_reasons"] == ["No profile provided"]
+        ledger.append_event("op-refusal-1", receipt.model_dump())
+        result = ledger.load_receipts()
+        assert result.receipts[0]["refusal_code"] == "profile_absent"
 
-    def test_ledger_rejects_forbidden_content_keys(self, tmp_path: Path) -> None:
+    def test_ledger_rejects_forbidden_content_in_nested_dict(
+        self, tmp_path: Path
+    ) -> None:
         from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
 
-        ledger = PublicationEvidenceLedger(ledger_path=tmp_path / "bad.jsonl")
+        ledger = PublicationEvidenceLedger(ledger_path=tmp_path / "nested.jsonl")
 
-        with pytest.raises(ValueError, match="forbidden content key"):
-            ledger.append_receipt({
-                "receipt_id": "r-bad",
-                "secret": "should-not-be-here",
-            })
+        with pytest.raises(ValueError, match="forbidden"):
+            ledger.append_event(
+                "op-bad-nested",
+                {
+                    "receipt_id": "r-bad",
+                    "compiled_at": "2026-01-01T00:00:00Z",
+                    "compilation_successful": True,
+                    "profile_candidate_digest": "sha256:abc",
+                    "preview_only": True,
+                    "schema_version": "rig.relay.publication_preview_receipt.v1",
+                    "nested": {"access_token": "secret123"},
+                },
+            )
+
+    def test_ledger_rejects_secrets_in_string_values(self, tmp_path: Path) -> None:
+        from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
+
+        ledger = PublicationEvidenceLedger(ledger_path=tmp_path / "secret_str.jsonl")
+
+        with pytest.raises(ValueError, match="forbidden"):
+            ledger.append_event(
+                "op-bad-str",
+                {
+                    "receipt_id": "r-bad",
+                    "compiled_at": "2026-01-01T00:00:00Z",
+                    "compilation_successful": True,
+                    "profile_candidate_digest": "sha256:abc",
+                    "preview_only": True,
+                    "schema_version": "rig.relay.publication_preview_receipt.v1",
+                    "refusal_reasons": [
+                        "use token ghp_abc123def456ghi789jkl012mno345pqr678stu"
+                    ],
+                },
+            )
+
+    def test_ledger_rejects_raw_paths_in_string_values(self, tmp_path: Path) -> None:
+        from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
+
+        ledger = PublicationEvidenceLedger(ledger_path=tmp_path / "raw_path.jsonl")
+
+        with pytest.raises(ValueError, match="forbidden"):
+            ledger.append_event(
+                "op-bad-path",
+                {
+                    "receipt_id": "r-bad",
+                    "compiled_at": "2026-01-01T00:00:00Z",
+                    "compilation_successful": True,
+                    "profile_candidate_digest": "sha256:abc",
+                    "preview_only": True,
+                    "schema_version": "rig.relay.publication_preview_receipt.v1",
+                    "result_digest": "/Users/alice/secret/file.py",
+                },
+            )
+
+    def test_ledger_schema_validation_rejects_malformed_event(
+        self, tmp_path: Path
+    ) -> None:
+        from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
+
+        ledger = PublicationEvidenceLedger(ledger_path=tmp_path / "schema.jsonl")
+
+        with pytest.raises((ValueError, RuntimeError), match="schema|validation"):
+            ledger.append_event(
+                "op-bad", {"receipt_id": "r-bad", "compilation_successful": True}
+            )
+
+    def test_ledger_schema_validation_rejects_receipt_missing_required(
+        self, tmp_path: Path
+    ) -> None:
+        from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
+
+        ledger = PublicationEvidenceLedger(ledger_path=tmp_path / "schema2.jsonl")
+
+        with pytest.raises((ValueError, RuntimeError), match="schema|validation"):
+            ledger.append_event(
+                "op-bad2",
+                {
+                    "receipt_id": "r-bad2",
+                    "compiled_at": "2026-01-01T00:00:00Z",
+                    "compilation_successful": True,
+                    "profile_candidate_digest": "sha256:abc",
+                    "preview_only": True,
+                    "schema_version": "rig.relay.publication_preview_receipt.v1",
+                    "extra_unknown_field": "SHOULD_BE_REJECTED",
+                },
+            )
 
     def test_ledger_count_is_accurate(self, tmp_path: Path) -> None:
         from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
 
         ledger = PublicationEvidenceLedger(ledger_path=tmp_path / "count.jsonl")
 
-        assert ledger.count_receipts() == 0
+        assert ledger.count_events() == 0
 
         for i in range(3):
             receipt = PreviewEvidenceReceipt(
@@ -1154,9 +1237,9 @@ class TestEvidenceReceiptPersistence:
                 profile_candidate_digest=f"sha256:{i}",
             )
             receipt.evidence_digest = receipt.compute_digest()
-            ledger.append_receipt(receipt.model_dump())
+            ledger.append_event(f"op-count-{i}", receipt.model_dump())
 
-        assert ledger.count_receipts() == 3
+        assert ledger.count_events() == 3
 
     def test_ledger_reconstructs_receipt_after_new_instance(
         self, tmp_path: Path
@@ -1178,24 +1261,23 @@ class TestEvidenceReceiptPersistence:
         receipt.evidence_digest = receipt.compute_digest()
 
         ledger1 = PublicationEvidenceLedger(ledger_path=ledger_path)
-        ledger1.append_receipt(receipt.model_dump())
+        ledger1.append_event("op-recon", receipt.model_dump())
 
         ledger2 = PublicationEvidenceLedger(ledger_path=ledger_path)
-        loaded = ledger2.load_receipts()
+        result = ledger2.load_receipts()
 
-        assert len(loaded) == 1
-        assert loaded[0]["receipt_id"] == "r-recon"
-        assert loaded[0]["evidence_digest"] == receipt.evidence_digest
+        assert not result.corruption_detected
+        assert len(result.receipts) == 1
+        assert result.receipts[0]["receipt_id"] == "r-recon"
+        assert result.receipts[0]["evidence_digest"] == receipt.evidence_digest
 
-    def test_ledger_duplicate_retry_produces_same_hash_when_content_identical(
-        self, tmp_path: Path
-    ) -> None:
+    def test_idempotency_same_operation_id_no_duplicate(self, tmp_path: Path) -> None:
         from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
 
-        ledger = PublicationEvidenceLedger(ledger_path=tmp_path / "dupe.jsonl")
+        ledger = PublicationEvidenceLedger(ledger_path=tmp_path / "idem.jsonl")
 
         r1 = PreviewEvidenceReceipt(
-            receipt_id="r-dupe",
+            receipt_id="r-idem",
             compiled_at="2026-05-26T00:00:00Z",
             compilation_successful=True,
             profile_candidate_digest="sha256:abc",
@@ -1203,18 +1285,107 @@ class TestEvidenceReceiptPersistence:
         r1.evidence_digest = r1.compute_digest()
 
         r2 = PreviewEvidenceReceipt(
-            receipt_id="r-dupe",
+            receipt_id="r-idem",
             compiled_at="2026-05-26T00:00:00Z",
             compilation_successful=True,
             profile_candidate_digest="sha256:abc",
         )
         r2.evidence_digest = r2.compute_digest()
 
-        digest1 = ledger.append_receipt(r1.model_dump())
-        digest2 = ledger.append_receipt(r2.model_dump())
+        digest1 = ledger.append_event("op-same", r1.model_dump())
+        digest2 = ledger.append_event("op-same", r2.model_dump())
 
         assert digest1 == digest2
-        assert ledger.count_receipts() == 2
+        assert ledger.count_events() == 1
+
+    def test_idempotency_distinct_operation_ids_append_multiple(
+        self, tmp_path: Path
+    ) -> None:
+        from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
+
+        ledger = PublicationEvidenceLedger(ledger_path=tmp_path / "distinct.jsonl")
+
+        r = PreviewEvidenceReceipt(
+            receipt_id="r-dist",
+            compiled_at="2026-05-26T00:00:00Z",
+            compilation_successful=True,
+            profile_candidate_digest="sha256:abc",
+        )
+        r.evidence_digest = r.compute_digest()
+
+        d1 = ledger.append_event("op-a", r.model_dump())
+        d2 = ledger.append_event("op-b", r.model_dump())
+
+        assert d1 != d2
+        assert ledger.count_events() == 2
+
+    def test_corrupt_ledger_triggers_corruption_detected(self, tmp_path: Path) -> None:
+        from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
+
+        ledger_path = tmp_path / "corrupt.jsonl"
+
+        ledger = PublicationEvidenceLedger(ledger_path=ledger_path)
+        r = PreviewEvidenceReceipt(
+            receipt_id="r-clean",
+            compiled_at="2026-05-26T00:00:00Z",
+            compilation_successful=True,
+            profile_candidate_digest="sha256:abc",
+        )
+        r.evidence_digest = r.compute_digest()
+        ledger.append_event("op-clean", r.model_dump())
+
+        ledger_path.write_text(ledger_path.read_text() + "this is not json\n")
+
+        result = ledger.load_receipts()
+        assert result.corruption_detected
+        assert result.corrupt_rows == 1
+
+    def test_authoritative_reconstruction_refuses_corrupt_ledger(
+        self, tmp_path: Path
+    ) -> None:
+        from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
+
+        ledger_path = tmp_path / "auth_corrupt.jsonl"
+
+        ledger = PublicationEvidenceLedger(ledger_path=ledger_path)
+        r = PreviewEvidenceReceipt(
+            receipt_id="r-auth",
+            compiled_at="2026-05-26T00:00:00Z",
+            compilation_successful=True,
+            profile_candidate_digest="sha256:abc",
+        )
+        r.evidence_digest = r.compute_digest()
+        ledger.append_event("op-auth", r.model_dump())
+
+        ledger_path.write_text(ledger_path.read_text() + "garbage line\n")
+
+        result = ledger.load_receipts(authoritative=True)
+        assert result.corruption_detected
+        assert len(result.receipts) == 0
+
+    def test_tampered_row_digest_causes_corruption(self, tmp_path: Path) -> None:
+        from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
+
+        ledger_path = tmp_path / "tamper.jsonl"
+
+        ledger = PublicationEvidenceLedger(ledger_path=ledger_path)
+        receipt = PreviewEvidenceReceipt(
+            receipt_id="r-tamper",
+            compiled_at="2026-05-26T00:00:00Z",
+            compilation_successful=True,
+            profile_candidate_digest="sha256:abc",
+        )
+        receipt.evidence_digest = receipt.compute_digest()
+        ledger.append_event("op-tamper", receipt.model_dump())
+
+        content = ledger_path.read_text()
+        tampered = content.replace(
+            '"compilation_successful":true', '"compilation_successful":false'
+        )
+        ledger_path.write_text(tampered)
+
+        result = ledger.load_receipts()
+        assert result.corruption_detected
 
 
 class TestServiceEvidencePersistence:
@@ -1229,8 +1400,10 @@ class TestServiceEvidencePersistence:
         result = service.compile_preview(profile)
 
         assert result.success
-        assert ledger.count_receipts() == 1
-        loaded = ledger.load_receipts()
+        assert ledger.count_events() == 1
+        recon = ledger.load_receipts()
+        assert not recon.corruption_detected
+        loaded = recon.receipts
         assert loaded[0]["compilation_successful"] is True
         assert loaded[0]["preview_only"] is True
         assert loaded[0]["deployment_ready"] is False
@@ -1246,8 +1419,9 @@ class TestServiceEvidencePersistence:
         result = service.compile_preview(None)  # type: ignore[arg-type]
 
         assert not result.success
-        assert ledger.count_receipts() == 1
-        loaded = ledger.load_receipts()
+        assert ledger.count_events() == 1
+        recon = ledger.load_receipts()
+        loaded = recon.receipts
         assert loaded[0]["refusal_code"] == "profile_absent"
         assert loaded[0]["compilation_successful"] is False
 
@@ -1290,6 +1464,43 @@ class TestServiceEvidencePersistence:
         assert result.receipt.preview_only is True
         assert result.receipt.deployment_ready is False
 
-        loaded = ledger.load_receipts()
+        recon = ledger.load_receipts()
+        loaded = recon.receipts
+        assert loaded[0]["preview_only"] is True
+        assert loaded[0]["deployment_ready"] is False
+
+    def test_service_idempotent_duplicate_compile_no_extra_event(
+        self, tmp_path: Path
+    ) -> None:
+        from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
+
+        ledger_path = tmp_path / "svc_idem.jsonl"
+        ledger = PublicationEvidenceLedger(ledger_path=ledger_path)
+
+        service = ProjectPagePublicationPreviewService(ledger=ledger)
+        profile = _make_valid_profile()
+
+        result1 = service.compile_preview(profile)
+        result2 = service.compile_preview(profile)
+
+        assert result1.success and result2.success
+        assert ledger.count_events() == 1
+
+    def test_service_valid_event_passes_schema_validation(self, tmp_path: Path) -> None:
+        from rig_relay.publication._evidence_ledger import PublicationEvidenceLedger
+
+        ledger_path = tmp_path / "svc_schema_ok.jsonl"
+        ledger = PublicationEvidenceLedger(ledger_path=ledger_path)
+
+        service = ProjectPagePublicationPreviewService(ledger=ledger)
+        profile = _make_valid_profile()
+        result = service.compile_preview(profile)
+
+        assert result.success
+        assert ledger.count_events() == 1
+        recon = ledger.load_receipts()
+        assert not recon.corruption_detected
+        loaded = recon.receipts
+        assert loaded[0]["schema_version"] == "rig.relay.publication_preview_receipt.v1"
         assert loaded[0]["preview_only"] is True
         assert loaded[0]["deployment_ready"] is False

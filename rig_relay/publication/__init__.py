@@ -6,6 +6,7 @@ from rig_relay.publication._evidence_ledger import (
     PublicationEvidenceLedger,
 )
 from rig_relay.publication._models import (
+    LedgerReconstruction,
     PreviewEvidenceReceipt,
     PreviewRefusalCode,
     ProjectPageCompilerInput,
@@ -27,6 +28,7 @@ from rig_relay.publication.project_page_compiler import ProjectPagePublicationCo
 __all__ = [
     "LEDGER_DIR",
     "LEDGER_FILE",
+    "LedgerReconstruction",
     "PreviewEvidenceReceipt",
     "PreviewRefusalCode",
     "ProjectPageCompilerInput",

@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.relay.publication_preview_event.v1.schema.json",
+  "title": "Rig Relay Publication Preview Event v1",
+  "description": "Append-only content-light canonical evidence event for a publication preview compilation. Envelope wraps a publication preview receipt plus operation-id for idempotency. Never stores raw file contents, private data, prompts, secrets, or deployment actions.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "operation_id",
+    "created_at",
+    "receipt",
+    "event_digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.publication_preview_event.v1"
+    },
+    "operation_id": {
+      "type": "string",
+      "description": "Stable operation identifier for idempotency. Same logically-equivalent compile request must produce same operation_id. Distinct compile requests must produce distinct operation_ids."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when the event was created"
+    },
+    "receipt": {
+      "type": "object",
+      "description": "Publication preview evidence receipt. Must conform to rig.relay.publication_preview_receipt.v1 schema.",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "receipt_id",
+        "compiled_at",
+        "compilation_successful",
+        "profile_candidate_digest",
+        "preview_only"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "string",
+          "const": "rig.relay.publication_preview_receipt.v1"
+        },
+        "receipt_id": {
+          "type": "string",
+          "description": "Unique identifier for this receipt instance"
+        },
+        "compiled_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 UTC timestamp when compilation completed"
+        },
+        "compilation_successful": {
+          "type": "boolean",
+          "description": "Whether compilation completed without safety or schema failures"
+        },
+        "profile_candidate_digest": {
+          "type": "string",
+          "description": "SHA256 digest of the profile candidate used for compilation"
+        },
+        "result_digest": {
+          "type": ["string", "null"],
+          "description": "SHA256 digest of the compiler result, or null on refusal"
+        },
+        "refusal_code": {
+          "type": ["string", "null"],
+          "description": "PreviewRefusalCode value when compilation was refused, or null"
+        },
+        "refusal_reasons": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Human-readable reasons for refusal"
+        },
+        "safety_passed": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the safety scan passed"
+        },
+        "deployment_ready": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether output is ready for deployment. Always false when preview_only is true."
+        },
+        "preview_only": {
+          "type": "boolean",
+          "const": true,
+          "description": "Must always be true — this is strictly a preview boundary"
+        },
+        "evidence_digest": {
+          "type": "string",
+          "description": "Deterministic SHA256 digest of the receipt itself"
+        }
+      }
+    },
+    "event_digest": {
+      "type": "string",
+      "description": "Deterministic SHA256 digest of the event envelope (excluding event_digest field itself)"
+    }
+  }
+}

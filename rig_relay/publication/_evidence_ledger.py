@@ -1,28 +1,152 @@
 """Append-only content-light JSONL evidence ledger for publication preview receipts.
 
-Durable persistence with fcntl locking, integrity verification, and
-content-light enforcement. Every receipt is stored before the governed
-result is returned — no silent receipt loss.
+Durable persistence with fcntl locking, schema validation, recursive
+content-light enforcement, operation-id idempotency, and typed
+corruption-communicating reconstruction.
 """
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 import fcntl
 import hashlib
 import json
 import os
 from pathlib import Path
+import re as _re
 from typing import Any
+
+from rig_relay.publication._models import LedgerReconstruction
 
 LEDGER_DIR = Path(".build/rig-relay/publication")
 LEDGER_FILE = "publication_preview_evidence.v1.jsonl"
+EVENT_SCHEMA_VERSION = "rig.relay.publication_preview_event.v1"
+
+_EVENT_SCHEMA_REL_PATH = (
+    "docs/schemas/rig.relay.publication_preview_event.v1.schema.json"
+)
+
+_event_schema_cache: dict | None = None
+
+
+def _resolve_schema_path() -> Path:
+    p = Path(_EVENT_SCHEMA_REL_PATH)
+    if p.exists():
+        return p
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    return repo_root / _EVENT_SCHEMA_REL_PATH
+
+
+def _load_event_schema() -> dict:
+    global _event_schema_cache
+    if _event_schema_cache is not None:
+        return _event_schema_cache
+    loaded: dict = json.loads(_resolve_schema_path().read_text("utf-8"))
+    _event_schema_cache = loaded
+    return loaded
+
+
+def _validate_event_against_schema(event: dict) -> None:
+    try:
+        import jsonschema
+    except ImportError as e:
+        raise RuntimeError(
+            "Cannot validate publication preview events: jsonschema is not installed"
+        ) from e
+
+    try:
+        schema = _load_event_schema()
+    except FileNotFoundError as e:
+        raise RuntimeError(
+            "Cannot validate publication preview events: schema file not found"
+        ) from e
+
+    try:
+        jsonschema.validate(event, schema)
+    except jsonschema.ValidationError as e:
+        raise ValueError(
+            f"Publication preview event failed schema validation: {e.message}"
+        ) from e
+
+
+_FORBIDDEN_FIELD_NAMES: frozenset[str] = frozenset({
+    "raw_prompt",
+    "raw_completion",
+    "raw_file_contents",
+    "private_repo_contents",
+    "access_token",
+    "refresh_token",
+    "api_key",
+    "api_secret",
+    "private_key",
+    "oauth_code",
+    "secret",
+})
+
+_FORBIDDEN_VALUE_PATTERNS: list[tuple[str, _re.Pattern[str]]] = [
+    ("github_pat", _re.compile(r"ghp_[A-Za-z0-9]{36}")),
+    ("github_oauth", _re.compile(r"gho_[A-Za-z0-9]{36}")),
+    ("github_user", _re.compile(r"ghu_[A-Za-z0-9]{36}")),
+    ("github_server", _re.compile(r"ghs_[A-Za-z0-9]{36}")),
+    ("github_refresh", _re.compile(r"ghr_[A-Za-z0-9]{36}")),
+    ("github_classic", _re.compile(r"github_pat_[A-Za-z0-9]{22,}")),
+    ("openai_key", _re.compile(r"sk-(?:proj-)?[A-Za-z0-9]{32,}")),
+    ("anthropic_key", _re.compile(r"sk-ant-[A-Za-z0-9]{32,}")),
+    ("google_api", _re.compile(r"AIza[0-9A-Za-z\-_]{35}")),
+    (
+        "generic_api_key",
+        _re.compile(r"(?:api[_-]?key|apikey)\s*[:=]\s*['\"]?[A-Za-z0-9\-_]{20,}"),
+    ),
+    ("bearer_token", _re.compile(r"Bearer\s+[A-Za-z0-9\-_\.\+/]{20,}")),
+]
+
+_RAW_PATH_PATTERN: _re.Pattern[str] = _re.compile(r"^(/[Uu]sers/|/[Hh]ome/|[A-Z]:\\)")
+
+
+def _scan_recursive(data: Any, path: str) -> list[str]:
+    """Recursively scan any value for forbidden content.
+
+    Checks forbidden field names in dict keys, secret patterns
+    in string values, and raw path patterns.
+    """
+    violations: list[str] = []
+
+    if isinstance(data, dict):
+        for key, value in data.items():
+            current = f"{path}.{key}" if path else key
+            if key.lower() in _FORBIDDEN_FIELD_NAMES:
+                violations.append(f"forbidden_key:{current}")
+            violations.extend(_scan_recursive(value, current))
+    elif isinstance(data, list):
+        for i, item in enumerate(data):
+            violations.extend(_scan_recursive(item, f"{path}[{i}]"))
+    elif isinstance(data, str):
+        for label, pattern in _FORBIDDEN_VALUE_PATTERNS:
+            if pattern.search(data):
+                violations.append(f"secret_pattern:{label} at {path}")
+        if _RAW_PATH_PATTERN.search(data):
+            violations.append(f"raw_path at {path}")
+
+    return violations
+
+
+def _assert_content_light(data: dict[str, Any]) -> None:
+    violations = _scan_recursive(data, "")
+    if violations:
+        raise ValueError(f"Receipt contains forbidden content: {violations[:10]}")
 
 
 class PublicationEvidenceLedger:
-    """Append-only JSONL ledger for publication preview evidence receipts.
+    """Append-only JSONL ledger for publication preview evidence events.
 
-    Thread-safe and process-safe via fcntl file locking.
-    Durably persists receipts before the service returns results.
+    - Schema-validated: every event validates against the event schema
+      before append and after reconstruction.
+    - Idempotent: same operation_id will not produce a duplicate row.
+    - Recursively content-light: forbidden keys, secret patterns, and
+      raw paths are rejected from anywhere in the event.
+    - Typed reconstruction: corrupted rows are communicated via
+      LedgerReconstruction, never silently dropped from authority.
+    - Thread-safe and process-safe via fcntl locking.
     """
 
     def __init__(self, ledger_path: Path | None = None) -> None:
@@ -32,19 +156,29 @@ class PublicationEvidenceLedger:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._lock_path = ledger_path.with_suffix(ledger_path.suffix + ".lock")
 
-    def append_receipt(self, receipt_data: dict[str, Any]) -> str:
-        """Persist a receipt as a content-light JSONL event.
+    def append_event(self, operation_id: str, receipt_data: dict[str, Any]) -> str:
+        """Persist a receipt as a schema-validated content-light event.
 
         Returns the event_digest for the recorded row.
+        If an event with the same operation_id already exists,
+        returns the existing event_digest (idempotent).
         """
         _assert_content_light(receipt_data)
 
+        existing_digest = self._find_existing_by_operation_id(operation_id)
+        if existing_digest is not None:
+            return existing_digest
+
         event = {
-            "schema_version": "rig.relay.publication_preview_event.v1",
+            "schema_version": EVENT_SCHEMA_VERSION,
+            "operation_id": operation_id,
+            "created_at": datetime.now(UTC).isoformat(),
             "receipt": receipt_data,
         }
-        row_digest = _compute_row_digest(event)
-        event["event_digest"] = row_digest
+        event_digest = _compute_event_digest(event)
+        event["event_digest"] = event_digest
+
+        _validate_event_against_schema(event)
 
         line = json.dumps(event, sort_keys=True, separators=(",", ":")) + "\n"
 
@@ -58,47 +192,96 @@ class PublicationEvidenceLedger:
             finally:
                 fcntl.flock(lock_fd, fcntl.LOCK_UN)
 
-        return row_digest
+        return event_digest
 
-    def load_receipts(self) -> list[dict[str, Any]]:
-        """Load all persisted receipts with integrity verification.
+    def load_receipts(self, authoritative: bool = False) -> LedgerReconstruction:
+        """Load all persisted events with integrity verification.
 
-        Returns valid receipt data dicts. Corrupt rows produce a warning
-        via the logger, not silent drops.
+        When authoritative=True, any corruption prevents reconstruction
+        (emits warnings and refuse to produce an apparently clean list).
+        When authoritative=False (default), corrupt rows are reported
+        but valid receipts may be returned alongside corruption metadata.
+
+        Returns a LedgerReconstruction typed result. Consumers MUST
+        inspect corruption_detected before treating receipts by
+        authority.
         """
         if not self._path.exists():
-            return []
+            return LedgerReconstruction()
 
         receipts: list[dict[str, Any]] = []
-        corrupt: list[int] = []
+        corrupt_lines: list[int] = []
+        total = 0
+        valid = 0
 
         with open(self._path) as f:
             for line_num, line in enumerate(f, start=1):
                 line = line.strip()
                 if not line:
                     continue
+                total += 1
+
                 try:
                     event = json.loads(line)
-                    _verify_row_integrity(event)
-                    receipts.append(event.get("receipt", event))
-                except (json.JSONDecodeError, KeyError, ValueError):
-                    corrupt.append(line_num)
+                except json.JSONDecodeError:
+                    corrupt_lines.append(line_num)
+                    continue
 
-        if corrupt:
+                try:
+                    _validate_event_against_schema(event)
+                    _verify_event_digest(event)
+                    _assert_content_light(event.get("receipt", event))
+                    receipts.append(event.get("receipt", event))
+                    valid += 1
+                except (ValueError, RuntimeError, KeyError):
+                    corrupt_lines.append(line_num)
+                    continue
+
+        corrupt_count = len(corrupt_lines)
+        corruption_detected = corrupt_count > 0
+
+        warnings: list[str] = []
+        if corruption_detected:
+            warnings.append(
+                f"Ledger {self._path}: {corrupt_count} corrupt/tampered/invalid "
+                f"row(s) at lines {corrupt_lines[:10]}"
+            )
+
+        if authoritative and corruption_detected:
             import logging
 
             logger = logging.getLogger(__name__)
-            logger.warning(
-                "Publication evidence ledger %s: %d corrupt lines at %s",
+            logger.error(
+                "Authoritative reconstruction refused: %d corrupt rows in %s",
+                corrupt_count,
                 self._path,
-                len(corrupt),
-                corrupt[:10],
+            )
+            return LedgerReconstruction(
+                receipts=[],
+                total_rows=total,
+                valid_rows=0,
+                corrupt_rows=corrupt_count,
+                corrupt_lines=corrupt_lines,
+                corruption_detected=True,
+                reconstruction_warnings=[
+                    f"Authoritative reconstruction refused: "
+                    f"{corrupt_count} corrupt/tampered/invalid row(s) at lines "
+                    f"{corrupt_lines[:10]}"
+                ],
             )
 
-        return receipts
+        return LedgerReconstruction(
+            receipts=receipts,
+            total_rows=total,
+            valid_rows=valid,
+            corrupt_rows=corrupt_count,
+            corrupt_lines=corrupt_lines,
+            corruption_detected=corruption_detected,
+            reconstruction_warnings=warnings,
+        )
 
-    def count_receipts(self) -> int:
-        """Count persisted receipts (fast, no full parse)."""
+    def count_events(self) -> int:
+        """Count persisted events (fast, no full parse)."""
         if not self._path.exists():
             return 0
         count = 0
@@ -108,40 +291,44 @@ class PublicationEvidenceLedger:
                     count += 1
         return count
 
+    def _find_existing_by_operation_id(self, operation_id: str) -> str | None:
+        """Find an existing event with the given operation_id.
 
-def _verify_row_integrity(event: dict[str, Any]) -> None:
-    stored = event.pop("event_digest", None)
-    computed = _compute_row_digest(event)
-    if stored is not None and stored != computed:
-        raise ValueError(f"Row integrity failure: stored={stored}, computed={computed}")
-    event["event_digest"] = computed
+        Returns the event_digest if found, None otherwise.
+        Must be called under the fcntl lock for safety.
+        """
+        if not self._path.exists():
+            return None
+
+        target = f'"operation_id":"{operation_id}"'
+        with open(self._path) as f:
+            for line in f:
+                line = line.strip()
+                if target in line:
+                    try:
+                        event = json.loads(line)
+                        _verify_event_digest(event)
+                        return event.get("event_digest", "")
+                    except (json.JSONDecodeError, ValueError, KeyError):
+                        continue
+        return None
 
 
-def _compute_row_digest(event: dict[str, Any]) -> str:
+def _verify_event_digest(event: dict[str, Any]) -> None:
+    stored = event.get("event_digest")
+    if stored is None:
+        return
+    # Preserve event_digest in the dict for schema validation;
+    # compute over a copy that excludes it.
+    data = {k: v for k, v in event.items() if k != "event_digest"}
+    computed_digest = f"sha256:{hashlib.sha256(json.dumps(data, sort_keys=True, separators=(',', ':')).encode()).hexdigest()}"
+    if stored != computed_digest:
+        raise ValueError(
+            f"Event integrity failure: stored={stored}, computed={computed_digest}"
+        )
+
+
+def _compute_event_digest(event: dict[str, Any]) -> str:
     data = {k: v for k, v in event.items() if k != "event_digest"}
     payload = json.dumps(data, sort_keys=True, separators=(",", ":"))
     return f"sha256:{hashlib.sha256(payload.encode()).hexdigest()}"
-
-
-_FORBIDDEN_RECEIPT_KEYS: frozenset[str] = frozenset({
-    "raw_file_contents",
-    "raw_prompt",
-    "raw_model_output",
-    "secret",
-    "api_key",
-    "token",
-    "access_token",
-    "private_key",
-    "raw_stdout",
-    "raw_stderr",
-    "file_content",
-    "mutation_content",
-})
-
-
-def _assert_content_light(receipt_data: dict[str, Any]) -> None:
-    for key in _FORBIDDEN_RECEIPT_KEYS:
-        if key in receipt_data:
-            raise ValueError(
-                f"Publication receipt contains forbidden content key: {key}"
-            )

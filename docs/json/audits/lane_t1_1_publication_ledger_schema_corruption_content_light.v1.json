@@ -1,0 +1,103 @@
+{
+  "schema_version": "rig.relay.lane_release_report.v1",
+  "lane_id": "t1.1",
+  "title": "Publication Ledger Schema, Corruption, and Content-Light Closure",
+  "released_boundary": "PublicationPreviewCanonicalEvidenceLedger: a preview-only publication application-service evidence boundary that persists schema-validated, outcome-complete, recursively content-light, retry-safe append-only preview/refusal events and refuses or explicitly degrades reconstruction on any corrupted evidence.",
+  "stated_consumer_purpose": "T4 timeline reconstruction and later desktop Publish Preview history can consume publication evidence without silently dropping invalid events or trusting unvalidated ledger records.",
+  "push_sha": "(pending checkpoint)",
+  "remote_verified": false,
+  "branch": "main",
+  "head_before": "c808f37aa84f6059092e2287cc5de0fbcf20a722",
+  "head_after": "(pending checkpoint)",
+  "dirty_state_before": "Pre-existing untracked files: .swift-version, docs/json/audits/lane_s3_publication_preview_release.v1.json. No dirty tracked files. No staged changes.",
+  "dirty_state_after": "Same pre-existing files preserved. No other-lane files absorbed into T1.1 commit.",
+  "files_changed": [
+    "rig_relay/publication/__init__.py",
+    "rig_relay/publication/_evidence_ledger.py",
+    "rig_relay/publication/_models.py",
+    "rig_relay/publication/_service.py",
+    "tests/publication/test_project_page_compiler.py"
+  ],
+  "files_created": [
+    "docs/schemas/rig.relay.publication_preview_event.v1.schema.json",
+    "docs/json/audits/lane_t1_1_publication_ledger_schema_corruption_content_light.v1.json"
+  ],
+  "files_deleted": [],
+  "tests_run": 90,
+  "tests_passed": 90,
+  "tests_intentionally_skipped": 0,
+  "test_classifications": {
+    "t1_preserved_tests": 67,
+    "t1_1_schema_validation_tests": 3,
+    "t1_1_recursive_content_light_tests": 3,
+    "t1_1_corruption_tests": 3,
+    "t1_1_idempotency_tests": 4,
+    "t1_1_service_integration_tests": 2,
+    "t1_1_ledger_upgraded_tests": 8
+  },
+  "evidence_artifacts": [
+    "docs/schemas/rig.relay.publication_preview_event.v1.schema.json",
+    "docs/schemas/rig.relay.publication_preview_receipt.v1.schema.json"
+  ],
+  "schema_validation_results": {
+    "new_event_schema": "validated — passes jsonschema self-check and repo validator",
+    "pre_existing_infra_failures": 4,
+    "publication_schemas_failing": 0
+  },
+  "lint_type_results": {
+    "ruff": "0 errors (2 import-order fixes applied)",
+    "pyright": "0 errors, 0 warnings, 0 informations",
+    "ruff_format": "9 files left unchanged"
+  },
+  "producer_public_inputs_inspected": [
+    "rig_relay/providers/evidence_ledger.py — schema validation pattern (fail-closed, cached schema, jsonschema.validate)",
+    "rig_relay/recovery/evidence_ledger.py — EvidenceLedger pattern (fcntl locking, integrity verification)",
+    "rig_relay/providers/invocation.py — assert_content_light() with forbidden token scanning",
+    "docs/schemas/rig.relay.provider_invocation_evidence_event.v1.schema.json — envelope schema pattern",
+    "docs/schemas/rig.relay.publication_preview_receipt.v1.schema.json — existing receipt schema (embedded as nested object in event schema)"
+  ],
+  "external_research_consulted": [],
+  "completed_work": [
+    "Created rig.relay.publication_preview_event.v1.schema.json — event envelope schema with nested receipt validation, required operation_id for idempotency, and all receipt fields validated against the publication preview receipt contract",
+    "Added schema validation to append_event(): events are validated against the canonical schema before fcntl fsync, using the same fail-closed pattern as providers/evidence_ledger.py",
+    "Added schema validation to load_receipts(): every reconstructed row is validated against the published event schema; invalid rows are rejected from authority",
+    "Replaced load_receipts() returning list[dict] with typed LedgerReconstruction: includes corruption_detected, corrupt_lines, corrupt_rows, reconstruction_warnings, and valid_rows",
+    "Added authoritative reconstruction mode: load_receipts(authoritative=True) refuses to return any receipts when corruption is detected, preventing consumers from mistaking a partial valid subset for complete canonical evidence",
+    "Added recursive content-light enforcement: _scan_recursive() walks nested dicts, lists, and string values checking forbidden field names (conventional), 11 secret/token patterns (regex), and raw-path patterns",
+    "Added operation_id-based idempotency: _build_operation_id() creates a stable operation identifier from profile digest + publication policy + refusal state; append_event() checks for existing rows with the same operation_id before appending",
+    "Preserved all T1 repairs: receipt digest binding (11 outcome fields), preview_only/deployment_ready guard, refusal evidence binding",
+    "Updated __init__.py to export LedgerReconstruction",
+    "Added 23 new production-boundary tests: 3 schema validation, 3 recursive content-light, 3 corruption, 4 idempotency, 2 service integration, 8 upgraded ledger tests"
+  ],
+  "claim_adversary_results": {
+    "schema_validation_enforced_before_append": "passed — test_service_valid_event_passes_schema_validation, test_ledger_schema_validation_rejects_malformed_event",
+    "nested_receipt_violations_rejected": "passed — test_ledger_schema_validation_rejects_receipt_missing_required (extra field in receipt rejects)",
+    "corrupt_rows_not_hidden_from_authority": "passed — test_corrupt_ledger_triggers_corruption_detected (corrupt JSON detects corruption)",
+    "authoritative_refuses_on_corruption": "passed — test_authoritative_reconstruction_refuses_corrupt_ledger (authoritative=True returns empty receipts with corruption_detected=True)",
+    "tampered_digest_detected": "passed — test_tampered_row_digest_causes_corruption (modified compilation_successful without recomputing digest detected)",
+    "nested_secrets_rejected": "passed — test_ledger_rejects_secrets_in_string_values (secret pattern in refusal_reasons string rejected), test_ledger_rejects_forbidden_content_in_nested_dict (forbidden key in nested dict rejected)",
+    "raw_paths_in_strings_rejected": "passed — test_ledger_rejects_raw_paths_in_string_values (/Users/alice in result_digest string rejected)",
+    "idempotent_same_operation": "passed — test_idempotency_same_operation_id_no_duplicate (same op → 1 row, same digest)",
+    "distinct_operations_distinguishable": "passed — test_idempotency_distinct_operation_ids_append_multiple (different ops → 2 rows, different digests)",
+    "service_idempotent": "passed — test_service_idempotent_duplicate_compile_no_extra_event (same profile re-compile → 1 ledger row)",
+    "receipt_digest_binding_intact": "passed — all 9 TestEvidenceReceiptDigestBinding tests preserved and passing",
+    "preview_only_guard_intact": "passed — test_preview_only_always_true_and_deployment_ready_false preserved",
+    "no_deployment_authority": "passed — no GitHub Pages/HTTP/mutation code added",
+    "no_cross_lane_absorption": "passed — no files from frontend, macos, gateway, safari, or other lanes staged"
+  },
+  "blocking_defects": [],
+  "intentionally_deferred_work": [
+    "Desktop frontend wiring (P0 Gridline Interface consumption of preview results)",
+    "GitHub Pages deployment pipeline (separate authority, out of scope)",
+    "Portfolio site compilation surface",
+    "Cross-lane integration testing with P0 desktop gateway",
+    "Ledger compaction/retention policies"
+  ],
+  "remaining_seams": [
+    "Desktop cockpit Publish Preview surface → ProjectPagePublicationPreviewService + ledger consumption wiring",
+    "T4 timeline adapter consumption of publication_preview_evidence.v1.jsonl events",
+    "Operational retention/compaction policies for the ledger"
+  ],
+  "freeze_condition": "Lane T1.1 is frozen pending the named integration milestone that wires the desktop Publish Preview surface to the schema-validated, corruption-safe, idempotent ProjectPagePublicationPreviewService and its canonical evidence ledger. Reopens only for a concrete defect inside the released ledger/schema/corruption/idempotency boundary, the named integration milestone, or a user-directed architectural revision.",
+  "release_disposition": "published_narrow_release"
+}

@@ -103,7 +103,13 @@ class ProjectPagePublicationPreviewService:
                 refusal_reasons=refusal.reasons,
             )
             receipt.evidence_digest = receipt.compute_digest()
-            self._ledger.append_receipt(receipt.model_dump())
+            operation_id = _build_operation_id(
+                profile=profile,
+                publication_policy=publication_policy,
+                refused=True,
+                refusal_code=refusal.refusal_code.value,
+            )
+            self._ledger.append_event(operation_id, receipt.model_dump())
             return PublicationPreviewResult(
                 compiler_result=self._empty_result(),
                 receipt=receipt,
@@ -158,7 +164,10 @@ class ProjectPagePublicationPreviewService:
             receipt.refusal_reasons = compiler_result.warnings
             receipt.evidence_digest = receipt.compute_digest()
 
-        self._ledger.append_receipt(receipt.model_dump())
+        operation_id = _build_operation_id(
+            profile=profile, publication_policy=publication_policy
+        )
+        self._ledger.append_event(operation_id, receipt.model_dump())
 
         return PublicationPreviewResult(
             compiler_result=compiler_result, receipt=receipt, refused=refused
@@ -305,3 +314,19 @@ def _profile_digest(profile: object) -> str:
             return str(result)
     candidate_id = getattr(profile, "candidate_id", "unknown")
     return _digest_sha256(f"profile:{candidate_id}")
+
+
+def _build_operation_id(
+    profile: object,
+    publication_policy: str,
+    refused: bool = False,
+    refusal_code: str | None = None,
+) -> str:
+    profile_digest = _profile_digest(profile)
+    if refused:
+        raw = (
+            f"refusal:{profile_digest}:{publication_policy}:{refusal_code or 'unknown'}"
+        )
+    else:
+        raw = f"compile:{profile_digest}:{publication_policy}"
+    return _digest_sha256(raw)

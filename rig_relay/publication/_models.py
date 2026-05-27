@@ -290,6 +290,25 @@ class ProjectPageCompilerResult(BaseModel):
         return f"sha256:{hashlib.sha256(raw.encode()).hexdigest()}"
 
 
+class LedgerReconstruction(BaseModel):
+    """Typed result of loading the publication evidence ledger.
+
+    Consumers must inspect corruption_detected before treating
+    receipts as authoritative. A partial valid subset is never
+    mistaken for complete canonical evidence.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    receipts: list[dict] = Field(default_factory=list)
+    total_rows: int = 0
+    valid_rows: int = 0
+    corrupt_rows: int = 0
+    corrupt_lines: list[int] = Field(default_factory=list)
+    corruption_detected: bool = False
+    reconstruction_warnings: list[str] = Field(default_factory=list)
+
+
 def _now_iso() -> str:
     return datetime.now(UTC).isoformat()
 
