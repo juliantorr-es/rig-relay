@@ -1,0 +1,124 @@
+{
+  "schema_version": "rig.relay.lane_release_audit.v1",
+  "report_id": "lane_n0_gridline_developer_studio_shell_publication_verification",
+  "report_kind": "publication_verification",
+  "lane_id": "n0",
+  "lane_title": "Gridline Developer Studio — Native SwiftUI macOS Application Shell",
+  "supplements_artifact": "docs/json/audits/desktop/lane_n0_gridline_developer_studio_shell_initial_slice.v1.json",
+  "supplements_policy": "This artifact supplements (does not replace or edit) the initial-slice audit. It supersedes only publication-state, dependency-state, and freeze-status truth. Implementation boundary, completed work, authority isolation, fixture truth, surface-state coverage, public/private boundary, design tokens, and deferred-seam inventory remain governed by the initial-slice audit.",
+  "branch": "main",
+  "head_before": "928d37a601d01c91c04027e51530e137e219673a",
+  "head_after": "f59caadf5b71a57d03a7b0b1cd1f15aeed190793",
+  "published_sha": "f59caadf5b71a57d03a7b0b1cd1f15aeed190793",
+  "predecessor_sha": "928d37a601d01c91c04027e51530e137e219673a",
+  "actual_promoted_scope": {
+    "file_count": 14,
+    "files_modified": [
+      "macos/RigRelayShell/Sources/RigRelayShell/AppState.swift",
+      "macos/RigRelayShell/Sources/RigRelayShell/ContentView.swift",
+      "macos/RigRelayShell/Sources/RigRelayShell/RigRelayApp.swift"
+    ],
+    "files_created": [
+      "macos/RigRelayShell/Sources/RigRelayShell/Models/GridlineProjection.swift",
+      "macos/RigRelayShell/Sources/RigRelayShell/Models/Intent.swift",
+      "macos/RigRelayShell/Sources/RigRelayShell/Models/DesignTokens.swift",
+      "macos/RigRelayShell/Sources/RigRelayShell/Fixtures/GridlineFixture.swift",
+      "macos/RigRelayShell/Sources/RigRelayShell/Views/Shared/SharedComponents.swift",
+      "macos/RigRelayShell/Sources/RigRelayShell/Views/Connect/ConnectView.swift",
+      "macos/RigRelayShell/Sources/RigRelayShell/Views/RepositoryEstate/RepositoryEstateView.swift",
+      "macos/RigRelayShell/Sources/RigRelayShell/Views/ProjectStudio/ProjectStudioView.swift",
+      "macos/RigRelayShell/Sources/RigRelayShell/Views/InferenceStudio/InferenceStudioView.swift",
+      "macos/RigRelayShell/Sources/RigRelayShell/Views/PublishPreview/PublishPreviewView.swift",
+      "docs/json/audits/desktop/lane_n0_gridline_developer_studio_shell_initial_slice.v1.json"
+    ],
+    "foreign_lane_contamination": "none — zero non-N0 files in promotion set"
+  },
+  "released_boundary": "Gridline Developer Studio Shell v1 — a native SwiftUI macOS application shell that renders typed developer-workflow projection states and emits typed user intents, while performing no GitHub, filesystem, AgentLoop, context-engine, inference, evidence-validation, or publication authority actions inside SwiftUI. The shell consumes E0 three-surface architecture (Gridline, project page, portfolio surfaces) and distinguishes fixture-backed, deferred, blocked, degraded, corrupt, review-required, and published states.",
+  "stated_consumer_purpose": "A developer can launch the macOS app, enter the Carte Blanche/repository/project workflow using real backend projections or clearly identified service-backed fixture mode, and inspect a project-page candidate without UI code bypassing domain authority.",
+  "fixture_backed_status": "The shell remains fixture-backed for all J0/K0/L0/M0 workflow states despite those lanes being published on remote. All five product area views display DeferredServiceBannerView for unreleased service boundaries. FixtureModeBannerView marks every view. AppState status message says 'DEVELOPMENT — Fixture mode. No live backend connected.' No live service adapter is claimed by N0.",
+  "upstream_lane_publication_state": {
+    "k0": {
+      "status": "published",
+      "sha": "5381bdbcf169724b5000dc03bb60e405ef74c769",
+      "description": "RepositoryOperatorSessionService — AgentLoop investigation and proposal-disposition boundary",
+      "n0_consumption": "not wired — fixture-backed Project Studio view; live wiring deferred to Lane O0"
+    },
+    "m0": {
+      "status": "published",
+      "sha": "6a41d09681327a2da6c8e68d4fa7f92f887e934a",
+      "description": "LocalProjectInferenceService — JSON_OBJECT_FORMATTING_ONLY assistance over fixtured project context",
+      "n0_consumption": "not wired — fixture-backed Inference Studio view; live wiring deferred to Lane O0"
+    },
+    "l0": {
+      "status": "published",
+      "sha": "52713fae5d3b63c7d2b9a2a7fd21dd580853e986",
+      "publication_reconciliation_sha": "66ecc8e9c94c6cbba8de45aaac1171b56744f633",
+      "description": "ProjectContextAssemblyService — project understanding, publishable profile candidates, and sanitized context packets",
+      "n0_consumption": "not wired — fixture-backed Project Studio and Publish Preview views; live wiring deferred to Lane O0"
+    },
+    "j0": {
+      "status": "published_awaiting_reconciliation",
+      "sha": "928d37a601d01c91c04027e51530e137e219673a",
+      "description": "DeveloperGitHubWorkspaceService — Carte Blanche connection, repository discovery/selection, intake/sync, publication readiness, Pages action preparation, Gridline projection. Awaiting one-file audit reconciliation.",
+      "n0_consumption": "not wired — fixture-backed Connect and Repository Estate views with DeferredServiceBannerView; live wiring deferred until J0 audit reconciliation and Lane O0 bridge milestone"
+    },
+    "e0": {
+      "status": "published",
+      "description": "Frontend Systems Atlas — three-surface architecture (Gridline, project page, portfolio), privacy classes, evidence status vocabulary",
+      "n0_consumption": "consumed — design-time models applied across all 5 views (PrivacyClass, EvidenceStatus, surface separation)"
+    },
+    "lane_a": {
+      "status": "frozen_pending_integration",
+      "description": "Disclosure authority — not consumed by N0; identity display fixture-backed"
+    },
+    "lane_b": {
+      "status": "candidate_local",
+      "description": "Materialization authority — not consumed by N0"
+    },
+    "lane_c": {
+      "status": "published",
+      "description": "Provider evidence authority — ProviderEvidenceProjection model structurally compatible with C6.1/C6.2 projections. Sidebar mini-section renders fixture data shaped like Lane C projections (GridlineFixture.providerEvidence, isFixture=true). No live adapter or bridge transport exists.",
+      "n0_consumption": "fixture_compatible_only — sidebar display uses fixture data; live adapter deferred to Lane O0"
+    },
+    "lane_d": {
+      "status": "partially_published",
+      "description": "Constrained execution corridor — capability admission models present in Inference Studio fixture (CapabilityAdmission, CapabilityAdmissionStatus). D3.1 awaiting promotion. No live adapter."
+    }
+  },
+  "build_proof": {
+    "app_target": "macos/RigRelayShell",
+    "build_system": "Swift Package Manager",
+    "build_command": "xcrun swift build -c release",
+    "swift_version": "Swift 6.2.4 (Xcode 26.3)",
+    "target": "arm64-apple-macosx",
+    "binary": "macos/RigRelayShell/.build/release/RigRelayShell",
+    "binary_type": "Mach-O 64-bit executable arm64",
+    "binary_size": "1.9 MB",
+    "compiled_sources": 14,
+    "build_result": "clean rebuild successful (12.04s)"
+  },
+  "claim_adversary_verification": {
+    "carried_forward_from_initial_slice": "9/9 falsifiers defeated — no authority bypass, no fixture misrepresentation, no live-overclaim, no private-in-public, no silent-approval, no missing-state, no surface-collapse, no foreign-contamination, no premature-release-claim.",
+    "specific_to_publication_verification": "The initial-slice audit's stale head_after and freeze_status are superseded by this artifact's publication-state corrections. All dependency claims in the initial-slice audit that say K0/L0/M0/J0 are not yet published are superseded by the upstream_lane_publication_state section above. The released boundary, implementation work, authority isolation, and fixture truth remain accurate and unchanged."
+  },
+  "correction_commit": {
+    "files_changed": 0,
+    "files_created": 1,
+    "files_deleted": 0,
+    "created_artifact": "docs/json/audits/desktop/lane_n0_gridline_developer_studio_shell_publication_verification.v1.json",
+    "preserved_unchanged": "All 14 N0 SwiftUI source files, build configuration, and the initial-slice audit are preserved without modification. Zero foreign-lane files touched."
+  },
+  "deferred_seams": [
+    "Lane O0 — Gridline Live Service Bridge: live K0/L0/M0/J0 adapter wiring into the released shell",
+    "E1 transcript-derived Pixelgrid design doctrine integration (E1 not yet released)",
+    "XCTest/SnapshotTesting UI test harness",
+    "Bridge transport client implementation (WebSocket/HTTP)",
+    "Multi-project portfolio synthesis",
+    "Full accessibility audit pass"
+  ],
+  "blocking_defects": [],
+  "freeze_status": "frozen_pending_integration",
+  "release_disposition": "lane_n0_gridline_native_swiftui_developer_studio_shell_released_live_service_wiring_incremental_frozen_pending_end_to_end_integration",
+  "next_named_milestone": "Lane O0 — Gridline Live Service Bridge (wire published K0/L0/M0 service projections into the released native shell; J0 joins after audit reconciliation). Not N0.1.",
+  "generated_at": "2026-05-26T17:00:00Z"
+}
