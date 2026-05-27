@@ -62,6 +62,16 @@ from rig_relay.digestion.models import (
     OpenedRepository,
     TopologyEntry,
 )
+from rig_relay.digestion.projections import (
+    ContextProjectionService,
+    build_context_capsule,
+    build_context_lifecycle_event,
+    build_readiness_projection,
+    build_workspace_eligibility_projection,
+    compute_eligibility_summary,
+    compute_harness_envelope_hint,
+    compute_readiness_summary,
+)
 from rig_relay.digestion.registration import RepositoryRegistrationService
 from rig_relay.digestion.registration_models import (
     RegisteredRepository,
@@ -95,6 +105,7 @@ __all__ = [
     "AssessedRisk",
     "CheckoutIdentity",
     "ClassifiedDependencies",
+    "ContextProjectionService",
     "DependencyClassifier",
     "DependencyEntry",
     "DependencyKind",
@@ -143,11 +154,18 @@ __all__ = [
     "WorkspacePreparationPlan",
     "WorktreeIdentity",
     "admit_mission",
+    "build_context_capsule",
+    "build_context_lifecycle_event",
+    "build_readiness_projection",
     "build_scope_map",
     "build_telemetry_projection",
+    "build_workspace_eligibility_projection",
     "compute_digest",
     "compute_dirty_state_digest",
+    "compute_eligibility_summary",
     "compute_freshness",
+    "compute_harness_envelope_hint",
+    "compute_readiness_summary",
     "derive_checkout_identity_candidate",
     "derive_repository_identity_candidate",
     "derive_worktree_identity_candidate",
