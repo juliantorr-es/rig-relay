@@ -411,16 +411,26 @@ class PostgresOperationalProjectionStore:
     def clear_projection_data(self) -> int:
         """Clear all projection-derived data while preserving schema authority.
 
-        Deletes from: evidence_sources, ingestion_checkpoints, ingestion_receipts,
-        projection_builds, rebuild_receipts.
+        Deletes from all domain materialization tables, projection tracking
+        tables, and evidence ingestion tables.
 
-        Does NOT delete _schema_version or _migrations.
+        Does NOT delete _schema_version, _migrations, or notify_channels.
 
         Returns:
             Total number of rows deleted.
         """
         schema = self.config.schema_name
         tables = [
+            "timeline_builds",
+            "timeline_events",
+            "repository_estate_builds",
+            "repository_observation_changes",
+            "repository_observations",
+            "repository_workspace_instances",
+            "registered_repositories",
+            "publication_builds",
+            "publication_preview_receipts",
+            "publication_reconstruction",
             "rebuild_receipts",
             "projection_builds",
             "ingestion_receipts",

@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.postgres_restore_receipt.v1.schema.json",
+  "title": "PostgreSQL Restore Receipt",
+  "description": "Content-light receipt for a PostgreSQL restore operation. Records restore outcome and equivalence to canonical evidence. This record is content-light: it contains only digests, counts, and metadata. No raw connection strings, passwords, or restore file contents are stored. The errors array contains structured error messages only, never raw data.",
+  "type": "object",
+  "properties": {
+    "receipt_id": {
+      "type": "string",
+      "description": "Unique receipt identifier."
+    },
+    "backup_receipt_id": {
+      "type": "string",
+      "default": "",
+      "description": "Reference to the BackupReceipt used."
+    },
+    "backup_sha256": {
+      "type": "string",
+      "default": "",
+      "description": "SHA256 digest of the backup artifact restored."
+    },
+    "restore_method": {
+      "type": "string",
+      "default": "pg_restore",
+      "description": "Restore method used."
+    },
+    "restored_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC timestamp of restore."
+    },
+    "tables_restored": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Number of tables restored."
+    },
+    "rows_restored": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Total rows restored."
+    },
+    "migration_version_restored": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Schema version after restore."
+    },
+    "canonical_equivalence_verified": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether restored rows match canonical evidence identifiers."
+    },
+    "verification_method": {
+      "type": "string",
+      "default": "",
+      "description": "How equivalence was verified."
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Restore errors encountered (structured error messages only, never raw data)."
+    }
+  },
+  "required": ["receipt_id"],
+  "additionalProperties": false
+}

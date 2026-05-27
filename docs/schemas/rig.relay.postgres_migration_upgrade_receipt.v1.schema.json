@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.postgres_migration_upgrade_receipt.v1.schema.json",
+  "title": "PostgreSQL Migration Upgrade Receipt",
+  "description": "Content-light receipt for a schema version upgrade operation. Records migration progression and schema integrity. This record is content-light: it contains only digests, counts, and metadata. No raw file contents, migration SQL, connection strings, or private paths are stored.",
+  "type": "object",
+  "properties": {
+    "receipt_id": {
+      "type": "string",
+      "description": "Unique receipt identifier."
+    },
+    "from_version": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Schema version before upgrade."
+    },
+    "to_version": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Schema version after upgrade."
+    },
+    "migrations_applied": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Number of new migrations applied."
+    },
+    "migration_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Migration IDs applied."
+    },
+    "schema_hash_before": {
+      "type": "string",
+      "default": "",
+      "description": "Schema hash before upgrade."
+    },
+    "schema_hash_after": {
+      "type": "string",
+      "default": "",
+      "description": "Schema hash after upgrade."
+    },
+    "upgraded_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC timestamp of upgrade."
+    },
+    "success": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether upgrade completed successfully."
+    },
+    "rollback_available": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether rollback is possible."
+    },
+    "error_message": {
+      "type": ["string", "null"],
+      "description": "Error message if upgrade failed."
+    }
+  },
+  "required": ["receipt_id"],
+  "additionalProperties": false
+}

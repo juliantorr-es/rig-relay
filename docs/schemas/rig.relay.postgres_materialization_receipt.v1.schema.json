@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.postgres_materialization_receipt.v1.schema.json",
+  "title": "PostgreSQL Materialization Receipt",
+  "description": "Content-light receipt for a domain materialization operation. Records that a domain materializer successfully materialized rows from canonical evidence into operational PostgreSQL tables. This record is content-light: it contains only digests, counts, and metadata. No raw file contents, evidence payloads, connection strings, or private paths are stored.",
+  "type": "object",
+  "properties": {
+    "receipt_id": {
+      "type": "string",
+      "description": "Unique receipt identifier."
+    },
+    "domain": {
+      "type": "string",
+      "description": "Domain materialized (repository_estate, timeline, publication)."
+    },
+    "source_evidence_count": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Canonical evidence records consumed."
+    },
+    "rows_materialized": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Rows inserted into domain tables."
+    },
+    "corrupt_rows": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Corrupt evidence rows refused."
+    },
+    "duplicate_rows": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Duplicate evidence rows skipped."
+    },
+    "built_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC timestamp of materialization."
+    },
+    "evidence_source_sha256": {
+      "type": "string",
+      "default": "",
+      "description": "SHA256 digest of combined evidence sources."
+    },
+    "deterministic": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether rebuild from same evidence produces identical rows."
+    }
+  },
+  "required": ["receipt_id", "domain"],
+  "additionalProperties": false
+}

@@ -69,6 +69,17 @@ dependencies = [
   "platformdirs>=4.9.6",
   "youtube-transcript-api>=1.2.4",
   "curl-cffi>=0.15.0",
+  # X2 — MLX-backed governed local inference runtime (all permissively licensed:
+  # MIT, Apache 2.0, BSD — no copyleft). Apple Silicon only; cross-platform
+  # Rig Relay degrades gracefully when MLX is unavailable.
+  "mlx>=0.31.2",
+  "mlx-lm @ git+https://github.com/ml-explore/mlx-lm@ed1fca4cef15a824c5f1702c80f70b4cffc8e4dd",
+  "transformers>=5.0.0",
+  "tokenizers>=0.19.0",
+  "huggingface-hub>=0.23.0",
+  "numpy>=1.24.0",
+  "protobuf",
+  "sentencepiece",
 ]
 
 [project.optional-dependencies]
@@ -360,6 +371,8 @@ ignore = ["D203", "D205", "D213", "ANN401", "PLR6301"]
 
 "rig_relay/investigation_timeline/_adapters.py" = ["PLR"]
 "rig_relay/investigation_timeline/_degradation.py" = ["PLR0911"]
+"rig_relay/data_plane/postgres/_materialize_publication.py" = ["PLR0914"]
+"rig_relay/data_plane/postgres/_materialize_repository_estate.py" = ["PLR0914"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"

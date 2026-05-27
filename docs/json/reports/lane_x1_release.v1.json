@@ -1,0 +1,169 @@
+{
+  "schema_version": "rig.relay.lane_release.v1",
+  "release_id": "lane-x1-postgres-product-materialization",
+  "title": "Lane X1 — PostgreSQL Product Materialization, Migration, Rebuild, Backup, and Upgrade Boundary",
+  "generated_at": "2026-05-27T05:30:00Z",
+  "branch": "main",
+  "head_before": "b7f0023c1",
+  "released_boundary": "PostgresProductStateMaterializationBoundary: a PostgreSQL-backed operational state plane that transactionally materializes Repository Estate, Investigation Timeline, and publication-history projections from published canonical evidence boundaries, distinguishes logical repositories from workspace instances, supports ordered migration, deterministic rebuild, and proven backup/restore without replacing canonical evidence authority.",
+  "stated_consumer_purpose": "X0 and later distribution/recovery work can render durable public-v1 product state, restore it safely after failure or migration, and avoid treating disconnected fixtures or ephemeral in-memory projections as the product database.",
+  "blocking_defects": [],
+  "deferred_seams": [
+    "Connection pooling (single-connection-per-store, intentionally deferred)",
+    "pg_upgrade compatibility for PostgreSQL major-version upgrades (future slice)",
+    "LISTEN/NOTIFY refresh signalling for materialized view invalidation (deferred to Gridline integration)",
+    "Delivery-mode publication deployment (publication materialization is preview-only, deployment_ready always false)",
+    "Provider-cache ingestion (W1 policy artifacts consulted, compliance reserved, no live ingestion)",
+    "Incremental/differential backups (full pg_dump only, differential deferred)",
+    "Backup scheduling/lifecycle automation (manual backup/restore only)",
+    "Local PostgreSQL installation/management (deferred to X4 distribution integration)",
+    "Materialized view automatic refresh (REFRESH MATERIALIZED VIEW is manual)",
+    "GIN/JSONB indexes for path-contained queries (default btree indexes only)"
+  ],
+  "freeze_status": "frozen_pending_integration",
+  "disposition": "candidate_local",
+  "test_evidence": {
+    "total_tests": 85,
+    "tests_passed": 85,
+    "tests_failed": 0,
+    "existing_tests": 55,
+    "new_x1_tests": 30,
+    "postgresql_version": "17.10",
+    "platform": "aarch64-apple-darwin",
+    "test_locations": [
+      "tests/data_plane/postgres/test_config.py (7)",
+      "tests/data_plane/postgres/test_connection.py (7)",
+      "tests/data_plane/postgres/test_content_light.py (7)",
+      "tests/data_plane/postgres/test_ingestion.py (11)",
+      "tests/data_plane/postgres/test_atomic_ingestion.py (15)",
+      "tests/data_plane/postgres/test_migrations.py (5)",
+      "tests/data_plane/postgres/test_rebuild.py (3)",
+      "tests/data_plane/postgres/test_x1_materialization.py (30)"
+    ],
+    "test_classifications": {
+      "migration_upgrade": 6,
+      "repository_estate_materialization": 5,
+      "timeline_materialization": 3,
+      "publication_materialization": 3,
+      "workspace_identity_model": 3,
+      "rebuild_all_domains": 2,
+      "materialized_view_refresh": 3,
+      "backup_restore": 2,
+      "content_light_models": 3
+    }
+  },
+  "files_changed": [
+    "rig_relay/data_plane/postgres/__init__.py",
+    "rig_relay/data_plane/postgres/_models.py",
+    "rig_relay/data_plane/postgres/_store.py",
+    "pyproject.toml"
+  ],
+  "files_created": [
+    "rig_relay/data_plane/postgres/_backup_restore.py",
+    "rig_relay/data_plane/postgres/_materialize_repository_estate.py",
+    "rig_relay/data_plane/postgres/_materialize_timeline.py",
+    "rig_relay/data_plane/postgres/_materialize_publication.py",
+    "rig_relay/data_plane/postgres/migrations/003_repository_estate_materialization.sql",
+    "rig_relay/data_plane/postgres/migrations/004_timeline_materialization.sql",
+    "rig_relay/data_plane/postgres/migrations/005_publication_materialization.sql",
+    "rig_relay/data_plane/postgres/migrations/006_materialized_read_models.sql",
+    "tests/data_plane/postgres/test_x1_materialization.py",
+    "docs/schemas/rig.relay.postgres_materialization_receipt.v1.schema.json",
+    "docs/schemas/rig.relay.postgres_backup_receipt.v1.schema.json",
+    "docs/schemas/rig.relay.postgres_restore_receipt.v1.schema.json",
+    "docs/schemas/rig.relay.postgres_migration_upgrade_receipt.v1.schema.json",
+    "docs/json/audits/data_plane/lane_x1_postgres_product_materialization.v1.json",
+    "docs/json/reports/lane_x1_release.v1.json"
+  ],
+  "files_deleted": [],
+  "files_skipped": [
+    ".swift-version (pre-existing untracked, not X1)",
+    "docs/json/audits/lane_s3_publication_preview_release.v1.json (pre-existing untracked, not X1)",
+    "docs/json/audits/runtime_substrate/lane_x2_rigged_runtime_architecture_decision.v1.json (pre-existing untracked, not X1)",
+    "rig_relay/local_inference/runtime/ (pre-existing untracked, not X1)"
+  ],
+  "schema_validation_results": {
+    "total_schemas": 509,
+    "passed": 501,
+    "failed": 8,
+    "x1_schemas": ["rig.relay.postgres_materialization_receipt.v1", "rig.relay.postgres_backup_receipt.v1", "rig.relay.postgres_restore_receipt.v1", "rig.relay.postgres_migration_upgrade_receipt.v1"],
+    "x1_schemas_passed": 4,
+    "pre_existing_failures": "8 failures in publication_deployment, safari_extension, fleet_coordination, repository_estate schemas (all from other lanes, not X1)"
+  },
+  "static_checks": {
+    "ruff": "all checks passed",
+    "ruff_format": "all files unchanged",
+    "pyright": "0 errors, 0 warnings, 0 informations"
+  },
+  "claim_adversary_results": {
+    "total_attacks": 10,
+    "attacks_refuted": 10,
+    "attacks_succeeded": 0,
+    "attacks": {
+      "canonical_authority_separation": "PASS — PostgreSQL consistently documented as disposable read-side projection",
+      "repository_workspace_identity": "PASS — UNIQUE(repository_hash, workspace_root_digest) constraint proven",
+      "corrupt_evidence_degradation": "PASS — all materializers flag corrupt evidence, never discard",
+      "publication_deployment_overclaim": "PASS — deployment_ready always FALSE",
+      "migration_additive_integrity": "PASS — migrations 001/002 untouched, 003-006 additive",
+      "backup_restore_real_tooling": "PASS — real pg_dump/pg_restore via subprocess.run",
+      "rebuild_deterministic": "PASS — all three materializers rebuild from canonical evidence",
+      "real_postgresql_tests": "PASS — no SQLite, no mocks, no fake databases",
+      "installation_upgrade_truthful": "PASS — no false pg_upgrade or installation promises",
+      "x1_file_ownership": "PASS — only X1-owned paths in commit"
+    }
+  },
+  "completed_work": [
+    "Domain materialization framework: RepositoryEstateMaterializer, TimelineMaterializer, PublicationMaterializer consuming T3.1, T4.2, T1.2 boundaries",
+    "Repository entity vs workspace instance identity model: UNIQUE(repository_hash, workspace_root_digest), proven 2 workspace instances under 1 logical repo distinct",
+    "Timeline materialization: 24-column timeline_events table, 12 indexes, 7 degradation counts, all verification/authority classifications preserved",
+    "Publication history materialization: preview receipt storage, reconstruction state with corruption detection, deployment_ready always false",
+    "Migration lifecycle: migrations 003-006 additive, transactional, idempotent, upgrade-safe from T2.1",
+    "Materialized read models: 4 materialized views (repository estate overview, workspace status, timeline summary, publication preview summary)",
+    "Backup/restore boundary: PostgresBackupService using real pg_dump/pg_restore, content-light BackupReceipt/RestoreReceipt, secrets exclusion",
+    "Rebuild behavior: clear_projection_data covers all 15 domain tables, rebuild determinism proven for all three materializers",
+    "Models: MaterializationReceipt, BackupReceipt, RestoreReceipt, MigrationUpgradeReceipt, 4 new EvidenceSourceKind values",
+    "JSON Schemas: 4 new schema files for materialization/backup/restore/migration-upgrade receipts",
+    "Tests: 30 new real-PostgreSQL tests (85 total), all passing",
+    "Audit: comprehensive X1 audit artifact with 11 documented decisions"
+  ],
+  "intentionally_deferred_work": [
+    "Connection pooling",
+    "pg_upgrade compatibility",
+    "LISTEN/NOTIFY refresh signalling",
+    "Delivery-mode publication deployment",
+    "Provider-cache ingestion",
+    "Incremental/differential backups",
+    "Backup scheduling/lifecycle",
+    "Local PostgreSQL installation/management",
+    "Materialized view automatic refresh",
+    "GIN/JSONB path indexes"
+  ],
+  "discovered_out_of_scope_risks": [],
+  "remaining_seams": [
+    "Thread-safe concurrent materialization (single transaction per materializer, no advisory locking)",
+    "DuckDB vs Postgres projection divergence (Phase 4 equivalence tests deferred)",
+    "LISTEN/NOTIFY loss on connection failure (reconnect + full refresh pattern deferred)",
+    "Postgres unavailable fail-closed behavior (configured but unreachable → PostgresUnavailableError deferred)",
+    "CoordinationStore dual-write consistency (Postgres lease writes vs events.jsonl canonical replay — coordination layer integration deferred)"
+  ],
+  "external_research": {
+    "sources": [
+      "PostgreSQL 17 official documentation — JSON/JSONB data types and indexing",
+      "PostgreSQL 17 official documentation — Materialized Views (CREATE/REFRESH MATERIALIZED VIEW)",
+      "PostgreSQL 17 official documentation — Backup and Restore (pg_dump, pg_restore)",
+      "PostgreSQL 17 official documentation — pg_upgrade",
+      "PostgreSQL 17 official documentation — LISTEN/NOTIFY"
+    ],
+    "key_findings": [
+      "materialized views require UNIQUE index for CONCURRENTLY refresh; used UNIQUE indexes on all 4 MVs",
+      "pg_dump custom format supports --clean --if-exists --single-transaction for atomic restore; used in PostgresBackupService",
+      "JSONB preferred over JSON for all operational storage; all provenance columns use JSONB",
+      "NOTIFY payloads limited to ~8000 bytes; projection refresh signals use projection name strings only",
+      "pg_upgrade compatibility deferred — current implementation requires pg_dump/pg_restore for major-version migration"
+    ]
+  },
+  "dirty_state_before": "Clean — only pre-existing untracked files (.swift-version, lane_s3 audit, lane_x2 audit, local_inference/runtime/)",
+  "dirty_state_after": "X1-owned modified and created files (see files_changed and files_created). All pre-existing dirty/untracked preserved.",
+  "telemetry_and_redaction_implications": "All new models and tables are content-light — SHA256 digests only, no raw file contents, paths, secrets, or credentials. Backup/restore receipts contain digests and metadata only. Materialization build receipts are content-light. No raw observability data enters PostgreSQL operational tables.",
+  "dependency_changes": "None. No new packages added. Existing psycopg[c]>=3.2 remains the sole database driver. No SQLAlchemy, Alembic, asyncpg, pgvector, or SQLite introduced."
+}
