@@ -1,0 +1,51 @@
+{
+  "schema_version": "rig.relay.lane_release_audit.v1",
+  "report_id": "lane_n1_webkit_bridge_host_architecture_correction",
+  "report_kind": "architectural_supersession",
+  "lane_id": "n1",
+  "lane_title": "Native WebKit Host Architecture Correction — Supersede SwiftUI Product Views with Bridge Frontend Host",
+  "supersedes_lane": "n0",
+  "supersedes_boundary": "Gridline Developer Studio Shell v1 — the N0 native SwiftUI macOS application shell that rendered typed developer-workflow projection states across 5 native product views (Connect, Repository Estate, Project Studio, Inference Studio, Publish Preview).",
+  "supersession_authority": "User-directed architectural revision. N0 was truthfully implemented and published for the earlier product interpretation. The production architecture is now clarified: Rig Relay is a native macOS host application that embeds the existing bridge-powered web frontend in WKWebView, not a SwiftUI-rendered product UI.",
+  "branch": "main",
+  "head_before": "3451609e582bef25fab201d919d98b9eb59c4486",
+  "actual_remote_head": "3451609e582bef25fab201d919d98b9eb59c4486",
+  "upstream_commits_verified": {
+    "j0": "61f9894c — DeveloperGitHubWorkspaceService, published and frozen",
+    "k0": "5381bdbc — RepositoryOperatorSessionService, published and frozen",
+    "l0": "52713fae / 66ecc8e9 — ProjectContextAssemblyService, published and frozen",
+    "m0": "6a41d096 — LocalProjectInferenceService, published and frozen",
+    "n0": "f59caadf / 3451609e — Gridline Developer Studio Shell v1, published and audited, now architecturally superseded",
+    "e0": "published — Frontend Systems Atlas, three-surface architecture"
+  },
+  "corrected_architecture": {
+    "product_surface": "The actual product UI is the bridge-powered web frontend (frontend/desktop/ — 57 files of vanilla HTML/CSS/JS, with a Redux-style runtime kernel, WebSocket transport, projection rendering, chat, widgets, and notifications). This frontend has already received design and debugging investment.",
+    "host_role": "The macOS application is a thin native host that embeds the bridge frontend in a WKWebView. SwiftUI provides: native chrome (window chrome, menus), loading/failure/bootstrap/extension-status surfaces, native capability prompts, and app lifecycle management.",
+    "swiftui_product_views": "N0's 5 native product views (ConnectView, RepositoryEstateView, ProjectStudioView, InferenceStudioView, PublishPreviewView) are no longer the production rendering boundary. They are demoted to non-production Reference/ fixtures preserved for migration reference.",
+    "frontend_hosting": "The production app launches a WKWebView loading the bridge frontend (from the DesktopBridgeServer at https://127.0.0.1:<port>/). A typed NativeMessageBridge provides frontend-to-host and host-to-frontend message transport for native-only capabilities.",
+    "safari_extension_contract": "A typed native-app messaging endpoint contract is published for Lane Q0 consumption. The contract defines message envelope, extension-origin validation, and supported initial intents. Actual Safari extension implementation belongs to Q0."
+  },
+  "released_boundary": "Native WebKit Host v1 — a thin native macOS application that: (1) opens the product through a WKWebView-hosted bridge frontend loaded from a trusted app origin; (2) restricts navigation to trusted origins only; (3) provides a typed frontend-to-native and native-to-frontend host message contract for native-only capabilities; (4) renders only boot/loading, frontend-load-failed, bridge-unavailable, unsupported-navigation-refusal, extension-status, and native-permission/status surfaces in SwiftUI; (5) exposes a typed native-app Safari extension messaging endpoint contract for Q0 consumption; (6) performs no GitHub, AgentLoop, context-assembly, local-inference, Pages-publication, or evidence-authority work in host code.",
+  "stated_consumer_purpose": "A developer launches the macOS application and sees the real bridge frontend (not duplicate SwiftUI product views). The frontend communicates with the Python backend via existing WebSocket protocol. Native-only capabilities (file dialogs, keychain, extension status) route through the typed host message bridge. Q0 can consume the published native extension contract to build the Safari Web Extension feature surface.",
+  "blocking_defects": [],
+  "deferred_seams": [
+    "Live Safari Web Extension feature implementation (Lane Q0)",
+    "Bridge frontend bootstrap compatibility verification with WKWebView host (may need P0 coordination)",
+    "XCTest harness for WKWebView message handling",
+    "Full accessibility audit for the host shell"
+  ],
+  "n0_preservation": {
+    "policy": "Preserve N0 as truthful evidence of an earlier implementation slice. Do not delete N0 evidence artifacts.",
+    "n0_audits_preserved_unchanged": [
+      "docs/json/audits/desktop/lane_n0_gridline_developer_studio_shell_initial_slice.v1.json",
+      "docs/json/audits/desktop/lane_n0_gridline_developer_studio_shell_publication_verification.v1.json"
+    ],
+    "n0_product_views_removed": "ConnectView.swift, RepositoryEstateView.swift, ProjectStudioView.swift, InferenceStudioView.swift, PublishPreviewView.swift — removed from the working tree. Preserved in git history via N0 commit f59caadf. Not reachable from the N1 production app lifecycle.",
+    "n0_projection_models_preserved": "GridlineProjection.swift, DesignTokens.swift, Intent.swift — preserved as migration reference; SwiftUI projection models do not duplicate backend authority.",
+    "n0_fixtures_preserved": "GridlineFixture.swift — preserved as DEVELOPMENT ONLY reference fixture data; marked isFixture:true; not loaded in production host path.",
+    "n0_shared_components_preserved": "SharedComponents.swift — preserved as reusable infrastructure (StatusBadgeView, SurfaceStateBannerView etc.). Not used in production host path but available for future host chrome if needed."
+  },
+  "freeze_status": "candidate_local",
+  "post_promotion_status": "lane_n1_webkit_bridge_host_architecture_released_n0_native_rendering_superseded_frozen_pending_live_frontend_and_extension_integration",
+  "generated_at": "2026-05-26T18:00:00Z"
+}

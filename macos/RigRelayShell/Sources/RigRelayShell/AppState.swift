@@ -1,32 +1,50 @@
 import SwiftUI
-import Combine
+import WebKit
 
-// MARK: - Navigation Tab
+// MARK: - Host State
 
-enum GridlineTab: String, CaseIterable, Sendable {
-    case connect = "Connect"
-    case repositories = "Repositories"
-    case projectStudio = "Project Studio"
-    case inference = "Inference"
-    case publish = "Publish"
+enum HostState: Sendable, Equatable {
+    case uninitialized
+    case booting
+    case loadingFrontend
+    case frontendReady
+    case frontendLoadFailed(String)
+    case bridgeUnavailable
+    case unsupportedOrigin(String)
+    case error(String)
+    case extensionStatusUnknown
 
-    var iconName: String {
+    var label: String {
         switch self {
-        case .connect: "link"
-        case .repositories: "folder"
-        case .projectStudio: "text.magnifyingglass"
-        case .inference: "cpu"
-        case .publish: "paperplane"
+        case .uninitialized: "Starting..."
+        case .booting: "Booting..."
+        case .loadingFrontend: "Loading Rig Relay..."
+        case .frontendReady: "Ready"
+        case .frontendLoadFailed: "Load Failed"
+        case .bridgeUnavailable: "Bridge Unavailable"
+        case .unsupportedOrigin: "Navigation Refused"
+        case .error: "Error"
+        case .extensionStatusUnknown: "Extension status unknown"
         }
     }
 
-    var description: String {
+    var iconName: String {
         switch self {
-        case .connect: "Carte Blanche connection and permissions"
-        case .repositories: "Repository estate — import, study, classify"
-        case .projectStudio: "AgentLoop investigation and project understanding"
-        case .inference: "Local inference capability and admission"
-        case .publish: "Public-safe project page preview and approval"
+        case .uninitialized, .booting: "arrow.triangle.2.circlepath"
+        case .loadingFrontend: "globe"
+        case .frontendReady: "checkmark.circle"
+        case .frontendLoadFailed: "xmark.circle"
+        case .bridgeUnavailable: "wifi.slash"
+        case .unsupportedOrigin: "lock.shield"
+        case .error: "exclamationmark.octagon"
+        case .extensionStatusUnknown: "questionmark.circle"
+        }
+    }
+
+    var isTerminal: Bool {
+        switch self {
+        case .frontendLoadFailed, .bridgeUnavailable, .unsupportedOrigin, .error: true
+        default: false
         }
     }
 }
@@ -35,131 +53,75 @@ enum GridlineTab: String, CaseIterable, Sendable {
 
 @MainActor
 final class AppState: ObservableObject {
-    @Published var selectedTab: GridlineTab = .connect
-    @Published var projection: GridlineProjection
-    @Published var isFixtureMode: Bool = true
-    @Published var statusMessage: String = ""
-    @Published var intentLog: [IntentLogEntry] = []
+    @Published var hostState: HostState = .uninitialized
+    @Published var bridgeURL: URL?
+    @Published var showExtensionStatus = false
 
-    private let sessionId = "gridline_session_\(UUID().uuidString.prefix(8))"
+    private let sessionId = "webkit_host_\(UUID().uuidString.prefix(8))"
+    let messageBridge = NativeMessageBridge()
 
     init() {
-        projection = GridlineFixture.fullProjection
-        isFixtureMode = projection.isFixture
-        statusMessage = "DEVELOPMENT — Fixture mode. No live backend connected."
+        // Bridge URL — default to the production bridge server address
+        bridgeURL = URL(string: "https://127.0.0.1:9876/index.html")
     }
 
-    // MARK: — Projection Loading
+    // MARK: — Message Dispatch
 
-    func loadProjection(_ newProjection: GridlineProjection) {
-        withAnimation(.easeInOut(duration: 0.2)) {
-            projection = newProjection
-            isFixtureMode = newProjection.isFixture
-        }
-    }
+    func handleFrontendMessage(_ message: [String: Any]) {
+        let kind = message["kind"] as? String ?? ""
+        let traceId = message["trace_id"] as? String ?? ""
 
-    func loadFixtureForDemo() {
-        loadProjection(GridlineFixture.fullProjection)
-        statusMessage = "Demo projection loaded (fixture mode)."
-    }
+        switch kind {
+        case "get_host_state":
+            sendToFrontend([
+                "kind": "host_state",
+                "state": hostState.label,
+                "session_id": sessionId,
+                "trace_id": traceId
+            ])
 
-    func simulateConnectFlow() {
-        var p = projection
-        p.connectState = GridlineFixture.connectAfterConnection
-        p.repositoryEstate = GridlineFixture.repositoryEstate
-        p.identityState = GridlineFixture.identity
-        loadProjection(p)
-        statusMessage = "Carte Blanche connected (fixture simulation)."
-    }
+        case "open_file_dialog":
+            // Native file dialog — future capability
+            sendToFrontend([
+                "kind": "native_capability_refused",
+                "capability": "open_file_dialog",
+                "reason": "not_implemented_in_host_shell",
+                "trace_id": traceId
+            ])
 
-    func simulateRepositoryImport() {
-        loadProjection(GridlineFixture.projectionForState(
-            connectState: GridlineFixture.connectAfterConnection,
-            estate: GridlineFixture.repositoryEstateImporting,
-            studio: GridlineFixture.projectStudioIdle,
-            inference: GridlineFixture.inferenceStudioUnavailable,
-            publish: GridlineFixture.publishPreviewEmpty
-        ))
-        statusMessage = "Repository import in progress (fixture simulation)."
-        Task {
-            try? await Task.sleep(for: .seconds(2))
-            loadProjection(GridlineFixture.projectionForState(
-                connectState: GridlineFixture.connectAfterConnection,
-                estate: GridlineFixture.repositoryEstate,
-                studio: GridlineFixture.projectStudioIdle,
-                inference: GridlineFixture.inferenceStudioUnavailable,
-                publish: GridlineFixture.publishPreviewEmpty
-            ))
-            statusMessage = "Repository import complete (fixture simulation)."
-        }
-    }
+        case "get_extension_status":
+            sendToFrontend([
+                "kind": "extension_status",
+                "status": "unknown",
+                "message": "Safari extension contract published; live extension implementation deferred to Q0",
+                "trace_id": traceId
+            ])
 
-    func simulateInvestigation() {
-        var p = projection
-        p.projectStudio = GridlineFixture.projectStudioInvestigating
-        loadProjection(p)
-        statusMessage = "AgentLoop investigation started (fixture simulation)."
-        Task {
-            try? await Task.sleep(for: .seconds(3))
-            var completed = projection
-            completed.projectStudio = GridlineFixture.projectStudioDraftReady
-            completed.inferenceStudio = GridlineFixture.inferenceStudioDegraded
-            completed.publishPreview = GridlineFixture.publishPreviewReady
-            loadProjection(completed)
-            statusMessage = "Investigation complete — draft ready for review (fixture simulation)."
-        }
-    }
-
-    // MARK: — Intent Dispatch (simulated — no backend authority)
-
-    func dispatchIntent(_ intent: GridlineIntent) {
-        let entry = IntentLogEntry(
-            timestamp: Date(),
-            intentKind: intent.intentKind.rawValue,
-            traceId: intent.traceId,
-            mutationClass: intent.mutationClass.rawValue
-        )
-        intentLog.append(entry)
-
-        statusMessage = "Intent dispatched: \(intent.intentKind.rawValue) [FIXTURE — no backend]"
-
-        switch intent.intentKind {
-        case .connectGitHub:
-            simulateConnectFlow()
-        case .importRepository:
-            simulateRepositoryImport()
-        case .startInvestigation:
-            simulateInvestigation()
-        case .previewPublish:
-            var p = projection
-            p.publishPreview = GridlineFixture.publishPreviewReady
-            loadProjection(p)
         default:
-            break
+            sendToFrontend([
+                "kind": "unrecognized_message",
+                "original_kind": kind,
+                "trace_id": traceId
+            ])
         }
     }
 
-    func makeTraceId() -> String {
-        "trace_\(UUID().uuidString.prefix(12))"
+    func sendToFrontend(_ message: [String: Any]) {
+        messageBridge.sendToFrontend(message)
     }
 
-    func makeIntent(kind: IntentKind, mutationClass: MutationClass = .safeLocalMutation) -> GridlineIntent {
-        GridlineIntent(
-            traceId: makeTraceId(),
-            frontendSessionId: sessionId,
-            intentKind: kind,
-            mutationClass: mutationClass,
-            capabilityRequired: nil,
-            intentPayloadHash: nil,
-            redactionStatus: "content_light"
-        )
-    }
-}
+    // MARK: — Frontend URL Resolution
 
-struct IntentLogEntry: Identifiable, Sendable {
-    let id = UUID()
-    let timestamp: Date
-    let intentKind: String
-    let traceId: String
-    let mutationClass: String
+    func resolvedBridgeURL() -> URL {
+        if let url = bridgeURL {
+            return url
+        }
+        return URL(string: "https://127.0.0.1:9876/index.html")!
+    }
+
+    // MARK: — Retry
+
+    func retryLoading() {
+        hostState = .loadingFrontend
+    }
 }

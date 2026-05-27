@@ -1,0 +1,69 @@
+{
+  "schema_version": "rig.relay.audit.platform_assumptions.v1",
+  "audit_id": "lane_n1_apple_platform_assumptions_v1",
+  "lane": "N1",
+  "title": "Lane N1 — Apple Platform Assumptions for macOS WebKit Host and Safari Extension Contract",
+  "generated_at": "2026-05-26T18:00:00Z",
+  "source": "Apple Developer Documentation — developer.apple.com, accessed 2026-05-26",
+  "verified_platform_facts": {
+    "wkwebview": {
+      "availability": "macOS 10.10+ (replaces legacy WebView)",
+      "swiftui_bridge": "NSViewRepresentable protocol for embedding WKWebView in SwiftUI macOS apps (macOS 10.15+)",
+      "initialization": "WKWebView(frame:configuration:) — configuration is locked after init",
+      "loading": "load(URLRequest), loadHTMLString(_:baseURL:), loadFileURL(_:allowingReadAccessTo:)",
+      "website_data_store": "WKWebsiteDataStore.nonPersistent() for in-memory only (no cookie/file persistence); .default() for persistent; init(forIdentifier:) for named profile isolation",
+      "navigation_delegate": "WKNavigationDelegate — webView(_:decidePolicyFor:decisionHandler:) for navigation policy decisions (allow/cancel based on URL origin); didFinish/didFail for load lifecycle",
+      "javascript_evaluation": "evaluateJavaScript(_:completionHandler:) for native-to-JS calls; callAsyncJavaScript(_:arguments:in:completionHandler:) for async JS calls",
+      "message_handler": "WKUserContentController.add(_:name:) installs WKScriptMessageHandler; JS calls window.webkit.messageHandlers.<name>.postMessage(<body>); WKScriptMessageHandlerWithReply for reply-capable handler",
+      "content_world": "WKContentWorld.defaultClient for bridge scripts (isolated from page JS variable scope); .page for webpage JS; macOS 11.0+",
+      "user_script": "WKUserScript(source:injectionTime:forMainFrameOnly:) — .atDocumentStart for bridge injection before page load; .atDocumentEnd after load",
+      "app_bound_domains": "limitsNavigationsToAppBoundDomains (Bool, macOS 11.0+) — when true, requires WKAppBoundDomains in Info.plist",
+      "inspectable": "isInspectable (Bool) — enables Safari Web Inspector for development",
+      "javascript_enabled_deprecated": "WKPreferences.javaScriptEnabled is deprecated; use WKWebpagePreferences.allowsContentJavaScript instead (macOS 10.15+)",
+      "process_pool_removed": "WKProcessPool removed in macOS 13.0+; use WKWebsiteDataStore for data isolation"
+    },
+    "safari_web_extensions": {
+      "availability": "Safari 14+ (macOS), iOS 15+",
+      "architecture": "Three-part sandbox: containing app, native app extension (SFSafariExtensionHandler), JavaScript/web files",
+      "native_messaging_js_to_app": "browser.runtime.sendNativeMessage('application.id', message, callback) — application.id is ignored by Safari; message always goes to containing app's extension. Must implement beginRequest(with:) in SFSafariExtensionHandler",
+      "native_messaging_app_to_js": "SFSafariApplication.dispatchMessage(withName:toExtensionWithIdentifier:userInfo:completionHandler:) — sends to extension background script; JS listens via browser.runtime.connectNative('application.id').port.onMessage",
+      "native_messaging_restrictions": "Content scripts cannot use sendNativeMessage — only background scripts and extension pages; macOS-only for dispatchMessage",
+      "manifest_permission": "nativeMessaging permission required in manifest.json",
+      "extension_state": "SFSafariExtensionManager.getStateOfSafariExtension(withIdentifier:completionHandler:) returns SFSafariExtensionState (enabled/disabled)",
+      "preferences_opening": "SFSafariApplication.showPreferencesForExtension(withIdentifier:completionHandler:) opens Safari extension preferences",
+      "sandbox_requirement": "App Sandbox required for App Store distribution; both app and extension must be sandboxed",
+      "code_signing": "App and embedded extension must be signed with same team/cert; notarization required for distribution outside App Store"
+    },
+    "macos_packaging": {
+      "entitlements": "com.apple.security.app-sandbox (sandbox), com.apple.security.network.client (outgoing network, required for localhost:9876 WebSocket), com.apple.security.application-groups (shared container between app and extension)",
+      "app_groups": "Format: group.<name> or <teamID>.<name>. Both app and extension must include same group ID in entitlements. Shared storage via FileManager.default.containerURL(forSecurityApplicationGroupIdentifier:)",
+      "extension_bundle": "Extension embedded in PlugIns/ directory inside app bundle. SPM alone cannot create .appex bundle — Xcode project target required for extension. Main Swift code can remain SPM.",
+      "info_plist": "NSExtension.NSExtensionPointIdentifier = com.apple.Safari.extension (for Safari app extension). NSExtension.NSExtensionPrincipalClass = product module handler class.",
+      "bundle_ids": "App: com.example.YourApp; Extension: com.example.YourApp.YourExtension (embedded, same team)"
+    },
+    "network_entitlements_for_webview": {
+      "localhost_websocket": "When App Sandbox is enabled, com.apple.security.network.client entitlement is REQUIRED for WKWebView to connect to localhost:9876",
+      "outgoing_only": "Only outgoing (client) entitlement needed — the app connects to the already-running DesktopBridgeServer, does not listen",
+      "tcp_note": "For TCP, entitlement restricts only initiation; data flow works bidirectionally once connected"
+    },
+    "webkit_css_features_used_by_frontend": {
+      "backdrop_filter": "-webkit-backdrop-filter extensively used in frontend CSS (layout, header, chat, widgets, notifications) — works natively in WKWebView on macOS",
+      "scrollbar_styling": "-webkit-scrollbar styling used — works natively in WKWebView",
+      "font_smoothing": "-webkit-font-smoothing: antialiased — works natively in WKWebView",
+      "audio_context": "window.webkitAudioContext used in frontend delight.js for audio feedback — works natively in WKWebView"
+    }
+  },
+  "design_decisions_based_on_platform_assumptions": {
+    "wkwebview_over_pywebview": "Direct WKWebView via NSViewRepresentable replaces pywebview's managed WKWebView. This gives: full control over WKUserContentController for message handlers, exact navigation policy enforcement, direct WKWebsiteDataStore configuration, and native SwiftUI integration. The existing frontend works unmodified in WKWebView (it was designed for it via pywebview).",
+    "non_persistent_data_store": "WKWebsiteDataStore.nonPersistent() — prevents cookie/storage leakage between sessions. No GitHub token persistence risk.",
+    "trusted_origin_only": "WKNavigationDelegate restricts navigation to localhost on the bridge server port. Any non-localhost or unexpected port navigation is cancelled. WKUserScript injection restricted to atDocumentStart for bridge script injection.",
+    "content_world_isolation": "WKContentWorld.defaultClient for bridge message handler scripts. Prevents the loaded page's JavaScript from accidentally or maliciously interfering with bridge script variables (though DOM is shared).",
+    "safari_extension_contract_only": "N1 publishes only the typed native-message contract, not the Safari extension implementation. Q0 needs an Xcode project target (SPM alone cannot produce .appex bundles). The contract specifies message envelope, origin validation, and initial intent vocabulary."
+  },
+  "references": [
+    "Apple Developer Documentation: WKWebView — https://developer.apple.com/documentation/webkit/wkwebview",
+    "Apple Developer Documentation: Safari Web Extensions — https://developer.apple.com/documentation/safariservices/safari_web_extensions",
+    "Apple Developer Documentation: SFSafariExtensionHandler — https://developer.apple.com/documentation/safariservices/sfsafariextensionhandler",
+    "Apple Developer Documentation: NSViewRepresentable — https://developer.apple.com/documentation/swiftui/nsviewrepresentable"
+  ]
+}
