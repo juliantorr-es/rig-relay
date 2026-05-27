@@ -3,7 +3,7 @@
   "generated_at": "2026-05-27T23:31:43Z",
   "lane_id": "Y3",
   "mission_id": "mission-y3-provider-compatibility-profile-registry",
-  "published_sha": "f22962fb2a75a3105ed7771bf31fa667900c1f14",
+  "published_sha": "6bd507554bb78ccad1ca51aa41a24669410728c0",
   "owned_files": [
     "rig_relay/profiles/__init__.py",
     "rig_relay/profiles/_context_envelope.py",
