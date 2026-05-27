@@ -1,0 +1,118 @@
+{
+  "schema_version": "rig.relay.audit.v1",
+  "audit_id": "u0-desktop-intent-monolith-audit-2026-05-26",
+  "lane": "U0",
+  "title": "Desktop Intent Authority Extraction and Monolith Elimination — Structural Audit",
+  "created_at": "2026-05-26T17:30:00Z",
+  "summary": "Remote-main inspection of rig_relay/desktop/_intents/ reveals 8 files (~580 KB total) that are either identical monolith copies with zero external importers (_bundle, _spawn, _validation, _chat, _queue, _storage), partially dead (_refinement), or the canonical live dispatcher (_refresh) with 3 missing function definitions and 3 missing import references. The file-splitting operation lost _classify_intent, _execute_allowed_intent, and PHASE_1_ENABLED from the codebase, making the live dispatch path non-functional.",
+  "files_inspected": [
+    "rig_relay/desktop/_intents/_bundle.py",
+    "rig_relay/desktop/_intents/_refinement.py",
+    "rig_relay/desktop/_intents/_spawn.py",
+    "rig_relay/desktop/_intents/_validation.py",
+    "rig_relay/desktop/_intents/_refresh.py",
+    "rig_relay/desktop/_intents/_chat.py",
+    "rig_relay/desktop/_intents/_queue.py",
+    "rig_relay/desktop/_intents/_storage.py",
+    "rig_relay/desktop/_intents/_shared.py",
+    "rig_relay/desktop/intents.py",
+    "rig_relay/desktop/projection.py",
+    "rig_relay/desktop/gateway/_intents.py",
+    "rig_relay/desktop/gateway/_service.py"
+  ],
+  "classifications": {
+    "_bundle.py": {
+      "size_bytes": 73806,
+      "live": false,
+      "classifications": ["dead_code", "duplicated_shared_execution_shell", "application_service_worthy_domain_behavior"],
+      "external_importers": [],
+      "note": "Identical monolith copy. Contains execute_desktop_intent and 32 helper functions. No external imports. Safe to delete."
+    },
+    "_spawn.py": {
+      "size_bytes": 73004,
+      "live": false,
+      "classifications": ["dead_code", "duplicated_shared_execution_shell", "application_service_worthy_domain_behavior"],
+      "external_importers": [],
+      "note": "Identical monolith copy. No external imports. Safe to delete."
+    },
+    "_validation.py": {
+      "size_bytes": 72381,
+      "live": false,
+      "classifications": ["dead_code", "duplicated_shared_execution_shell", "application_service_worthy_domain_behavior"],
+      "external_importers": [],
+      "note": "Identical monolith copy. No external imports. Safe to delete."
+    },
+    "_chat.py": {
+      "size_bytes": 70616,
+      "live": false,
+      "classifications": ["dead_code", "duplicated_shared_execution_shell", "application_service_worthy_domain_behavior"],
+      "external_importers": [],
+      "note": "Identical monolith copy. No external imports. Safe to delete."
+    },
+    "_queue.py": {
+      "size_bytes": 71666,
+      "live": false,
+      "classifications": ["dead_code", "duplicated_shared_execution_shell", "application_service_worthy_domain_behavior"],
+      "external_importers": [],
+      "note": "Identical monolith copy. No external imports. Safe to delete."
+    },
+    "_storage.py": {
+      "size_bytes": 70960,
+      "live": false,
+      "classifications": ["dead_code", "duplicated_shared_execution_shell", "application_service_worthy_domain_behavior"],
+      "external_importers": [],
+      "note": "Identical monolith copy. No external imports. Safe to delete."
+    },
+    "_refinement.py": {
+      "size_bytes": 73469,
+      "live": "partially",
+      "classifications": ["dead_code", "duplicated_shared_execution_shell", "compatibility_surface", "application_service_worthy_domain_behavior"],
+      "external_importers": ["rig_relay/desktop/intents.py imports _execute_site_editor_save"],
+      "note": "Entire execute_desktop_intent and 32 helpers are dead copies. Only _execute_site_editor_save is used externally. The site editor save function is desktop-domain logic that performs validation + atomic write + render."
+    },
+    "_refresh.py": {
+      "size_bytes": 73050,
+      "live": true,
+      "classifications": ["desktop_transport_request_translation", "progress_or_projection_adaptation", "application_service_worthy_domain_behavior", "governance_evidence_state_transition_logic", "duplicated_shared_execution_shell"],
+      "external_importers": ["rig_relay/desktop/_intents/_shared.py re-exports execute_desktop_intent", "rig_relay/desktop/intents.py re-exports through _shared"],
+      "critical_defects": [
+        "PHASE_1_ENABLED undefined — lost during file split",
+        "_classify_intent undefined — lost during file split",
+        "_execute_allowed_intent undefined — lost during file split",
+        "ALLOWED_INTENTS referenced but not imported (defined in intents.py)",
+        "PROTECTED_INTENTS referenced but not imported (defined in intents.py)",
+        "_build_result referenced but not imported (defined in intents.py)"
+      ],
+      "note": "The canonical live dispatcher. Contains execute_desktop_intent with gateway pre-pass, _handle_phase_1_protected_intent, and all domain handler functions (identity, telemetry, provider, worktree, fleet, etc.). Missing 3 definitions and 3 imports make it non-functional."
+    },
+    "_shared.py": {
+      "size_bytes": 145,
+      "live": true,
+      "classifications": ["desktop_transport_request_translation"],
+      "note": "Thin re-export: from _refresh import execute_desktop_intent. Correctly thin."
+    },
+    "intents.py": {
+      "size_bytes": 7043,
+      "live": true,
+      "classifications": ["desktop_transport_request_translation", "compatibility_surface"],
+      "note": "Public API surface. Defines ALLOWED_INTENTS, PROTECTED_INTENTS, _build_result, validate_intent_request. Re-exports execute_desktop_intent from _shared. Imports _execute_site_editor_save from _refinement (only live link to _refinement)."
+    }
+  },
+  "responsibility_assessment": {
+    "desktop_transport_request_translation": "intents.py (public API), _shared.py (re-export), _refresh.py execute_desktop_intent (dispatch), _refresh.py gateway pre-pass",
+    "progress_or_projection_adaptation": "_refresh.py _emit_progress helper (nested in execute_desktop_intent)",
+    "application_service_worthy_domain_behavior": "_refresh.py contains ~30 domain handler functions that should eventually be extracted to typed application services (identity, telemetry consent, provider onboarding, worktree management, fleet orchestration, council, site editor)",
+    "governance_evidence_state_transition_logic": "_refresh.py _handle_phase_1_protected_intent (authorization gate), validate_protected_intent_authorization (receipt validation), capability gate checks",
+    "duplicated_shared_execution_shell": "The monolithic execute_desktop_intent dispatch pattern is duplicated in 8 files (6 dead, 1 partially dead, 1 live). Progress emission, lifecycle event construction, and intent classification are copy-pasted.",
+    "dead_or_superseded_code": "_bundle.py, _spawn.py, _validation.py, _chat.py, _queue.py, _storage.py — all dead. _refinement.py dispatcher is dead (only _execute_site_editor_save is live).",
+    "compatibility_surface": "intents.py ALLOWED_INTENTS, PROTECTED_INTENTS, _build_result — must remain available. _refinement._execute_site_editor_save — must remain callable."
+  },
+  "missing_definitions_from_git_history": {
+    "source_commit": "6d836d007 (v0.1.0a1 tag — original unified intents.py)",
+    "_classify_intent": "Function that classifies intent names as 'phase1_protected', 'protected', 'allowed', or 'unsupported' based on membership in PHASE_1_ENABLED, PROTECTED_INTENTS, and ALLOWED_INTENTS dicts.",
+    "_execute_allowed_intent": "Lambda-based dispatch table mapping intent names to handler functions. ~30 handlers including identity, telemetry, provider, worktree, fleet, council, site editor, validation, storage, queue, spawn, refinement.",
+    "PHASE_1_ENABLED": "Dict mapping 'checkpoint.commit' and 'lease_cleanup.archive' to their intent names — these are Phase 1 receipt-gated intents."
+  },
+  "methodology": "Read remote-main source via local checkout confirmed at remote HEAD (964d6ef). Searched all Python imports with ripgrep. Verified external importers for each file. Cross-referenced against git history at 6d836d007 to recover lost definitions. Used AST analysis to enumerate undefined symbols in execute_desktop_intent.",
+  "external_sources_consulted": "none (internal refactoring)"
+}

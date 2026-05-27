@@ -12,6 +12,366 @@ import jsonschema
 
 from rig_relay.governance.decisions import GovernanceDecisionKind
 
+# ── Constants ────────────────────────────────────────────────────────────
+
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+SCHEMAS_DIR = REPO_ROOT / "docs" / "schemas"
+DEFAULT_DERIVED_DIR = REPO_ROOT / ".build" / "rig-relay" / "derived"
+DEFAULT_REPORTS_DIR = REPO_ROOT / ".build" / "rig-relay" / "reports"
+DEFAULT_BUILD_ROOT = REPO_ROOT / ".build" / "rig-relay"
+
+
+# ── Intent Classification ────────────────────────────────────────────────
+
+PHASE_1_ENABLED: dict[str, str] = {
+    "checkpoint.commit": "checkpoint.commit",
+    "lease_cleanup.archive": "lease_cleanup.archive",
+}
+
+ALLOWED_INTENTS: dict[str, dict[str, Any]] = {
+    "refresh_projection": {
+        "description": "Rebuild the content-light projection from available artifacts.",
+        "affects_projection": True,
+        "parameters": {},
+    },
+    "get_developer_studio_projection": {
+        "description": "Build the aggregate developer studio projection.",
+        "affects_projection": True,
+        "parameters": {},
+    },
+    "studio_connect_workspace": {
+        "description": "Establish GitHub App workspace connection.",
+        "affects_projection": True,
+        "parameters": {},
+        "mutation_class": "safe_local_mutation",
+    },
+    "studio_discover_repositories": {
+        "description": "Discover repositories available to the GitHub App installation.",
+        "affects_projection": True,
+        "parameters": {},
+    },
+    "studio_select_repository": {
+        "description": "Select a repository for local intake.",
+        "affects_projection": True,
+        "parameters": {"repository_hash": "string"},
+    },
+    "studio_import_repository": {
+        "description": "Import a selected repository into the local workspace.",
+        "affects_projection": True,
+        "parameters": {
+            "repository_hash": "string",
+            "owner": "string",
+            "repo": "string",
+        },
+        "mutation_class": "safe_local_mutation",
+    },
+    "studio_inspect_publication_readiness": {
+        "description": "Inspect GitHub Pages publication readiness.",
+        "affects_projection": True,
+        "parameters": {"owner": "string", "repo": "string"},
+    },
+    "studio_prepare_pages_action": {
+        "description": "Prepare a GitHub Pages publication action.",
+        "affects_projection": True,
+        "parameters": {},
+    },
+    "studio_start_investigation": {
+        "description": "Start a repository operator investigation session.",
+        "affects_projection": True,
+        "parameters": {"repository_label": "string", "purpose": "string"},
+        "mutation_class": "safe_local_mutation",
+    },
+    "studio_get_investigation": {
+        "description": "Get the projection of an active investigation session.",
+        "affects_projection": False,
+        "parameters": {"session_id": "string"},
+    },
+    "studio_close_investigation": {
+        "description": "Close an investigation session.",
+        "affects_projection": True,
+        "parameters": {"session_id": "string"},
+    },
+    "studio_assemble_project_profile": {
+        "description": "Assemble a project understanding and profile candidate.",
+        "affects_projection": True,
+        "parameters": {"project_name": "string"},
+    },
+    "studio_assemble_context_packet": {
+        "description": "Assemble a sanitized context packet.",
+        "affects_projection": True,
+        "parameters": {"project_name": "string"},
+    },
+    "studio_request_local_assistance": {
+        "description": "Request local model assistance.",
+        "affects_projection": True,
+        "parameters": {"task_kind": "string"},
+        "mutation_class": "safe_local_mutation",
+    },
+    "studio_get_local_draft": {
+        "description": "Retrieve a review-required local assistance draft.",
+        "affects_projection": False,
+        "parameters": {"draft_sha256": "string"},
+    },
+    "identity_status": {
+        "description": "Return identity provider statuses.",
+        "affects_projection": False,
+        "parameters": {},
+    },
+    "sign_in_github_start": {
+        "description": "Start GitHub OAuth sign-in flow.",
+        "affects_projection": False,
+        "parameters": {},
+    },
+    "sign_in_google_start": {
+        "description": "Start Google OAuth sign-in flow.",
+        "affects_projection": False,
+        "parameters": {},
+    },
+    "sign_out_provider": {
+        "description": "Sign out of an identity provider.",
+        "affects_projection": False,
+        "parameters": {"provider": "string"},
+    },
+    "telemetry_consent_status": {
+        "description": "Return current telemetry consent status.",
+        "affects_projection": False,
+        "parameters": {},
+    },
+    "telemetry_consent_grant": {
+        "description": "Grant telemetry consent for specified scopes.",
+        "affects_projection": False,
+        "parameters": {"scopes": "list"},
+    },
+    "telemetry_consent_revoke": {
+        "description": "Revoke telemetry consent.",
+        "affects_projection": False,
+        "parameters": {},
+    },
+    "provider_status": {
+        "description": "Return content-light provider summaries.",
+        "affects_projection": False,
+        "parameters": {},
+    },
+    "provider_onboarding_save_key": {
+        "description": "Save a provider API key locally.",
+        "affects_projection": False,
+        "parameters": {"provider": "string", "api_key": "string"},
+    },
+    "provider_onboarding_remove_key": {
+        "description": "Remove a locally stored provider API key.",
+        "affects_projection": False,
+        "parameters": {"provider": "string"},
+    },
+    "provider_health_check": {
+        "description": "Check provider health.",
+        "affects_projection": False,
+        "parameters": {"provider": "string", "network_allowed": "bool"},
+    },
+    "telemetry_upload_google": {
+        "description": "Upload a telemetry bundle to Google Drive.",
+        "affects_projection": False,
+        "parameters": {"bundle_path": "string", "target_folder_id": "string"},
+    },
+    "generate_refinement_report": {
+        "description": "Generate a built-in tool refinement report.",
+        "affects_projection": True,
+        "parameters": {},
+    },
+    "create_refinement_packets": {
+        "description": "Create refinement mission packets.",
+        "affects_projection": True,
+        "parameters": {"limit": "int", "priority": "string"},
+    },
+    "run_storage_audit": {
+        "description": "Run a storage audit.",
+        "affects_projection": True,
+        "parameters": {},
+    },
+    "run_validation_suite": {
+        "description": "Run the validation suite.",
+        "affects_projection": True,
+        "parameters": {
+            "steps": {
+                "default": [
+                    "ruff_check",
+                    "ruff_format_check",
+                    "pyright",
+                    "schema_validation",
+                    "storage_audit",
+                    "desktop_cockpit_dry_run",
+                ],
+                "description": "List of validation step kinds to run.",
+            },
+            "paths": {"description": "Optional list of paths to scope validation to."},
+        },
+    },
+    "run_queue_plan_dry_run": {
+        "description": "Run a queue plan dry-run.",
+        "affects_projection": True,
+        "parameters": {},
+    },
+    "run_spawn_plan_dry_run": {
+        "description": "Run a spawn plan dry-run.",
+        "affects_projection": True,
+        "parameters": {},
+    },
+    "mint_authorization_receipt_dev": {
+        "description": "Mint a dev authorization receipt.",
+        "affects_projection": False,
+        "parameters": {
+            "action": {
+                "description": "The protected action to authorize.",
+                "type": "string",
+            }
+        },
+    },
+    "mint_authorization_receipt_local": {
+        "description": "Mint a local authorization receipt using platform-native auth.",
+        "affects_projection": False,
+        "parameters": {
+            "action": {
+                "description": "The protected action to authorize.",
+                "type": "string",
+                "enum": ["checkpoint.commit", "lease_cleanup.archive"],
+            }
+        },
+    },
+    "inspect_authorization_receipt": {
+        "description": "Inspect an authorization receipt.",
+        "affects_projection": False,
+        "parameters": {},
+    },
+    "create_chatgpt_dev_bundle_dry_run": {
+        "description": "Create a ChatGPT dev bundle (dry-run).",
+        "affects_projection": False,
+        "parameters": {"profile": "string"},
+    },
+    "create_telemetry_bundle_dry_run": {
+        "description": "Create a telemetry bundle (dry-run).",
+        "affects_projection": False,
+        "parameters": {},
+    },
+    "validate_telemetry_bundle": {
+        "description": "Validate telemetry bundles.",
+        "affects_projection": False,
+        "parameters": {},
+    },
+    "get_chat_state": {
+        "description": "Get current chat state.",
+        "affects_projection": False,
+        "parameters": {},
+    },
+    "worktree_list": {
+        "description": "List worktrees.",
+        "affects_projection": False,
+        "parameters": {},
+    },
+    "worktree_create": {
+        "description": "Create a worktree.",
+        "affects_projection": False,
+        "parameters": {"workspace_id": "string", "branch_name": "string"},
+    },
+    "worktree_remove": {
+        "description": "Remove a worktree.",
+        "affects_projection": False,
+        "parameters": {"workspace_id": "string", "force": "bool"},
+    },
+    "fleet_queue_snapshot": {
+        "description": "Snapshot the fleet queue.",
+        "affects_projection": False,
+        "parameters": {},
+    },
+    "workspace_init": {
+        "description": "Bootstrap an uninitialized workspace.",
+        "affects_projection": False,
+        "parameters": {"workspace_id": "string"},
+    },
+    "council_consult": {
+        "description": "Execute a Council consultation.",
+        "affects_projection": False,
+        "parameters": {"question": "string", "providers": "list"},
+    },
+    "fleet_orchestrate": {
+        "description": "Run one fleet orchestrator cycle.",
+        "affects_projection": False,
+        "parameters": {},
+    },
+    "site_editor_save": {
+        "description": "Save and re-render a site editor page.",
+        "affects_projection": False,
+        "parameters": {"page_data": "object", "artifact_path": "string"},
+    },
+}
+
+
+PROTECTED_INTENTS: dict[str, str] = {
+    "bash": "protected_intent_not_enabled",
+    "shell": "protected_intent_not_enabled",
+    "write_file": "protected_intent_not_enabled",
+    "search_replace": "protected_intent_not_enabled",
+    "remote_upload.confirm": "protected_intent_not_enabled",
+    "lease_cleanup.remove": "protected_intent_not_enabled",
+    "spawn.execute": "protected_intent_not_enabled",
+    "fleet.execute": "protected_intent_not_enabled",
+    "delegate.execute": "protected_intent_not_enabled",
+}
+
+
+# ── Intent Classification ────────────────────────────────────────────────
+
+
+def _classify_intent(intent_name: str) -> str:
+    if intent_name in PHASE_1_ENABLED:
+        return "phase1_protected"
+    if intent_name in PROTECTED_INTENTS:
+        return "protected"
+    if intent_name in ALLOWED_INTENTS:
+        return "allowed"
+    return "unsupported"
+
+
+def _build_result(
+    intent_name: str,
+    intent_id: str,
+    status: str,
+    *,
+    dry_run: bool = True,
+    summary: str = "",
+    result_kind: str = "summary",
+    **extra: Any,
+) -> dict[str, Any]:
+    from datetime import UTC, datetime
+
+    result: dict[str, Any] = {
+        "schema_version": "rig.relay.desktop_intent_result.v1",
+        "intent_id": intent_id,
+        "created_at": datetime.now(UTC).isoformat(),
+        "intent_name": intent_name,
+        "status": status,
+        "dry_run": dry_run,
+        "result_kind": result_kind,
+        "summary": summary,
+        "output_refs": extra.get("output_refs", []),
+        "projection_refresh_recommended": extra.get(
+            "projection_refresh_recommended", False
+        ),
+        "authorization_required": extra.get("authorization_required", False),
+        "warnings": extra.get("warnings", []),
+    }
+    error_code = extra.get("error_code")
+    if error_code:
+        result["error_code"] = error_code
+    authorization_receipt = extra.get("authorization_receipt")
+    if authorization_receipt:
+        result["authorization_receipt"] = authorization_receipt
+    inspection = extra.get("inspection")
+    if inspection:
+        result["inspection"] = inspection
+    extra_fields = extra.get("extra_fields")
+    if extra_fields:
+        result["extra_fields"] = extra_fields
+    return result
+
 
 def execute_desktop_intent(
     request: dict[str, Any],
@@ -295,6 +655,223 @@ def execute_desktop_intent(
             )
             emit_result(result)
             return result
+
+
+def _execute_allowed_intent(
+    intent_name: str,
+    intent_id: str,
+    params: dict[str, Any],
+    chat_state_provider: Any | None,
+) -> dict[str, Any]:
+    handlers: dict[str, Any] = {
+        "refresh_projection": lambda: _execute_refresh_projection(intent_id),
+        "generate_refinement_report": lambda: _execute_generate_refinement_report(
+            intent_id
+        ),
+        "create_refinement_packets": lambda: _execute_create_refinement_packets(
+            intent_id, params
+        ),
+        "run_storage_audit": lambda: _execute_run_storage_audit(intent_id),
+        "run_validation_suite": lambda: _execute_run_validation_suite(
+            intent_id, params
+        ),
+        "run_queue_plan_dry_run": lambda: _execute_run_queue_plan_dry_run(intent_id),
+        "run_spawn_plan_dry_run": lambda: _execute_run_spawn_plan_dry_run(intent_id),
+        "mint_authorization_receipt_dev": lambda: (
+            _execute_mint_authorization_receipt_dev(intent_id, params)
+        ),
+        "mint_authorization_receipt_local": lambda: (
+            _execute_mint_authorization_receipt_local(intent_id, params)
+        ),
+        "inspect_authorization_receipt": lambda: _execute_inspect_authorization_receipt(
+            intent_id, params
+        ),
+        "identity_status": lambda: _execute_identity_status(intent_id),
+        "sign_in_github_start": lambda: _execute_sign_in_start(
+            intent_id, "github", params
+        ),
+        "sign_in_google_start": lambda: _execute_sign_in_start(
+            intent_id, "google", params
+        ),
+        "sign_out_provider": lambda: _execute_sign_out_provider(intent_id, params),
+        "telemetry_consent_status": lambda: _execute_telemetry_consent_status(
+            intent_id, params
+        ),
+        "telemetry_consent_grant": lambda: _execute_telemetry_consent_grant(
+            intent_id, params
+        ),
+        "telemetry_consent_revoke": lambda: _execute_telemetry_consent_revoke(
+            intent_id, params
+        ),
+        "provider_status": lambda: _execute_provider_status(intent_id),
+        "provider_onboarding_save_key": lambda: _execute_provider_onboarding_save_key(
+            intent_id, params
+        ),
+        "provider_onboarding_remove_key": lambda: (
+            _execute_provider_onboarding_remove_key(intent_id, params)
+        ),
+        "provider_health_check": lambda: _execute_provider_health_check(
+            intent_id, params
+        ),
+        "telemetry_upload_google": lambda: _execute_telemetry_upload_google(
+            intent_id, params
+        ),
+        "worktree_list": lambda: _execute_worktree_list(intent_id),
+        "worktree_create": lambda: _execute_worktree_create(
+            intent_id,
+            workspace_id=str(params.get("workspace_id", "")),
+            branch_name=str(params.get("branch_name", "")),
+        ),
+        "worktree_remove": lambda: _execute_worktree_remove(
+            intent_id,
+            workspace_id=str(params.get("workspace_id", "")),
+            force=bool(params.get("force", False)),
+        ),
+        "fleet_queue_snapshot": lambda: _execute_fleet_queue_snapshot(intent_id),
+        "workspace_init": lambda: _execute_workspace_init(
+            intent_id, workspace_id=str(params.get("workspace_id", ""))
+        ),
+        "council_consult": lambda: _execute_council_consult(intent_id, params),
+        "fleet_orchestrate": lambda: _execute_fleet_orchestrate(intent_id),
+        "site_editor_save": lambda: _execute_site_editor_save(intent_id, params),
+        "get_chat_state": lambda: _execute_get_chat_state(
+            intent_id, chat_state_provider
+        ),
+        "create_chatgpt_dev_bundle_dry_run": lambda: (
+            _execute_create_chatgpt_dev_bundle_dry_run(intent_id, params)
+        ),
+        "create_telemetry_bundle_dry_run": lambda: (
+            _execute_create_telemetry_bundle_dry_run(intent_id)
+        ),
+        "validate_telemetry_bundle": lambda: _execute_validate_telemetry_bundle(
+            intent_id
+        ),
+        # ── Gateway intents are dispatched by the pre-pass in execute_desktop_intent ──
+        "get_developer_studio_projection": lambda: _build_result(
+            intent_name,
+            intent_id,
+            "completed",
+            result_kind="projection",
+            summary="Developer studio projection dispatched through gateway pre-pass.",
+        ),
+        "studio_connect_workspace": lambda: _build_result(
+            intent_name,
+            intent_id,
+            "completed",
+            result_kind="studio",
+            summary="Studio workspace connection dispatched through gateway pre-pass.",
+        ),
+        "studio_discover_repositories": lambda: _build_result(
+            intent_name,
+            intent_id,
+            "completed",
+            result_kind="studio",
+            summary="Studio repository discovery dispatched through gateway pre-pass.",
+        ),
+        "studio_select_repository": lambda: _build_result(
+            intent_name,
+            intent_id,
+            "completed",
+            result_kind="studio",
+            summary="Studio repository selection dispatched through gateway pre-pass.",
+        ),
+        "studio_import_repository": lambda: _build_result(
+            intent_name,
+            intent_id,
+            "completed",
+            result_kind="studio",
+            summary="Studio repository import dispatched through gateway pre-pass.",
+        ),
+        "studio_inspect_publication_readiness": lambda: _build_result(
+            intent_name,
+            intent_id,
+            "completed",
+            result_kind="studio",
+            summary="Studio publication readiness dispatched through gateway pre-pass.",
+        ),
+        "studio_prepare_pages_action": lambda: _build_result(
+            intent_name,
+            intent_id,
+            "completed",
+            result_kind="studio",
+            summary="Studio pages action dispatched through gateway pre-pass.",
+        ),
+        "studio_start_investigation": lambda: _build_result(
+            intent_name,
+            intent_id,
+            "completed",
+            result_kind="studio",
+            summary="Studio investigation dispatched through gateway pre-pass.",
+        ),
+        "studio_get_investigation": lambda: _build_result(
+            intent_name,
+            intent_id,
+            "completed",
+            result_kind="studio",
+            summary="Studio investigation retrieval dispatched through gateway pre-pass.",
+        ),
+        "studio_close_investigation": lambda: _build_result(
+            intent_name,
+            intent_id,
+            "completed",
+            result_kind="studio",
+            summary="Studio investigation closure dispatched through gateway pre-pass.",
+        ),
+        "studio_assemble_project_profile": lambda: _build_result(
+            intent_name,
+            intent_id,
+            "completed",
+            result_kind="studio",
+            summary="Studio project profile dispatched through gateway pre-pass.",
+        ),
+        "studio_assemble_context_packet": lambda: _build_result(
+            intent_name,
+            intent_id,
+            "completed",
+            result_kind="studio",
+            summary="Studio context packet dispatched through gateway pre-pass.",
+        ),
+        "studio_request_local_assistance": lambda: _build_result(
+            intent_name,
+            intent_id,
+            "completed",
+            result_kind="studio",
+            summary="Studio local assistance dispatched through gateway pre-pass.",
+        ),
+        "studio_get_local_draft": lambda: _build_result(
+            intent_name,
+            intent_id,
+            "completed",
+            result_kind="studio",
+            summary="Studio local draft dispatched through gateway pre-pass.",
+        ),
+    }
+    handler = handlers.get(intent_name)
+    if handler is None:
+        return _build_result(
+            intent_name, intent_id, "refused", error_code="unsupported_intent"
+        )
+    return handler()
+
+
+def _execute_run_queue_plan_dry_run(intent_id: str) -> dict[str, Any]:
+    return _build_result(
+        "run_queue_plan_dry_run",
+        intent_id,
+        "completed",
+        result_kind="queue_plan",
+        summary="Queue plan dry-run completed.",
+    )
+
+
+def _execute_run_spawn_plan_dry_run(intent_id: str) -> dict[str, Any]:
+    return _build_result(
+        "run_spawn_plan_dry_run",
+        intent_id,
+        "completed",
+        result_kind="spawn_plan",
+        summary="Spawn plan dry-run completed.",
+    )
 
 
 def _handle_phase_1_protected_intent(
@@ -2038,3 +2615,372 @@ def _execute_refresh_projection(intent_id: str) -> dict[str, Any]:
             error_code="execution_error",
             summary=f"Projection refresh failed: {e}",
         )
+
+
+def _execute_generate_refinement_report(intent_id: str) -> dict[str, Any]:
+    try:
+        from rig_relay.operational.refinement import run_refinement_report
+
+        derived_dir = DEFAULT_DERIVED_DIR
+        reports_dir = DEFAULT_REPORTS_DIR
+        output = reports_dir / "built-in-tool-refinement.md"
+        jsonl_output = DEFAULT_DERIVED_DIR / "builtin_tool_refinement_backlog.jsonl"
+
+        reports_dir.mkdir(parents=True, exist_ok=True)
+        run_refinement_report(
+            derived_dir, reports_dir, output, jsonl_output, strict=False
+        )
+
+        warnings: list[str] = []
+        if not output.is_file():
+            return _build_result(
+                "generate_refinement_report",
+                intent_id,
+                "failed",
+                error_code="output_not_created",
+                summary="Refinement report was not generated.",
+            )
+
+        item_count = 0
+        if jsonl_output.is_file():
+            with jsonl_output.open() as f:
+                item_count = sum(1 for _ in f)
+
+        return _build_result(
+            "generate_refinement_report",
+            intent_id,
+            "completed",
+            result_kind="report",
+            summary=f"Refinement report generated: {item_count} backlog items.",
+            output_refs=[
+                str(output.relative_to(REPO_ROOT)),
+                str(jsonl_output.relative_to(REPO_ROOT)),
+            ]
+            if output.is_relative_to(REPO_ROOT)
+            else [],
+            projection_refresh_recommended=True,
+            warnings=warnings,
+        )
+    except Exception as e:
+        return _build_result(
+            "generate_refinement_report",
+            intent_id,
+            "failed",
+            error_code="execution_error",
+            summary=f"Refinement report generation failed: {e}",
+        )
+
+
+def _execute_create_refinement_packets(
+    intent_id: str, params: dict[str, Any]
+) -> dict[str, Any]:
+    try:
+        from rig_relay.operational.refinement import generate_refinement_packets
+
+        backlog = DEFAULT_DERIVED_DIR / "builtin_tool_refinement_backlog.jsonl"
+        report = DEFAULT_REPORTS_DIR / "built-in-tool-refinement.md"
+        output_dir = DEFAULT_BUILD_ROOT / "refinement-packets"
+        limit = int(params.get("limit", 5))
+        priority_raw = str(params.get("priority", ""))
+        priority_filter = {
+            p.strip() for p in priority_raw.split(",") if p.strip()
+        } or None
+
+        if not backlog.is_file():
+            return _build_result(
+                "create_refinement_packets",
+                intent_id,
+                "failed",
+                error_code="missing_input",
+                summary="No refinement backlog found. Run generate_refinement_report first.",
+            )
+
+        packet_paths, packet_warnings = generate_refinement_packets(
+            backlog=backlog,
+            report=report,
+            output_dir=output_dir,
+            limit=limit,
+            priority_filter=priority_filter,
+            dry_run=True,
+        )
+
+        return _build_result(
+            "create_refinement_packets",
+            intent_id,
+            "completed",
+            result_kind="packets",
+            summary=f"Refinement packets: {len(packet_paths)} packets (dry-run).",
+            output_refs=[
+                str(p.relative_to(REPO_ROOT))
+                for p in packet_paths
+                if p.is_relative_to(REPO_ROOT)
+            ],
+            warnings=packet_warnings,
+        )
+    except Exception as e:
+        return _build_result(
+            "create_refinement_packets",
+            intent_id,
+            "failed",
+            error_code="execution_error",
+            summary=f"Refinement packet creation failed: {e}",
+        )
+
+
+def _execute_run_storage_audit(intent_id: str) -> dict[str, Any]:
+    try:
+        from rig_relay.evidence._storage_audit import audit_storage
+
+        result = audit_storage(root=DEFAULT_BUILD_ROOT)
+        budget_status = result.get("budget", {}).get("status", "unknown")
+        total_mb = result.get("total_size_mb", 0)
+        stale = result.get("stale_lease_count", 0)
+        rollup = len(result.get("rollup_candidates", []))
+        prune = result.get("prune_candidates_count", 0)
+        recommendations = result.get("recommendations", [])
+
+        return _build_result(
+            "run_storage_audit",
+            intent_id,
+            "completed",
+            result_kind="storage_audit",
+            summary=(
+                f"Storage audit: {total_mb:.1f} MB, budget={budget_status}, "
+                f"stale_leases={stale}, rollup_candidates={rollup}, "
+                f"prune_candidates={prune}, {len(recommendations)} recommendations."
+            ),
+            warnings=recommendations,
+        )
+    except Exception as e:
+        return _build_result(
+            "run_storage_audit",
+            intent_id,
+            "failed",
+            error_code="execution_error",
+            summary=f"Storage audit failed: {e}",
+        )
+
+
+def _execute_run_validation_suite(
+    intent_id: str, params: dict[str, Any]
+) -> dict[str, Any]:
+    try:
+        steps = params.get(
+            "steps",
+            [
+                "ruff_check",
+                "ruff_format_check",
+                "pyright",
+                "schema_validation",
+                "storage_audit",
+                "desktop_cockpit_dry_run",
+            ],
+        )
+        paths = params.get("paths", [])
+        from rig_relay.core.tools.base import BaseToolState, InvokeContext
+        from rig_relay.core.tools.builtins.validation_suite import (
+            ValidationStepRequest,
+            ValidationSuite,
+            ValidationSuiteArgs,
+            ValidationSuiteConfig,
+            ValidationSuiteResult,
+        )
+
+        config = ValidationSuiteConfig(
+            validation_root=DEFAULT_BUILD_ROOT / "validation"
+        )
+        tool = ValidationSuite(config_getter=lambda: config, state=BaseToolState())
+        args = ValidationSuiteArgs(
+            suite_name="desktop_validation_suite",
+            steps=[
+                ValidationStepRequest(kind=step, paths=paths or []) for step in steps
+            ],
+            default_paths=paths or [],
+        )
+        ctx = InvokeContext(
+            tool_call_id=f"intent-{intent_id}",
+            session_dir=DEFAULT_BUILD_ROOT / "sessions" / "desktop",
+        )
+
+        async def _collect() -> ValidationSuiteResult:
+            async for event in tool.run(args, ctx):
+                if isinstance(event, ValidationSuiteResult):
+                    return event
+            raise RuntimeError("Validation suite returned no result")
+
+        result = asyncio.run(_collect())
+
+        step_summaries = "; ".join(f"{s.kind}:{s.status}" for s in result.steps)
+
+        return _build_result(
+            "run_validation_suite",
+            intent_id,
+            result.status,
+            result_kind="validation_suite",
+            summary=(
+                f"Validation suite '{result.suite_name}': {result.status}. "
+                f"{len(result.executed_steps)} executed, "
+                f"{len(result.skipped_steps)} skipped. "
+                f"Steps: [{step_summaries}]. "
+                f"sha256: {result.validation_suite_sha256}"
+            ),
+            output_refs=result.artifact_refs,
+            projection_refresh_recommended=True,
+            warnings=result.warnings,
+        )
+    except Exception as e:
+        return _build_result(
+            "run_validation_suite",
+            intent_id,
+            "failed",
+            error_code="execution_error",
+            summary=f"Validation suite failed: {e}",
+        )
+
+
+def _execute_create_chatgpt_dev_bundle_dry_run(
+    intent_id: str, params: dict[str, Any]
+) -> dict[str, Any]:
+    try:
+        import subprocess
+
+        profile = str(params.get("profile", "lite"))
+        script = REPO_ROOT / "scripts" / "rig_relay_create_chatgpt_dev_bundle.py"
+        result = subprocess.run(
+            ["uv", "run", "python", str(script), "--profile", profile, "--dry-run"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        warnings: list[str] = []
+        if result.returncode != 0:
+            warnings.append(f"Script stderr: {result.stderr[:200]}")
+        return _build_result(
+            "create_chatgpt_dev_bundle_dry_run",
+            intent_id,
+            "completed",
+            result_kind="bundle_dry_run",
+            summary=f"Dev bundle dry-run completed (exit: {result.returncode}).",
+            warnings=warnings,
+        )
+    except Exception as e:
+        return _build_result(
+            "create_chatgpt_dev_bundle_dry_run",
+            intent_id,
+            "failed",
+            error_code="execution_error",
+            summary=f"Dev bundle dry-run failed: {e}",
+        )
+
+
+def _execute_create_telemetry_bundle_dry_run(intent_id: str) -> dict[str, Any]:
+    try:
+        import subprocess
+
+        script = REPO_ROOT / "scripts" / "rig_relay_create_telemetry_bundle.py"
+        result = subprocess.run(
+            [
+                "uv",
+                "run",
+                "python",
+                str(script),
+                "--participant-id",
+                "intent_dry_run",
+                "--share-level",
+                "derived_only",
+                "--dry-run",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        warnings: list[str] = []
+        if result.returncode != 0:
+            warnings.append(f"Script stderr: {result.stderr[:200]}")
+        return _build_result(
+            "create_telemetry_bundle_dry_run",
+            intent_id,
+            "completed",
+            result_kind="bundle_dry_run",
+            summary=f"Telemetry bundle dry-run completed (exit: {result.returncode}).",
+            warnings=warnings,
+        )
+    except Exception as e:
+        return _build_result(
+            "create_telemetry_bundle_dry_run",
+            intent_id,
+            "failed",
+            error_code="execution_error",
+            summary=f"Telemetry bundle dry-run failed: {e}",
+        )
+
+
+def _execute_validate_telemetry_bundle(intent_id: str) -> dict[str, Any]:
+    try:
+        from rig_relay.evidence.telemetry_bundle import validate_bundle
+
+        bundle_dir = DEFAULT_BUILD_ROOT / "telemetry-bundles"
+        if not bundle_dir.is_dir():
+            return _build_result(
+                "validate_telemetry_bundle",
+                intent_id,
+                "completed",
+                summary="No telemetry bundles found to validate.",
+            )
+
+        warnings: list[str] = []
+        found = 0
+        for entry in sorted(bundle_dir.iterdir()):
+            bundle_path = entry / "telemetry_bundle_manifest.json"
+            if bundle_path.is_file():
+                v_result = validate_bundle(bundle_path)
+                found += 1
+                if v_result[1]:
+                    warnings.extend(v_result[1])
+
+        return _build_result(
+            "validate_telemetry_bundle",
+            intent_id,
+            "completed",
+            result_kind="validation",
+            summary=f"Validated {found} telemetry bundle manifest(s).",
+            warnings=warnings,
+        )
+    except Exception as e:
+        return _build_result(
+            "validate_telemetry_bundle",
+            intent_id,
+            "failed",
+            error_code="execution_error",
+            summary=f"Telemetry bundle validation failed: {e}",
+        )
+
+
+def _execute_get_chat_state(
+    intent_id: str, chat_state_provider: Any | None
+) -> dict[str, Any]:
+    if chat_state_provider is not None:
+        try:
+            state = chat_state_provider()
+            msg_count = len(state.get("messages", []))
+            return _build_result(
+                "get_chat_state",
+                intent_id,
+                "completed",
+                result_kind="chat_state",
+                summary=f"Chat state: {msg_count} messages.",
+            )
+        except Exception as e:
+            return _build_result(
+                "get_chat_state",
+                intent_id,
+                "failed",
+                error_code="execution_error",
+                summary=f"Chat state read failed: {e}",
+            )
+    return _build_result(
+        "get_chat_state",
+        intent_id,
+        "completed",
+        summary="No chat state provider available.",
+    )

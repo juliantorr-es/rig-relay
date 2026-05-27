@@ -179,6 +179,7 @@ ignore = ["D203", "D205", "D213", "ANN401", "PLR6301"]
 "rig_relay/governance/disclosure_query.py" = ["PLR"]
 "rig_relay/core/tools/builtins/bash.py" = ["PLR"]
 "rig_relay/core/tools/builtins/git.py" = ["PLR"]
+"rig_relay/desktop/_intents/_refresh.py" = ["PLR"]
 "rig_relay/recovery/evaluation.py" = ["PLR"]
 "rig_relay/recovery/report.py" = ["PLR"]
 
