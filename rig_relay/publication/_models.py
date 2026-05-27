@@ -1,46 +1,120 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from enum import StrEnum
 import hashlib
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field
 
+if TYPE_CHECKING:
+    pass
+
+
+class PreviewRefusalCode(StrEnum):
+    """Structured refusal reasons for publication preview compilation."""
+
+    APPROVAL_NOT_GRANTED = "approval_not_granted"
+    PROFILE_ABSENT = "profile_absent"
+    PROFILE_INVALID = "profile_invalid"
+    PRIVACY_CLASS_UNSAFE = "privacy_class_unsafe"
+    CONTENT_LIGHT_GUARANTEE_MISSING = "content_light_guarantee_missing"
+    INTERNAL_ONLY_MATERIAL_DETECTED = "internal_only_material_detected"
+    SCHEMA_MISMATCH = "schema_mismatch"
+    READINESS_INCOMPATIBLE = "readiness_incompatible"
+    PAGES_ACTION_INCOMPATIBLE = "pages_action_incompatible"
+    SAFETY_SCAN_FAILED = "safety_scan_failed"
+    POLICY_UNRECOGNIZED = "policy_unrecognized"
+    PROFILE_STALE = "profile_stale"
+
+
+class PreviewEvidenceReceipt(BaseModel):
+    """Canonical evidence receipt for a publication preview compilation.
+
+    Emitted for every compile or refusal outcome. Content-light — contains
+    hashes and status, never raw file contents or private data.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = Field(
+        default="rig.relay.publication_preview_receipt.v1", frozen=True
+    )
+    receipt_id: str
+    compiled_at: str
+    compilation_successful: bool
+    profile_candidate_digest: str
+    result_digest: str | None = None
+    refusal_code: str | None = None
+    refusal_reasons: list[str] = Field(default_factory=list)
+    safety_passed: bool = False
+    deployment_ready: bool = False
+    preview_only: bool = True
+    evidence_digest: str = ""
+
+    def compute_digest(self) -> str:
+        raw = (
+            f"{self.schema_version}:{self.receipt_id}:{self.profile_candidate_digest}:"
+            f"{self.compilation_successful}"
+        )
+        return f"sha256:{hashlib.sha256(raw.encode()).hexdigest()}"
+
+
+class PublicationPreviewRefusal(BaseModel):
+    """Structured refusal when preview compilation cannot proceed."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    refusal_code: PreviewRefusalCode
+    reasons: list[str] = Field(default_factory=list)
+    receipt: PreviewEvidenceReceipt | None = None
+
+
+class PublicationPreviewResult(BaseModel):
+    """Application-service result for a publication preview compilation.
+
+    Contains the full compiler result plus canonical evidence receipt.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    compiler_result: ProjectPageCompilerResult
+    receipt: PreviewEvidenceReceipt
+    refused: PreviewRefusalCode | None = None
+
+    @property
+    def success(self) -> bool:
+        return self.refused is None and self.compiler_result.compilation_successful
+
 
 class ProjectPageCompilerInput(BaseModel):
-    """Typed input contract for the project-page publication compiler.
+    """Internal compiler input — constructed from typed models, not raw dicts.
 
-    Accepts the released L0 PublishableProjectProfileCandidate boundary,
-    J0 publication readiness/prepared-action state, and an explicit
-    approval policy dict for generated narrative sections.
+    The application service validates live producer-compatible input before
+    constructing this internal input shape.
     """
 
     model_config = ConfigDict(extra="forbid")
 
     profile_candidate: dict = Field(
-        description="L0-shaped PublishableProjectProfileCandidate dict or schema-compatible fixture"
+        description="L0-shaped PublishableProjectProfileCandidate as dict (model_dump)"
     )
     publication_readiness: dict | None = Field(
-        default=None,
-        description="J0 PublicationReadiness dict or schema-compatible fixture",
+        default=None, description="J0 PublicationReadiness as dict"
     )
     pages_action: dict | None = Field(
-        default=None,
-        description="J0 PagesActionPreparation dict or schema-compatible fixture",
+        default=None, description="J0 PagesActionPreparation as dict"
     )
     narrative_approvals: dict[str, str] = Field(
         default_factory=dict,
-        description="Map of narrative section key → approval status. "
-        "Recognized keys: project_description, capability_narrative, engineering_themes. "
-        "Values must be one of: proposed, pending_review, approved, rejected, superseded. "
-        "Any section not mapped defaults to 'proposed'.",
+        description="Map of narrative section key → approval status",
     )
     publication_policy: str = Field(
         default="preview_only",
         description="Publication policy: preview_only (default), developer_approved, or public_release",
     )
     project_repo_owner: str = Field(
-        default="",
-        description="Repository owner for Pages URL construction (owner/repo pattern)",
+        default="", description="Repository owner for Pages URL construction"
     )
     project_repo_name: str = Field(
         default="", description="Repository name for Pages URL construction"
