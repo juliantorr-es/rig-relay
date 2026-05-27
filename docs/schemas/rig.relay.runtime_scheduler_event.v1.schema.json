@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.runtime_scheduler_event.v1.schema.json",
+  "title": "Runtime Scheduler Event",
+  "description": "Canonical evidence for scheduler state transitions.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "operation_id",
+    "transition",
+    "from_state",
+    "to_state",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Schema version identifier for this payload shape."
+    },
+    "operation_id": {
+      "type": "string",
+      "description": "Scheduler operation identifier for the request being transitioned."
+    },
+    "transition": {
+      "type": "string",
+      "description": "Event type for this transition (e.g., admitted, completed, failed, cancelled, refused)."
+    },
+    "from_state": {
+      "type": "string",
+      "description": "Previous scheduler state."
+    },
+    "to_state": {
+      "type": "string",
+      "description": "New scheduler state after transition."
+    },
+    "content_light": {
+      "const": true,
+      "description": "Content-light guarantee: no raw request contents or secrets."
+    }
+  },
+  "additionalProperties": false
+}

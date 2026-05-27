@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.runtime_execution_event.v1.schema.json",
+  "title": "Runtime Execution Event",
+  "description": "Canonical evidence for a local-inference execution task receipt or refusal.",
+  "type": "object",
+  "required": [
+    "receipt_id",
+    "operation_id",
+    "task_id_hash",
+    "status",
+    "prompt_sha256",
+    "output_sha256",
+    "model_id_hash",
+    "content_light",
+    "schema_version"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Schema version identifier for this payload shape."
+    },
+    "receipt_id": {
+      "type": "string",
+      "description": "Unique receipt identifier."
+    },
+    "operation_id": {
+      "type": "string",
+      "description": "Operation identifier for deduplication and chaining."
+    },
+    "task_id_hash": {
+      "type": "string",
+      "description": "SHA256 hash of the task identity."
+    },
+    "status": {
+      "type": "string",
+      "description": "Execution status: executed, refused, error."
+    },
+    "prompt_sha256": {
+      "type": "string",
+      "description": "SHA256 hash of the sanitized prompt content."
+    },
+    "output_sha256": {
+      "type": "string",
+      "description": "SHA256 hash of the generated output content."
+    },
+    "output_length_chars": {
+      "type": "integer",
+      "description": "Character count of the generated output."
+    },
+    "model_id_hash": {
+      "type": "string",
+      "description": "SHA256 hash of the model identifier."
+    },
+    "latency_ms": {
+      "type": "number",
+      "description": "Wall-clock latency in milliseconds."
+    },
+    "prompt_tokens": {
+      "type": "integer",
+      "description": "Prompt token count."
+    },
+    "completion_tokens": {
+      "type": "integer",
+      "description": "Completion token count."
+    },
+    "total_tokens": {
+      "type": "integer",
+      "description": "Total token count."
+    },
+    "finish_reason": {
+      "type": ["string", "null"],
+      "description": "Finish reason from the inference engine."
+    },
+    "tool_call_count": {
+      "type": "integer",
+      "description": "Number of tool call proposals detected."
+    },
+    "tool_proposals_routed": {
+      "type": "boolean",
+      "description": "Whether tool proposals were routed to governance."
+    },
+    "context_privacy_class": {
+      "type": "string",
+      "description": "Privacy classification of the context."
+    },
+    "content_light": {
+      "const": true,
+      "description": "Content-light guarantee: no raw prompts, outputs, or secrets."
+    }
+  },
+  "additionalProperties": false
+}

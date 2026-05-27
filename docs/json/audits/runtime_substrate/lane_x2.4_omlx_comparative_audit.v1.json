@@ -1,0 +1,104 @@
+{
+  "schema_version": "rig.relay.omlx_comparative_audit.v1",
+  "audit_id": "lane-x2.4-omlx-comparative-v1",
+  "title": "X2.4 OMLX Comparative Architecture Audit",
+  "created_at": "2026-05-27T00:00:00Z",
+  "lane": "X2.4",
+  "omlx_inspected": {
+    "repository": "jundot/omlx",
+    "commit": "ff7522b (May 27 2026)",
+    "version": "v0.3.12",
+    "license": "Apache 2.0"
+  },
+  "mechanisms_studied": [
+    {
+      "mechanism": "Continuous batching",
+      "source": "scheduler.py ~6,700 lines",
+      "disposition": "deferred",
+      "rig_relay_approach": "Serialized FCFS fallback. BatchGenerator API from mlx-lm available for future scheduler upgrade.",
+      "attribution_required": false
+    },
+    {
+      "mechanism": "Tiered KV cache (GPU page + SSD safetensors + prefix sharing)",
+      "source": "cache/paged_cache.py, cache/paged_ssd_cache.py, cache/prefix_cache.py",
+      "disposition": "deferred",
+      "rig_relay_approach": "LRUPromptCache from mlx-lm for in-memory prefix reuse (read-only). SSD persistence and page cache deferred.",
+      "attribution_required": false
+    },
+    {
+      "mechanism": "LRU prompt cache with trie",
+      "source": "cache/prefix_cache.py prefix tree matching",
+      "disposition": "independently_implemented",
+      "rig_relay_approach": "Uses mlx-lm's built-in LRUPromptCache with longest-prefix trie matching. OMLX uses custom block-hash-based prefix sharing. Different mechanism, same goal.",
+      "attribution_required": false
+    },
+    {
+      "mechanism": "Model classification taxonomy",
+      "source": "model_discovery.py ~909 lines",
+      "disposition": "adapted_from_reference",
+      "rig_relay_approach": "Architecture-based VLM/embedding/reranker detection pattern adapted in _inventory.py",
+      "attribution_required": true,
+      "attribution_notes": "Recorded in THIRD_PARTY_NOTICES.md row 1"
+    },
+    {
+      "mechanism": "Cache metrics schema",
+      "source": "server_metrics.py CacheRateTracker",
+      "disposition": "adapted_from_reference",
+      "rig_relay_approach": "CacheEvidenceMetrics model with rolling windows (recent/medium/aggregate)",
+      "attribution_required": true,
+      "attribution_notes": "Recorded in THIRD_PARTY_NOTICES.md row 2"
+    },
+    {
+      "mechanism": "Capability probe structure",
+      "source": "server.py endpoint layout",
+      "disposition": "adapted_from_reference",
+      "rig_relay_approach": "EnrichedRuntimeCapabilities probe target fields",
+      "attribution_required": true,
+      "attribution_notes": "Recorded in THIRD_PARTY_NOTICES.md row 3"
+    },
+    {
+      "mechanism": "MLX thread safety",
+      "source": "engine_core.py _init_mlx_thread",
+      "disposition": "adapted_from_reference",
+      "rig_relay_approach": "Thread-local Metal stream initialization + threading.Lock for serialization + asyncio.to_thread for async safety",
+      "attribution_required": true,
+      "attribution_notes": "Recorded in THIRD_PARTY_NOTICES.md row 4"
+    },
+    {
+      "mechanism": "Engine pool lifecycle",
+      "source": "engine_pool.py ~1,020 lines",
+      "disposition": "deferred",
+      "rig_relay_approach": "Single-model loading. Engine pool with LRU eviction deferred."
+    },
+    {
+      "mechanism": "VLM/OCR pipeline",
+      "source": "engine/vlm.py ~2,072 lines",
+      "disposition": "deferred"
+    },
+    {
+      "mechanism": "Speculative decoding",
+      "source": "dflash + VLM MTP",
+      "disposition": "deferred"
+    }
+  ],
+  "code_adaptation": {
+    "no_source_code_copied": true,
+    "no_close_structure_adapted": true,
+    "independently_implemented": true,
+    "attribution_records": "THIRD_PARTY_NOTICES.md rows 1-4",
+    "study_only_mechanisms": [
+      "Continuous batching via BatchGenerator",
+      "Tiered KV cache with safetensors",
+      "Engine pool LRU eviction",
+      "ProcessMemoryEnforcer",
+      "VLM image feature cache",
+      "Speculative decoding"
+    ]
+  },
+  "licensing": {
+    "omlx_license": "Apache 2.0",
+    "rig_relay_license": "AGPL-3.0-or-later",
+    "compatibility": "Apache 2.0 → AGPL 3.0 is permissible: Apache 2.0 is a permissive license that allows re-licensing under copyleft terms. AGPL 3.0's additional network-use clause applies only to Rig Relay's original code, not to Apache 2.0 dependencies.",
+    "dependency_licenses_verified": true
+  }
+}

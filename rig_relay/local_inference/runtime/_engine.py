@@ -18,16 +18,16 @@ OMLX-informed patterns:
 
 from __future__ import annotations
 
-import asyncio
-from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 import hashlib
 import json
+import queue
 import re
 import secrets
 import threading
 import time
+from typing import Any, cast
 
 from rig_relay.core.logger import logger
 from rig_relay.local_inference.runtime._models import (
@@ -72,6 +72,10 @@ class RiggedMlxEngine:
         self._stream_initialized: bool = False
         self._model_lock: threading.Lock = threading.Lock()
         self._gen_lock: threading.Lock = threading.Lock()
+        self._cache_authority: Any | None = None
+
+    def set_cache_authority(self, cache_authority: Any) -> None:
+        self._cache_authority = cache_authority
 
     @property
     def is_mlx_available(self) -> bool:
@@ -134,92 +138,172 @@ class RiggedMlxEngine:
         """Generate text (non-streaming) via mlx-lm with serialized execution.
 
         Returns visible LocalInferenceResponse with content, tool proposals,
-        and generation metadata. Generation is serialized via _gen_lock.
+        and generation metadata. _gen_lock covers the full call including
+        model lookup and mlx_lm.generate().
         """
         with self._gen_lock:
             loaded = self._loaded_models.get(model_id_hash)
 
-        if loaded is None:
-            return LocalInferenceResponse(content="", finish_reason=FinishReason.ERROR)
+            if loaded is None:
+                return LocalInferenceResponse(
+                    content="", finish_reason=FinishReason.ERROR
+                )
 
-        self._ensure_mlx_stream()
-        tokenizer = loaded.tokenizer
-        prompt = _build_prompt_using_chat_template(messages, tokenizer)
-        start = time.monotonic()
+            self._ensure_mlx_stream()
+            tokenizer = loaded.tokenizer
+            prompt = _build_prompt_using_chat_template(messages, tokenizer)
+            start = time.monotonic()
 
-        try:
-            import mlx_lm as _mlx
+            try:
+                import mlx_lm as _mlx
 
-            response = _mlx.generate(
-                loaded.mlx_model,
-                tokenizer,
-                prompt=prompt,
-                max_tokens=max_tokens,
-                verbose=False,
-            )
-            elapsed = (time.monotonic() - start) * 1000
-            output_text = response if isinstance(response, str) else str(response)
-            usage = _estimate_usage(prompt, output_text, tokenizer)
-            tool_proposals = _parse_tool_calls(output_text)
-            finish = FinishReason.TOOL_CALLS if tool_proposals else FinishReason.STOP
+                cache_hit = False
+                cached = None
+                prompt_tokens_list: list[int] = []
 
-            return LocalInferenceResponse(
-                content=output_text,
-                finish_reason=finish,
-                tool_call_proposals=tool_proposals,
-                prompt_tokens=usage.get("prompt_tokens", 0),
-                completion_tokens=usage.get("completion_tokens", 0),
-                total_tokens=usage.get("total_tokens", 0),
-                latency_ms=int(elapsed),
-                model_id_hash=model_id_hash,
-            )
+                if self._cache_authority is not None and hasattr(tokenizer, "encode"):
+                    try:
+                        prompt_tokens_list = cast(Any, tokenizer).encode(prompt)
+                        cached, _ = self._cache_authority.fetch_cache(
+                            loaded.mlx_model, prompt_tokens_list
+                        )
+                        cache_hit = cached is not None
+                    except Exception:
+                        cached = None
 
-        except Exception as e:
-            elapsed = (time.monotonic() - start) * 1000
-            logger.error("mlx-lm generation error: %s", e)
-            return LocalInferenceResponse(
-                content="",
-                finish_reason=FinishReason.ERROR,
-                latency_ms=int(elapsed),
-                model_id_hash=model_id_hash,
-            )
+                generate_kwargs: dict = {
+                    "model": loaded.mlx_model,
+                    "tokenizer": tokenizer,
+                    "prompt": prompt,
+                    "max_tokens": max_tokens,
+                    "verbose": False,
+                }
+                if cached is not None:
+                    generate_kwargs["prompt_cache"] = cached
 
-    async def stream_generate(
-        self, model_id_hash: str, messages: list[dict], max_tokens: int = 4096
-    ) -> AsyncGenerator[str, None]:
-        """Stream text tokens via mlx-lm.stream_generate().
+                response = _mlx.generate(**generate_kwargs)
+                elapsed = (time.monotonic() - start) * 1000
+                output_text = response if isinstance(response, str) else str(response)
+                usage = _estimate_usage(prompt, output_text, tokenizer)
+                tool_proposals = _parse_tool_calls(output_text)
+                finish = (
+                    FinishReason.TOOL_CALLS if tool_proposals else FinishReason.STOP
+                )
 
-        First OMLX-class capability on the v1 required path.
-        Yields text chunks as they are generated. The caller must
-        accumulate and process tool-call proposals after stream completion.
+                return LocalInferenceResponse(
+                    content=output_text,
+                    finish_reason=finish,
+                    tool_call_proposals=tool_proposals,
+                    prompt_tokens=usage.get("prompt_tokens", 0),
+                    completion_tokens=usage.get("completion_tokens", 0),
+                    total_tokens=usage.get("total_tokens", 0),
+                    latency_ms=int(elapsed),
+                    model_id_hash=model_id_hash,
+                    cache_hit=cache_hit,
+                )
 
-        Generation is serialized via _gen_lock.
+            except Exception as e:
+                elapsed = (time.monotonic() - start) * 1000
+                logger.error("mlx-lm generation error: %s", e)
+                return LocalInferenceResponse(
+                    content="",
+                    finish_reason=FinishReason.ERROR,
+                    latency_ms=int(elapsed),
+                    model_id_hash=model_id_hash,
+                )
+
+    def stream_generate_sync(
+        self,
+        model_id_hash: str,
+        messages: list[dict],
+        max_tokens: int,
+        output_queue: queue.Queue,
+        cancel_flag: list[bool],
+    ) -> None:
+        """Synchronous streaming generation intended for a dedicated thread.
+
+        Holds _gen_lock across the entire mlx-lm streaming call. Pushes
+        (kind, payload) tuples to the thread-safe output_queue:
+
+            ("token", str)      — next text token
+            ("done", dict)      — completion info: content, finish_reason,
+                                  tool_call_proposals, completion_tokens
+            ("error", str)      — error message
+            ("cancelled", None) — cancelled via cancel_flag
+
+        Checks cancel_flag[0] before each token yield.
         """
         with self._gen_lock:
-            with self._model_lock:
-                loaded = self._loaded_models.get(model_id_hash)
+            loaded = self._loaded_models.get(model_id_hash)
+            if loaded is None:
+                output_queue.put(("error", "Model not loaded"))
+                return
 
-        if loaded is None:
-            return
+            self._ensure_mlx_stream()
+            tokenizer = loaded.tokenizer
+            prompt = _build_prompt_using_chat_template(messages, tokenizer)
 
-        self._ensure_mlx_stream()
-        tokenizer = loaded.tokenizer
-        prompt = _build_prompt_using_chat_template(messages, tokenizer)
+            cache_hit = False
+            cached = None
 
-        try:
-            import mlx_lm as _mlx
+            if self._cache_authority is not None and hasattr(tokenizer, "encode"):
+                try:
+                    prompt_tokens_list = cast(Any, tokenizer).encode(prompt)
+                    cached, _ = self._cache_authority.fetch_cache(
+                        loaded.mlx_model, prompt_tokens_list
+                    )
+                    cache_hit = cached is not None
+                except Exception:
+                    cached = None
 
-            for token_result in _mlx.stream_generate(
-                loaded.mlx_model, tokenizer, prompt=prompt, max_tokens=max_tokens
-            ):
-                if isinstance(token_result, str):
-                    yield token_result
-                elif hasattr(token_result, "text"):
-                    yield token_result.text
-                await asyncio.sleep(0)
+            try:
+                import mlx_lm as _mlx
 
-        except Exception as e:
-            logger.error("mlx-lm streaming error: %s", e)
+                stream_kwargs: dict[str, Any] = {
+                    "model": loaded.mlx_model,
+                    "tokenizer": tokenizer,
+                    "prompt": prompt,
+                    "max_tokens": max_tokens,
+                }
+                if cached is not None:
+                    stream_kwargs["prompt_cache"] = cached
+
+                accumulated: list[str] = []
+                for token_result in _mlx.stream_generate(**stream_kwargs):
+                    if cancel_flag[0]:
+                        output_queue.put(("cancelled", None))
+                        return
+                    text = (
+                        token_result
+                        if isinstance(token_result, str)
+                        else (
+                            token_result.text
+                            if hasattr(token_result, "text")
+                            else str(token_result)
+                        )
+                    )
+                    accumulated.append(text)
+                    output_queue.put(("token", text))
+
+                full_text = "".join(accumulated)
+                tool_proposals = _parse_tool_calls(full_text)
+                finish = (
+                    FinishReason.TOOL_CALLS if tool_proposals else FinishReason.STOP
+                )
+                output_queue.put((
+                    "done",
+                    {
+                        "content": full_text,
+                        "finish_reason": finish,
+                        "tool_call_proposals": tool_proposals,
+                        "completion_tokens": len(accumulated),
+                        "cache_hit": cache_hit,
+                    },
+                ))
+
+            except Exception as e:
+                logger.error("mlx-lm streaming error: %s", e)
+                output_queue.put(("error", str(e)))
 
     def _ensure_mlx_stream(self) -> None:
         if self._stream_initialized:

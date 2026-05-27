@@ -22,6 +22,11 @@ Rig Relay's local inference runtime (`rig_relay/local_inference/runtime/`) incor
 - **Upstream License**: Apache License, Version 2.0
 - **Upstream Copyright**: Copyright 2025 oMLX contributors
 
+**X2.4 Status (May 2026)**:
+- KV-cache reuse now uses `mlx-lm`'s built-in `LRUPromptCache` with longest-prefix trie matching — an independently implemented mechanism. No OMLX code adapted for cache functionality.
+- All adapted patterns listed below remain attribution-only (no OMLX source code copied).
+- The OMLX comparative architecture audit for this lane is at `docs/json/audits/runtime_substrate/lane_x2.4_omlx_comparative_audit.v1.json`.
+
 ### Adapted Patterns
 
 The following patterns were studied from OMLX source and adapted into original Rig Relay code (not ported). OMLX source was inspected for architecture decisions; no OMLX source code was directly copied.
@@ -32,6 +37,7 @@ The following patterns were studied from OMLX source and adapted into original R
 | Cache evidence metrics schema | `server_metrics.py` CacheRateTracker (rolling windows: 60s, 5m, 15m) | `_models.py`: `CacheEvidenceMetrics` with recent/medium/aggregate windows |
 | Capability probe structure | `server.py` endpoint layout (/health, /v1/models, /v1/chat/completions, /v1/embeddings, /v1/rerank, /v1/messages, /api/status) | `_models.py`: `EnrichedRuntimeCapabilities` probe target fields |
 | MLX thread safety pattern | `engine_core.py`: `_init_mlx_thread()` (thread-local Metal stream initialization) | `_engine.py`: `_ensure_mlx_initialized()` stream safety |
+| LRU prompt cache with trie | `cache/prefix_cache.py` (block-hash-based prefix sharing with custom caching) | `_cache_authority.py`: `RiggedCacheAuthority` using mlx-lm's built-in `LRUPromptCache` with longest-prefix trie matching. Independently implemented — no OMLX code adapted. |
 
 ### Dependencies
 

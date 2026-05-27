@@ -1,7 +1,9 @@
 """rig_relay.local_inference.runtime — Rig-governed internal MLX-backed runtime.
 
-X2.3: Scheduler, cache authority, tool proposal corridor, X0 consumer contract,
-canonical evidence with schema validation, locking, and idempotency.
+X2.4: Authority closure — coherent-locked evidence ledger, scheduler-owned
+execution, governed streaming admission, stateless tool-proposal preflight,
+real LRUPromptCache integration, scheduler lifecycle evidence, fail-closed
+schema validation, X0 consumer contract truthfulness repair.
 """
 
 from __future__ import annotations
@@ -20,6 +22,7 @@ from rig_relay.local_inference.runtime._evidence import (
     emit_execution_receipt,
     emit_lifecycle_event,
     emit_refusal_receipt,
+    emit_scheduler_event,
     emit_tool_proposal_evidence,
     reconstruct_ledgers,
 )
@@ -50,6 +53,7 @@ from rig_relay.local_inference.runtime._probe import (
 from rig_relay.local_inference.runtime._scheduler import (
     RequestState,
     RiggedInferenceScheduler,
+    ScheduledRequest,
 )
 from rig_relay.local_inference.runtime._secrets import scan_messages_for_secrets
 from rig_relay.local_inference.runtime._service import (
@@ -80,6 +84,7 @@ __all__ = [
     "RuntimeCachePolicy",
     "RuntimeIdentity",
     "RuntimeLifecycleState",
+    "ScheduledRequest",
     "TaskAdmissionDecision",
     "TaskAdmissionResult",
     "TaskKind",
@@ -91,6 +96,7 @@ __all__ = [
     "emit_lifecycle_event",
     "emit_refusal_receipt",
     "emit_tool_proposal_evidence",
+    "emit_scheduler_event",
     "get_runtime",
     "probe_runtime_health",
     "probe_runtime_models",

@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.dev/schemas/rig.relay.runtime_tool_proposal_event.v1.schema.json",
+  "title": "Runtime Tool Proposal Event",
+  "description": "Canonical evidence for tool call proposals detected during inference.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "task_id_hash",
+    "proposal_count",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Schema version identifier for this payload shape."
+    },
+    "task_id_hash": {
+      "type": "string",
+      "description": "SHA256 hash of the task identity."
+    },
+    "proposal_count": {
+      "type": "integer",
+      "description": "Number of tool call proposals detected."
+    },
+    "proposal_names_hash": {
+      "type": "string",
+      "description": "SHA256 hash of the concatenated tool names (content-light)."
+    },
+    "proposal_args_hashes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "SHA256 hashes of each proposal's arguments (content-light)."
+    },
+    "routed_to_governance": {
+      "type": "boolean",
+      "description": "Whether proposals were routed to governance."
+    },
+    "rejected_count": {
+      "type": "integer",
+      "description": "Number of proposals rejected by governance."
+    },
+    "admitted_count": {
+      "type": "integer",
+      "description": "Number of proposals admitted for execution."
+    },
+    "governance_latency_ms": {
+      "type": "number",
+      "description": "Latency of governance routing in milliseconds."
+    },
+    "content_light": {
+      "const": true,
+      "description": "Content-light guarantee: no raw tool arguments or names."
+    }
+  },
+  "additionalProperties": false
+}

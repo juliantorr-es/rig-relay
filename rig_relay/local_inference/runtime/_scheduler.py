@@ -19,6 +19,7 @@ from datetime import UTC, datetime
 import secrets
 
 from rig_relay.core.logger import logger
+from rig_relay.local_inference.runtime._evidence import emit_scheduler_event
 from rig_relay.local_inference.runtime._models import LocalInferenceResponse, TaskKind
 
 
@@ -107,9 +108,11 @@ class RiggedInferenceScheduler:
             if len(self._running) >= self._max_concurrent:
                 return None
             req = self._queue.pop(0)
+            from_state = req.state
             req.state = RequestState.RUNNING
             req.started_at = _now_iso()
             self._running[req.operation_id] = req
+            self._emit_transition(req, "admitted", from_state, RequestState.RUNNING)
             return req
 
     async def complete(self, op_id: str, response: LocalInferenceResponse) -> None:
@@ -117,21 +120,25 @@ class RiggedInferenceScheduler:
             req = self._running.pop(op_id, None)
             if req is None:
                 return
+            from_state = req.state
             req.state = RequestState.COMPLETED
             req.response = response
             req.completed_at = _now_iso()
             self._completed.append(req)
             self._total_processed += 1
+            self._emit_transition(req, "completed", from_state, RequestState.COMPLETED)
 
     async def fail(self, op_id: str, error: str) -> None:
         async with self._lock:
             req = self._running.pop(op_id, None)
             if req is None:
                 return
+            from_state = req.state
             req.state = RequestState.FAILED
             req.error = error
             req.completed_at = _now_iso()
             self._completed.append(req)
+            self._emit_transition(req, "failed", from_state, RequestState.FAILED)
 
     async def cancel(self, op_id: str) -> bool:
         async with self._lock:
@@ -139,29 +146,60 @@ class RiggedInferenceScheduler:
             if req is None:
                 for i, r in enumerate(self._queue):
                     if r.operation_id == op_id:
+                        from_state = r.state
                         r.state = RequestState.CANCELLED
                         r.completed_at = _now_iso()
                         self._queue.pop(i)
                         self._completed.append(r)
+                        self._emit_transition(
+                            r, "cancelled", from_state, RequestState.CANCELLED
+                        )
                         return True
                 return False
+            from_state = req.state
             req.state = RequestState.CANCELLED
             req.completed_at = _now_iso()
             self._completed.append(req)
             self._total_processed += 1
+            self._emit_transition(req, "cancelled", from_state, RequestState.CANCELLED)
             return True
 
     async def refuse(self, op_id: str, reason: str) -> None:
         async with self._lock:
             for i, r in enumerate(self._queue):
                 if r.operation_id == op_id:
+                    from_state = r.state
                     r.state = RequestState.REFUSED
                     r.error = reason
                     r.completed_at = _now_iso()
                     self._queue.pop(i)
                     self._completed.append(r)
                     self._total_refused += 1
+                    self._emit_transition(
+                        r, "refused", from_state, RequestState.REFUSED
+                    )
                     return
+
+    def _emit_transition(
+        self, req: ScheduledRequest, event_type: str, from_state: str, to_state: str
+    ) -> None:
+        try:
+            emit_scheduler_event(
+                req.operation_id,
+                event_type,
+                {
+                    "schema_version": "rig.relay.runtime_scheduler_event.v1",
+                    "operation_id": req.operation_id,
+                    "transition": event_type,
+                    "from_state": from_state,
+                    "to_state": to_state,
+                    "content_light": True,
+                },
+            )
+        except Exception:
+            logger.exception(
+                "scheduler: evidence emission failed for op=%s", req.operation_id
+            )
 
     def build_projection(self) -> dict:
         return {
