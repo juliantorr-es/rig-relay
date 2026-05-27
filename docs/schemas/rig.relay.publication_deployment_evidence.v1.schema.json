@@ -16,16 +16,22 @@
     "preview_evidence_digest": { "type": "string" },
     "compilation_result_digest": { "type": "string" },
     "authorization_receipt_digest": { "type": "string" },
-    "deployment_status": {
+    "deployment_phase": {
       "type": "string",
       "enum": [
-        "preparing", "authorization_pending", "authorized_ready",
-        "executing", "deployed", "verified", "refused",
-        "failed", "recovery_required"
+        "prepared", "authorization_pending", "authorized",
+        "pages_configuring", "pages_configured",
+        "content_publishing", "content_published",
+        "build_pending", "published_verified",
+        "refused", "failed", "recovery_required"
       ]
     },
+    "pages_configured": { "type": "boolean" },
+    "content_published": { "type": "boolean" },
+    "build_initiated": { "type": "boolean" },
     "pages_site_url": { "type": "string" },
     "pages_build_status": { "type": "string" },
+    "preview_receipt_digest": { "type": "string" },
     "refusal_code": { "type": ["string", "null"] },
     "refusal_reasons": {
       "type": "array",
@@ -42,7 +48,7 @@
   "required": [
     "schema_version", "receipt_id", "operation_id",
     "profile_candidate_digest", "preview_evidence_digest",
-    "deployment_status", "evidence_digest"
+    "deployment_phase", "evidence_digest"
   ],
   "additionalProperties": false
 }

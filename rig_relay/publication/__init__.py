@@ -8,13 +8,14 @@ from rig_relay.publication._deployment_evidence import (
 )
 from rig_relay.publication._deployment_models import (
     DeploymentOutcomeReceipt,
+    DeploymentPhase,
     DeploymentPreparationResult,
     DeploymentRecoveryState,
     DeploymentRefusalCode,
-    DeploymentStatus,
     PortfolioProjectionRejection,
     PortfolioSynthesisInput,
     PortfolioSynthesisResult,
+    VerifiedApprovedProjectPublicationRecord,
 )
 from rig_relay.publication._deployment_service import GitHubPagesDeploymentService
 from rig_relay.publication._evidence_ledger import (
@@ -48,13 +49,15 @@ __all__ = [
     "DEPLOYMENT_LEDGER_DIR",
     "DEPLOYMENT_LEDGER_FILE",
     "LEDGER_DIR",
+    "LEDGER_DIR",
+    "LEDGER_FILE",
     "LEDGER_FILE",
     "DeploymentEvidenceLedger",
     "DeploymentOutcomeReceipt",
+    "DeploymentPhase",
     "DeploymentPreparationResult",
     "DeploymentRecoveryState",
     "DeploymentRefusalCode",
-    "DeploymentStatus",
     "GitHubPagesDeploymentService",
     "LedgerReconstruction",
     "PortfolioProjectionRejection",
@@ -73,6 +76,7 @@ __all__ = [
     "PublicationPreviewRefusal",
     "PublicationPreviewResult",
     "PublicationSafetyReport",
+    "VerifiedApprovedProjectPublicationRecord",
     "redact_unsafe_text",
     "scan_project_page_output",
     "validate_publication_policy",

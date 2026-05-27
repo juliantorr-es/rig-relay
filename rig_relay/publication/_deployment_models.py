@@ -1,8 +1,7 @@
-"""Deployment and portfolio synthesis models for Lane X3.
+"""Deployment and portfolio synthesis models for Lane X3.1.
 
-Deployment models define the governance-significant fields for GitHub Pages
-publication deployment actions. Portfolio synthesis models define the
-aggregation of multiple approved project-page publication records.
+X3.1 repairs: truthful status model, T1.2 evidence binding, deterministic
+portfolio output, safe HTML contract, approval-gated synthesis.
 """
 
 from __future__ import annotations
@@ -21,38 +20,50 @@ class DeploymentRefusalCode(StrEnum):
     SAFETY_NOT_PASSED = "safety_not_passed"
     COMPILATION_FAILED = "compilation_failed"
     EVIDENCE_DIGEST_MISMATCH = "evidence_digest_mismatch"
+    EVIDENCE_RECEIPT_ABSENT = "evidence_receipt_absent"
+    EVIDENCE_RECEIPT_CORRUPT = "evidence_receipt_corrupt"
     CONTENT_LIGHT_VIOLATION = "content_light_violation"
     AUTHORIZATION_MISSING = "authorization_missing"
     AUTHORIZATION_REVOKED = "authorization_revoked"
     AUTHORIZATION_EXPIRED = "authorization_expired"
     AUTHORIZATION_DIGEST_MISMATCH = "authorization_digest_mismatch"
     PAGES_NOT_CONFIGURED = "pages_not_configured"
+    PAGES_CONFIG_FAILED = "pages_config_failed"
     PERMISSION_MISSING = "permission_missing"
     CONTENT_PUSH_FAILED = "content_push_failed"
+    BRANCH_CREATION_FAILED = "branch_creation_failed"
+    REMOTE_BUILD_FAILED = "remote_build_failed"
     REMOTE_VERIFICATION_FAILED = "remote_verification_failed"
     REMOTE_STATUS_INDETERMINATE = "remote_status_indeterminate"
     STALE_OPERATION = "stale_operation"
     IDEMPOTENCY_CONFLICT = "idempotency_conflict"
     REPO_NOT_FOUND = "repo_not_found"
     STATIC_CONTENT_MISSING = "static_content_missing"
+    INSUFFICIENT_PERMISSIONS = "insufficient_permissions"
 
 
-class DeploymentStatus(StrEnum):
-    """Status of a deployment operation."""
+class DeploymentPhase(StrEnum):
+    """Truthful deployment phases — X3.1 repair #5 status model."""
 
-    PREPARING = "preparing"
+    PREPARED = "prepared"
     AUTHORIZATION_PENDING = "authorization_pending"
-    AUTHORIZED_READY = "authorized_ready"
-    EXECUTING = "executing"
-    DEPLOYED = "deployed"
-    VERIFIED = "verified"
+    AUTHORIZED = "authorized"
+    PAGES_CONFIGURING = "pages_configuring"
+    PAGES_CONFIGURED = "pages_configured"
+    CONTENT_PUBLISHING = "content_publishing"
+    CONTENT_PUBLISHED = "content_published"
+    BUILD_PENDING = "build_pending"
+    PUBLISHED_VERIFIED = "published_verified"
     REFUSED = "refused"
     FAILED = "failed"
     RECOVERY_REQUIRED = "recovery_required"
 
 
 class DeploymentPreparationResult(BaseModel):
-    """Result of deployment readiness inspection before any mutation."""
+    """Result of deployment readiness inspection before any mutation.
+
+    X3.1 repair #2: binds real T1.2 PreviewEvidenceReceipt.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -65,15 +76,20 @@ class DeploymentPreparationResult(BaseModel):
     compilation_valid: bool = False
     safety_valid: bool = False
     preview_evidence_valid: bool = False
-    content_digest: str = ""
     preview_evidence_digest: str = ""
+    preview_receipt_digest: str = ""
+    approval_gate_passed: bool = False
+    content_digest: str = ""
     pages_ready: bool = False
     pages_site_exists: bool = False
-    pages_requires_configure: bool = False
+    pages_requires_create: bool = False
+    pages_requires_update: bool = False
     pages_target_repo: str = ""
     pages_source_branch: str = ""
+    pages_source_path: str = ""
     static_content_available: bool = False
     static_content_digest: str = ""
+    static_bundle_path: str = ""
     authorization_required: bool = True
     authorization_request_digest: str = ""
     blockers: list[str] = Field(default_factory=list)
@@ -90,8 +106,10 @@ class DeploymentPreparationResult(BaseModel):
             "compilation_valid": self.compilation_valid,
             "safety_valid": self.safety_valid,
             "preview_evidence_valid": self.preview_evidence_valid,
-            "content_digest": self.content_digest,
             "preview_evidence_digest": self.preview_evidence_digest,
+            "preview_receipt_digest": self.preview_receipt_digest,
+            "approval_gate_passed": self.approval_gate_passed,
+            "content_digest": self.content_digest,
             "pages_target_repo": self.pages_target_repo,
             "static_content_digest": self.static_content_digest,
             "authorization_required": self.authorization_required,
@@ -105,8 +123,7 @@ class DeploymentPreparationResult(BaseModel):
 class DeploymentOutcomeReceipt(BaseModel):
     """Canonical evidence receipt for a publication deployment outcome.
 
-    Emitted for every deployment attempt (success, refusal, or failure).
-    Content-light — contains hashes and status, never raw content or secrets.
+    X3.1 repairs #5 and #6: truthful phase, evidence integrity.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -119,11 +136,15 @@ class DeploymentOutcomeReceipt(BaseModel):
     preparation_digest: str = ""
     profile_candidate_digest: str
     preview_evidence_digest: str
+    preview_receipt_digest: str = ""
     compilation_result_digest: str = ""
     authorization_receipt_digest: str = ""
-    deployment_status: str = ""
+    deployment_phase: str = ""
     pages_site_url: str = ""
     pages_build_status: str = ""
+    pages_configured: bool = False
+    content_published: bool = False
+    build_initiated: bool = False
     refusal_code: str | None = None
     refusal_reasons: list[str] = Field(default_factory=list)
     remote_request_sent: bool = False
@@ -142,11 +163,15 @@ class DeploymentOutcomeReceipt(BaseModel):
             "preparation_digest": self.preparation_digest,
             "profile_candidate_digest": self.profile_candidate_digest,
             "preview_evidence_digest": self.preview_evidence_digest,
+            "preview_receipt_digest": self.preview_receipt_digest,
             "compilation_result_digest": self.compilation_result_digest,
             "authorization_receipt_digest": self.authorization_receipt_digest,
-            "deployment_status": self.deployment_status,
+            "deployment_phase": self.deployment_phase,
             "pages_site_url": self.pages_site_url,
             "pages_build_status": self.pages_build_status,
+            "pages_configured": self.pages_configured,
+            "content_published": self.content_published,
+            "build_initiated": self.build_initiated,
             "refusal_code": self.refusal_code,
             "refusal_reasons": sorted(self.refusal_reasons),
             "remote_request_sent": self.remote_request_sent,
@@ -166,13 +191,53 @@ class DeploymentRecoveryState(BaseModel):
 
     operation_id: str
     prior_attempt_receipt_digest: str
-    prior_status: str
+    prior_phase: str
     prior_remote_verified: bool = False
     prior_remote_sent: bool = False
     prior_authorization_consumed: bool = False
-    recovery_action: str = ""  # retry, verify_only, abandon, reauthorize
+    prior_pages_configured: bool = False
+    prior_content_published: bool = False
+    recovery_action: str = ""
     recovery_blockers: list[str] = Field(default_factory=list)
     recoverable: bool = False
+
+
+# ── Verified approved publication record ───────────────────────────────
+
+
+class VerifiedApprovedProjectPublicationRecord(BaseModel):
+    """Verified approved project publication record for portfolio synthesis.
+
+    X3.1 repair #7: only verified records may enter portfolio synthesis.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = Field(
+        default="rig.relay.publication_verified_project_record.v1", frozen=True
+    )
+    record_id: str
+    profile_candidate_digest: str
+    preview_evidence_digest: str
+    preview_receipt_digest: str = ""
+    compilation_result_digest: str
+    approval_evidence_digest: str = ""
+    safety_passed: bool = False
+    privacy_class: str = "public_safe"
+    content_light_guarantee: bool = True
+    publication_surface: str = "project_page"
+    projection: dict = Field(default_factory=dict)
+    projection_digest: str = ""
+    verified: bool = False
+    verification_digest: str = ""
+
+    def compute_digest(self) -> str:
+        raw = (
+            f"{self.record_id}:{self.profile_candidate_digest}:"
+            f"{self.preview_evidence_digest}:{self.compilation_result_digest}:"
+            f"{self.projection_digest}"
+        )
+        return f"sha256:{hashlib.sha256(raw.encode()).hexdigest()}"
 
 
 # ── Portfolio Synthesis Models ──────────────────────────────────────────
@@ -190,7 +255,10 @@ class PortfolioProjectionRejection(BaseModel):
 
 
 class PortfolioSynthesisInput(BaseModel):
-    """Input for portfolio synthesis from approved project records."""
+    """Input for portfolio synthesis from verified approved records.
+
+    X3.1 repair #7: requires VerifiedApprovedProjectPublicationRecord list.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -200,16 +268,18 @@ class PortfolioSynthesisInput(BaseModel):
     developer_display_name: str = ""
     developer_headline: str = ""
     developer_bio: str = ""
-    approved_project_records: list[dict] = Field(
+    verified_records: list = Field(
         default_factory=list,
-        description="List of approved ProjectPageCompilerResult dicts from the evidence ledger",
+        description="List of VerifiedApprovedProjectPublicationRecord instances",
     )
     portfolio_title: str = "Developer Portfolio"
-    publication_policy: str = "public_release"
 
 
 class PortfolioSynthesisResult(BaseModel):
-    """Result of portfolio synthesis from approved project records."""
+    """Result of portfolio synthesis.
+
+    X3.1 repair #9: operation identity separate from content digest.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -227,19 +297,14 @@ class PortfolioSynthesisResult(BaseModel):
     portfolio_html: str | None = None
     portfolio_html_digest: str | None = None
     portfolio_bundle_path: str | None = None
+    content_digest: str = ""
     synthesis_digest: str = ""
     content_light_guarantee: bool = True
     privacy_class: str = "public_safe"
+    safety_passed: bool = False
+    safety_warnings: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     ready_for_deployment: bool = False
-
-    def compute_digest(self) -> str:
-        raw = (
-            f"{self.synthesis_id}:{self.total_project_records}:"
-            f"{self.included_count}:{self.rejected_count}:"
-            f"{self.portfolio_html_digest or 'no-html'}"
-        )
-        return f"sha256:{hashlib.sha256(raw.encode()).hexdigest()}"
 
 
 def _now_iso() -> str:
@@ -254,11 +319,12 @@ def _digest_sha256(content: str) -> str:
 
 __all__ = [
     "DeploymentOutcomeReceipt",
+    "DeploymentPhase",
     "DeploymentPreparationResult",
     "DeploymentRecoveryState",
     "DeploymentRefusalCode",
-    "DeploymentStatus",
     "PortfolioProjectionRejection",
     "PortfolioSynthesisInput",
     "PortfolioSynthesisResult",
+    "VerifiedApprovedProjectPublicationRecord",
 ]

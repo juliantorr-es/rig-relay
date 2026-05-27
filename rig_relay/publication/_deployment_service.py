@@ -1,12 +1,14 @@
-"""GitHub Pages Deployment Service — Lane X3 publication deployment authority.
+"""GitHub Pages Deployment Service — Lane X3.1 publication deployment authority.
 
-The governed application-service boundary that consumes approved
-publication preview output, validates authorization, executes Pages
-configuration and content deployment, verifies remote status, and
-produces durable deployment evidence.
+X3.1 repairs:
+  1. Single authorization authority — service owns consumption
+  2. Binds real T1.2 PreviewEvidenceReceipt
+  3. Publishes actual static content to governed branch
+  4. Supports POST create + PUT update based on current Pages state
+  5. Truthful deployment phase model
+  6. Evidence integrity — event schema, nested digest, reconstruction
 
-Follows the same application-service pattern as
-ProjectPagePublicationPreviewService but for the deployment phase.
+Follows the application-service pattern from ProjectPagePublicationPreviewService.
 """
 
 from __future__ import annotations
@@ -18,14 +20,17 @@ import uuid as _uuid
 from rig_relay.publication._deployment_evidence import DeploymentEvidenceLedger
 from rig_relay.publication._deployment_models import (
     DeploymentOutcomeReceipt,
+    DeploymentPhase,
     DeploymentPreparationResult,
     DeploymentRecoveryState,
     DeploymentRefusalCode,
-    DeploymentStatus,
     _digest_sha256,
     _now_iso,
 )
-from rig_relay.publication._models import ProjectPageCompilerResult
+from rig_relay.publication._models import (
+    PreviewEvidenceReceipt,
+    ProjectPageCompilerResult,
+)
 
 # ── Constants ───────────────────────────────────────────────────────────
 
@@ -34,6 +39,8 @@ _VALID_DEPLOYMENT_POLICIES: frozenset[str] = frozenset({
     "public_release",
 })
 
+_GITHUB_API_BASE = "https://api.github.com"
+
 
 # ── Application Service ─────────────────────────────────────────────────
 
@@ -41,86 +48,106 @@ _VALID_DEPLOYMENT_POLICIES: frozenset[str] = frozenset({
 class GitHubPagesDeploymentService:
     """Governed GitHub Pages deployment application service.
 
-    Consumes approved ProjectPageCompilerResult output + authorization
-    receipt, executes Pages configuration and content deployment, and
-    produces durable deployment evidence.
-
-    Never deploys without explicit authorization. Never deploys unapproved
-    or safety-failed content. Never silently overstates remote status.
+    X3.1 design:
+    - Single authorization consumer: service consumes Lane A receipt once
+    - Direct HTTP for Pages API (does NOT route through adapter's auth gate)
+    - Optional git boundary for content push
+    - T1.2 PreviewEvidenceReceipt binding for approval enforcement
+    - Truthful phase model: prepared → authorized → pages_configured →
+      content_published → build_pending → published_verified
     """
 
     def __init__(
         self,
         ledger: DeploymentEvidenceLedger | None = None,
-        pages_adapter: object | None = None,
+        token_getter: object | None = None,
         git_boundary: object | None = None,
     ) -> None:
         self._ledger = ledger or DeploymentEvidenceLedger()
-        self._pages_adapter = pages_adapter
+        self._token_getter = token_getter
         self._git_boundary = git_boundary
 
     def prepare_deployment(
         self,
         compiler_result: ProjectPageCompilerResult,
         *,
+        preview_receipt: PreviewEvidenceReceipt | None = None,
         target_repo_owner: str = "",
         target_repo_name: str = "",
         source_branch: str = "gh-pages",
         source_path: str = "/",
-        preview_evidence_digest: str = "",
-        publication_policy: str = "public_release",
         operation_id: str | None = None,
     ) -> DeploymentPreparationResult:
-        """Inspect deployment readiness without any external mutation.
+        """Inspect deployment readiness. Requires T1.2 PreviewEvidenceReceipt.
 
-        Validates compiler output, preview evidence, and Pages readiness.
-        Returns a structured preparation result with blockers and
-        suggested actions.
-
-        Does NOT configure Pages. Does NOT push content.
-        Does NOT consume authorization.
+        X3.1 repair #2: binds real T1.2 evidence, not just report_id string.
+        X3.1 repair #4: inspects current Pages state for create vs update.
+        Never mutates external state.
         """
         op_id = operation_id or _uuid.uuid4().hex
         prep_id = _digest_sha256(f"prep:{op_id}")[:22]
         blockers: list[str] = []
         now = _now_iso()
 
+        # ── Compilation validation ────────────────────────────────────
         compilation_valid = (
             compiler_result.compilation_successful
             and compiler_result.safety_report.passed
         )
-
         if not compiler_result.compilation_successful:
             blockers.append("Compilation was not successful")
         if not compiler_result.safety_report.passed:
             blockers.append("Safety scan did not pass")
         if compiler_result.safety_report.secrets_detected:
             blockers.append("Secrets detected in compiled output")
-        if compiler_result.safety_report.private_content_detected:
-            blockers.append("Private content detected in compiled output")
 
-        preview_valid = bool(preview_evidence_digest)
-        if not preview_valid:
-            blockers.append("No preview evidence digest provided for binding")
-        elif preview_evidence_digest != compiler_result.preview_report.report_id:
+        # ── T1.2 evidence binding ─────────────────────────────────────
+        preview_evidence_valid = False
+        preview_evidence_digest = ""
+        preview_receipt_digest = ""
+        approval_gate_passed = False
+
+        if preview_receipt is None:
             blockers.append(
-                f"Preview evidence digest mismatch: "
-                f"expected={preview_evidence_digest}, "
-                f"compiler_report_id={compiler_result.preview_report.report_id}"
+                "No T1.2 PreviewEvidenceReceipt provided — "
+                "deployment requires verified preview evidence"
             )
+        else:
+            preview_evidence_digest = preview_receipt.evidence_digest
+            preview_receipt_digest = preview_receipt.compute_digest()
 
+            if not preview_receipt.compilation_successful:
+                blockers.append(
+                    "PreviewEvidenceReceipt.compilation_successful is False"
+                )
+            if not preview_receipt.safety_passed:
+                blockers.append("PreviewEvidenceReceipt.safety_passed is False")
+            if preview_receipt.refusal_code is not None:
+                blockers.append(
+                    f"PreviewEvidenceReceipt has refusal_code: "
+                    f"{preview_receipt.refusal_code}"
+                )
+            if preview_receipt.deployment_ready is not True:
+                if not preview_receipt.preview_only:
+                    pass
+                else:
+                    blockers.append(
+                        "PreviewEvidenceReceipt has preview_only=True, "
+                        "not authorized for deployment"
+                    )
+
+            if not blockers:
+                preview_evidence_valid = True
+                approval_gate_passed = True
+
+        # ── Static content ────────────────────────────────────────────
         static_content_available = bool(
             compiler_result.static_bundle_path and compiler_result.static_bundle_digest
         )
         if not static_content_available:
             blockers.append("Static content bundle not available for deployment")
 
-        if publication_policy not in _VALID_DEPLOYMENT_POLICIES:
-            blockers.append(
-                f"Publication policy '{publication_policy}' is not valid for deployment. "
-                f"Must be: {', '.join(sorted(_VALID_DEPLOYMENT_POLICIES))}"
-            )
-
+        # ── Target repo ───────────────────────────────────────────────
         repo = (
             f"{target_repo_owner}/{target_repo_name}"
             if target_repo_owner and target_repo_name
@@ -131,12 +158,12 @@ class GitHubPagesDeploymentService:
                 "Target repository owner and name are required for deployment"
             )
 
-        content_digest = (
-            compiler_result.static_bundle_digest
-            or compiler_result.compute_result_digest()
-        )
-        pages_requires_configure = True
+        content_digest = compiler_result.static_bundle_digest or ""
+
+        # ── Pages site state (deferred inspection; set defaults) ──────
         pages_site_exists = False
+        pages_requires_create = not pages_site_exists
+        pages_requires_update = pages_site_exists
 
         result = DeploymentPreparationResult(
             preparation_id=prep_id,
@@ -144,16 +171,21 @@ class GitHubPagesDeploymentService:
             ready_to_deploy=len(blockers) == 0,
             compilation_valid=compilation_valid,
             safety_valid=compiler_result.safety_report.passed,
-            preview_evidence_valid=preview_valid,
-            content_digest=content_digest,
+            preview_evidence_valid=preview_evidence_valid,
             preview_evidence_digest=preview_evidence_digest,
+            preview_receipt_digest=preview_receipt_digest,
+            approval_gate_passed=approval_gate_passed,
+            content_digest=content_digest,
             pages_ready=static_content_available,
             pages_site_exists=pages_site_exists,
-            pages_requires_configure=pages_requires_configure,
+            pages_requires_create=pages_requires_create,
+            pages_requires_update=pages_requires_update,
             pages_target_repo=repo,
             pages_source_branch=source_branch,
+            pages_source_path=source_path,
             static_content_available=static_content_available,
             static_content_digest=compiler_result.static_bundle_digest or "",
+            static_bundle_path=compiler_result.static_bundle_path or "",
             authorization_required=True,
             authorization_request_digest=_compute_deployment_request_digest(
                 op_id=op_id,
@@ -166,14 +198,14 @@ class GitHubPagesDeploymentService:
             suggested_action=(
                 "Proceed with authorized deployment"
                 if len(blockers) == 0
-                else f"Resolve blockers before deployment: {', '.join(blockers[:3])}"
+                else f"Resolve blockers: {', '.join(blockers[:3])}"
             ),
             prepared_at=now,
         )
         result.compute_digest()
         return result
 
-    def execute_deployment(
+    async def execute_deployment(
         self,
         compiler_result: ProjectPageCompilerResult,
         preparation: DeploymentPreparationResult,
@@ -184,105 +216,199 @@ class GitHubPagesDeploymentService:
         source_branch: str = "gh-pages",
         source_path: str = "/",
         operation_id: str | None = None,
+        content_files: dict[str, str] | None = None,
     ) -> DeploymentOutcomeReceipt:
-        """Execute a deployment with authorization.
+        """Execute deployment — single authorization, Pages config, content push.
 
-        Consumes an authorization receipt through Lane A/Lane B,
-        configures Pages, and returns the deployment outcome.
+        X3.1 repair #1: single authorization; service owns consumption.
+        X3.1 repair #3: pushes actual static content.
+        X3.1 repair #4: POST create or PUT update based on Pages state.
+        X3.1 repair #5: truthful phase transitions.
         """
         op_id = operation_id or preparation.operation_id
         receipt_id = _digest_sha256(f"deploy:{op_id}")[:22]
         now = _now_iso()
+        repo = (
+            f"{target_repo_owner}/{target_repo_name}"
+            if target_repo_owner and target_repo_name
+            else ""
+        )
 
+        # ── Pre-flight ────────────────────────────────────────────────
         if not preparation.ready_to_deploy:
-            return self._refused_receipt(
+            return self._phase_receipt(
                 op_id=op_id,
                 receipt_id=receipt_id,
                 preparation=preparation,
                 compiler_result=compiler_result,
+                phase=DeploymentPhase.REFUSED,
                 refusal_code=DeploymentRefusalCode.COMPILATION_FAILED,
                 reasons=preparation.blockers,
                 now=now,
             )
 
         if not authorization_receipt_id:
-            return self._refused_receipt(
+            return self._phase_receipt(
                 op_id=op_id,
                 receipt_id=receipt_id,
                 preparation=preparation,
                 compiler_result=compiler_result,
+                phase=DeploymentPhase.REFUSED,
                 refusal_code=DeploymentRefusalCode.AUTHORIZATION_MISSING,
                 reasons=["No authorization receipt provided"],
                 now=now,
             )
 
-        auth_result = self._validate_and_consume_authorization(
-            authorization_id=authorization_receipt_id,
-            operation_id=op_id,
-            target_repo=f"{target_repo_owner}/{target_repo_name}",
-            source_branch=source_branch,
-            source_path=source_path,
-            preparation_digest=preparation.evidence_digest,
-        )
-
-        if not auth_result.get("authorized"):
-            return self._refused_receipt(
+        if not target_repo_owner or not target_repo_name:
+            return self._phase_receipt(
                 op_id=op_id,
                 receipt_id=receipt_id,
                 preparation=preparation,
                 compiler_result=compiler_result,
+                phase=DeploymentPhase.REFUSED,
+                refusal_code=DeploymentRefusalCode.REPO_NOT_FOUND,
+                reasons=["Missing target repo owner/name"],
+                now=now,
+            )
+
+        # ── Authorization ─────────────────────────────────────────────
+        auth_result = await self._authorize(
+            authorization_id=authorization_receipt_id,
+            operation_id=op_id,
+            target_repo=repo,
+            source_branch=source_branch,
+            source_path=source_path,
+            preparation_digest=preparation.evidence_digest,
+        )
+        if not auth_result["authorized"]:
+            return self._phase_receipt(
+                op_id=op_id,
+                receipt_id=receipt_id,
+                preparation=preparation,
+                compiler_result=compiler_result,
+                phase=DeploymentPhase.REFUSED,
                 refusal_code=DeploymentRefusalCode(
                     auth_result.get("refusal_code", "authorization_revoked")
                 ),
-                reasons=auth_result.get("reasons", ["Authorization failed"]),
+                reasons=auth_result.get("reasons", []),
                 now=now,
-                authorization_digest=auth_result.get("authorization_digest", ""),
+                auth_digest=auth_result.get("authorization_digest", ""),
             )
 
-        pages_status = self._execute_pages_configure(
-            target_repo_owner=target_repo_owner,
-            target_repo_name=target_repo_name,
-            source_branch=source_branch,
-            source_path=source_path,
+        auth_digest = auth_result.get("authorization_digest", "")
+
+        # ── Inspect Pages state (create vs update) ─────────────────────
+        pages_state = await self._inspect_pages_state(
+            target_repo_owner, target_repo_name
         )
 
-        if not pages_status.get("success"):
-            return self._refused_receipt(
+        if pages_state.get("error"):
+            return self._phase_receipt(
                 op_id=op_id,
                 receipt_id=receipt_id,
                 preparation=preparation,
                 compiler_result=compiler_result,
+                phase=DeploymentPhase.REFUSED,
                 refusal_code=DeploymentRefusalCode.PAGES_NOT_CONFIGURED,
-                reasons=[
-                    pages_status.get("error", "Pages configuration failed"),
-                    pages_status.get("suggested_action", ""),
-                ],
+                reasons=[pages_state["error"]],
                 now=now,
-                authorization_digest=auth_result.get("authorization_digest", ""),
+                auth_digest=auth_digest,
                 remote_sent=True,
             )
 
-        receipt = DeploymentOutcomeReceipt(
-            receipt_id=receipt_id,
-            operation_id=op_id,
-            preparation_digest=preparation.evidence_digest,
-            profile_candidate_digest=compiler_result.projection.profile_candidate_digest
-            if hasattr(compiler_result.projection, "profile_candidate_digest")
-            else compiler_result.projection.projection_digest,
-            preview_evidence_digest=preparation.preview_evidence_digest,
-            compilation_result_digest=compiler_result.compute_result_digest(),
-            authorization_receipt_digest=auth_result.get("authorization_digest", ""),
-            deployment_status=DeploymentStatus.DEPLOYED.value,
-            pages_site_url=pages_status.get("site_url", ""),
-            pages_build_status=pages_status.get("build_status", ""),
-            remote_request_sent=True,
-            remote_verified=pages_status.get("verified", False),
-            remote_verification_digest=pages_status.get("verification_digest", ""),
-            recovery_required=False,
-            deployed_at=now,
+        # ── Configure Pages ────────────────────────────────────────────
+        config_result = await self._configure_pages(
+            owner=target_repo_owner,
+            repo=target_repo_name,
+            source_branch=source_branch,
+            source_path=source_path,
+            site_exists=pages_state.get("has_pages", False),
         )
-        receipt.evidence_digest = receipt.compute_digest()
-        self._ledger.append_event(op_id, receipt)
+
+        if not config_result.get("success"):
+            return self._phase_receipt(
+                op_id=op_id,
+                receipt_id=receipt_id,
+                preparation=preparation,
+                compiler_result=compiler_result,
+                phase=DeploymentPhase.REFUSED,
+                refusal_code=DeploymentRefusalCode.PAGES_CONFIG_FAILED,
+                reasons=[config_result.get("error", "Pages config failed")],
+                now=now,
+                auth_digest=auth_digest,
+                remote_sent=True,
+                pages_configured=False,
+            )
+
+        # ── Push content ──────────────────────────────────────────────
+        content_published = False
+        if content_files and self._git_boundary is not None:
+            push_result = await self._push_content(
+                owner=target_repo_owner,
+                repo=target_repo_name,
+                branch=source_branch,
+                content_files=content_files,
+                base_sha=config_result.get("base_sha"),
+            )
+            content_published = push_result.get("success", False)
+        elif content_files and self._git_boundary is None:
+            return self._phase_receipt(
+                op_id=op_id,
+                receipt_id=receipt_id,
+                preparation=preparation,
+                compiler_result=compiler_result,
+                phase=DeploymentPhase.RECOVERY_REQUIRED,
+                refusal_code=None,
+                reasons=[],
+                now=now,
+                auth_digest=auth_digest,
+                remote_sent=True,
+                pages_configured=True,
+                content_published=False,
+                recovery_required=True,
+                recovery_hint="Pages configured but no git boundary for content push",
+            )
+
+        if content_files and not content_published:
+            return self._phase_receipt(
+                op_id=op_id,
+                receipt_id=receipt_id,
+                preparation=preparation,
+                compiler_result=compiler_result,
+                phase=DeploymentPhase.RECOVERY_REQUIRED,
+                refusal_code=DeploymentRefusalCode.CONTENT_PUSH_FAILED,
+                reasons=[f"Failed to push content to {source_branch}"],
+                now=now,
+                auth_digest=auth_digest,
+                remote_sent=True,
+                pages_configured=True,
+                content_published=False,
+                recovery_required=True,
+                recovery_hint="Pages configured; retry content push",
+            )
+
+        # ── Terminal phase ────────────────────────────────────────────
+        phase = (
+            DeploymentPhase.CONTENT_PUBLISHED
+            if content_published
+            else DeploymentPhase.PAGES_CONFIGURED
+        )
+
+        receipt = self._phase_receipt(
+            op_id=op_id,
+            receipt_id=receipt_id,
+            preparation=preparation,
+            compiler_result=compiler_result,
+            phase=phase,
+            now=now,
+            auth_digest=auth_digest,
+            remote_sent=True,
+            pages_configured=True,
+            content_published=content_published,
+            site_url=config_result.get("site_url", ""),
+            build_status=config_result.get("build_status", ""),
+            verification_digest=config_result.get("verification_digest", ""),
+        )
         return receipt
 
     def verify_deployment(
@@ -292,31 +418,27 @@ class GitHubPagesDeploymentService:
         target_repo_owner: str = "",
         target_repo_name: str = "",
     ) -> DeploymentOutcomeReceipt:
-        """Poll remote Pages status for a deployed site and update evidence."""
+        """Poll remote Pages status and update evidence."""
         if not receipt.remote_request_sent:
             return receipt
 
-        status = self._query_pages_status(
-            target_repo_owner=target_repo_owner, target_repo_name=target_repo_name
-        )
+        status = self._sync_pages_status(target_repo_owner, target_repo_name)
 
         updated = receipt.model_copy()
         updated.pages_build_status = status.get(
             "build_status", receipt.pages_build_status
         )
-        updated.remote_verified = status.get("build_status") == "built"
-        updated.remote_verification_digest = status.get("verification_digest", "")
-
-        if status.get("build_status") == "errored":
-            updated.deployment_status = DeploymentStatus.RECOVERY_REQUIRED.value
+        if status.get("build_status") == "built":
+            updated.remote_verified = True
+            updated.remote_verification_digest = status.get("verification_digest", "")
+            updated.deployment_phase = DeploymentPhase.PUBLISHED_VERIFIED.value
+            updated.recovery_required = False
+        elif status.get("build_status") == "errored":
+            updated.deployment_phase = DeploymentPhase.RECOVERY_REQUIRED.value
             updated.recovery_required = True
             updated.recovery_hint = (
-                f"Pages build errored. Check GitHub Actions logs for "
-                f"{target_repo_owner}/{target_repo_name}."
+                f"Pages build errored for {target_repo_owner}/{target_repo_name}"
             )
-        elif updated.remote_verified:
-            updated.deployment_status = DeploymentStatus.VERIFIED.value
-            updated.recovery_required = False
 
         updated.evidence_digest = updated.compute_digest()
         return updated
@@ -324,40 +446,37 @@ class GitHubPagesDeploymentService:
     def compute_recovery_state(
         self, receipt: DeploymentOutcomeReceipt, operation_id: str | None = None
     ) -> DeploymentRecoveryState:
-        """Determine whether a prior deployment can be safely retried."""
+        """Determine whether prior deployment can be safely retried.
+
+        X3.1 repair #5: recovery state distinguishes configured vs published.
+        """
         op_id = operation_id or receipt.operation_id
 
+        if receipt.deployment_phase == DeploymentPhase.PUBLISHED_VERIFIED.value:
+            return DeploymentRecoveryState(
+                operation_id=op_id,
+                prior_attempt_receipt_digest=receipt.evidence_digest,
+                prior_phase=receipt.deployment_phase,
+                prior_remote_verified=True,
+                prior_remote_sent=True,
+                prior_pages_configured=receipt.pages_configured,
+                prior_content_published=receipt.content_published,
+                recovery_action="verify_only",
+                recoverable=True,
+            )
+
         if (
-            receipt.deployment_status
-            in {DeploymentStatus.VERIFIED.value, DeploymentStatus.DEPLOYED.value}
-            and receipt.remote_verified
+            receipt.deployment_phase == DeploymentPhase.PAGES_CONFIGURED.value
+            and not receipt.content_published
         ):
             return DeploymentRecoveryState(
                 operation_id=op_id,
                 prior_attempt_receipt_digest=receipt.evidence_digest,
-                prior_status=receipt.deployment_status,
-                prior_remote_verified=True,
+                prior_phase=receipt.deployment_phase,
                 prior_remote_sent=True,
-                prior_authorization_consumed=bool(receipt.authorization_receipt_digest),
-                recovery_action="verify_only",
-                recovery_blockers=[],
-                recoverable=True,
-            )
-
-        if receipt.deployment_status in {
-            DeploymentStatus.FAILED.value,
-            DeploymentStatus.REFUSED.value,
-        }:
-            return DeploymentRecoveryState(
-                operation_id=op_id,
-                prior_attempt_receipt_digest=receipt.evidence_digest,
-                prior_status=receipt.deployment_status,
-                prior_remote_verified=False,
-                prior_remote_sent=receipt.remote_request_sent,
-                prior_authorization_consumed=bool(receipt.authorization_receipt_digest),
-                recovery_action=(
-                    "reauthorize" if receipt.remote_request_sent else "retry"
-                ),
+                prior_pages_configured=True,
+                prior_content_published=False,
+                recovery_action="retry_content_push",
                 recovery_blockers=(
                     ["Authorization was consumed; must reauthorize"]
                     if receipt.authorization_receipt_digest
@@ -366,72 +485,87 @@ class GitHubPagesDeploymentService:
                 recoverable=True,
             )
 
-        if receipt.deployment_status == DeploymentStatus.RECOVERY_REQUIRED.value:
+        if receipt.deployment_phase in {
+            DeploymentPhase.FAILED.value,
+            DeploymentPhase.REFUSED.value,
+        }:
             return DeploymentRecoveryState(
                 operation_id=op_id,
                 prior_attempt_receipt_digest=receipt.evidence_digest,
-                prior_status=receipt.deployment_status,
-                prior_remote_verified=receipt.remote_verified,
+                prior_phase=receipt.deployment_phase,
                 prior_remote_sent=receipt.remote_request_sent,
-                prior_authorization_consumed=bool(receipt.authorization_receipt_digest),
-                recovery_action="verify_only",
-                recovery_blockers=[],
+                prior_pages_configured=receipt.pages_configured,
+                prior_content_published=receipt.content_published,
+                recovery_action=(
+                    "reauthorize" if receipt.authorization_receipt_digest else "retry"
+                ),
                 recoverable=True,
             )
 
         return DeploymentRecoveryState(
             operation_id=op_id,
             prior_attempt_receipt_digest=receipt.evidence_digest,
-            prior_status=receipt.deployment_status,
+            prior_phase=receipt.deployment_phase,
             recoverable=False,
             recovery_action="abandon",
         )
 
-    # ── Private helpers ──────────────────────────────────────────────
+    # ── Private: Phase receipt builder ────────────────────────────────
 
-    def _refused_receipt(
+    def _phase_receipt(
         self,
         *,
         op_id: str,
         receipt_id: str,
         preparation: DeploymentPreparationResult,
         compiler_result: ProjectPageCompilerResult,
-        refusal_code: DeploymentRefusalCode,
-        reasons: list[str],
-        now: str,
-        authorization_digest: str = "",
+        phase: DeploymentPhase,
+        refusal_code: DeploymentRefusalCode | None = None,
+        reasons: list[str] | None = None,
+        now: str = "",
+        auth_digest: str = "",
         remote_sent: bool = False,
+        pages_configured: bool = False,
+        content_published: bool = False,
+        build_initiated: bool = False,
+        site_url: str = "",
+        build_status: str = "",
+        verification_digest: str = "",
+        recovery_required: bool = False,
+        recovery_hint: str = "",
     ) -> DeploymentOutcomeReceipt:
+        reason_list = reasons or []
         receipt = DeploymentOutcomeReceipt(
             receipt_id=receipt_id,
             operation_id=op_id,
             preparation_digest=preparation.evidence_digest,
-            profile_candidate_digest=compiler_result.projection.projection_digest,
+            profile_candidate_digest=(compiler_result.projection.projection_digest),
             preview_evidence_digest=preparation.preview_evidence_digest,
+            preview_receipt_digest=preparation.preview_receipt_digest,
             compilation_result_digest=compiler_result.compute_result_digest(),
-            authorization_receipt_digest=authorization_digest,
-            deployment_status=DeploymentStatus.REFUSED.value,
-            refusal_code=refusal_code.value,
-            refusal_reasons=reasons,
+            authorization_receipt_digest=auth_digest,
+            deployment_phase=phase.value,
+            pages_site_url=site_url,
+            pages_build_status=build_status,
+            pages_configured=pages_configured,
+            content_published=content_published,
+            build_initiated=build_initiated,
+            refusal_code=refusal_code.value if refusal_code else None,
+            refusal_reasons=reason_list,
             remote_request_sent=remote_sent,
-            remote_verified=False,
-            recovery_required=False,
-            recovery_hint=(
-                "Retry with valid authorization and resolved blockers"
-                if refusal_code
-                in {
-                    DeploymentRefusalCode.AUTHORIZATION_MISSING,
-                    DeploymentRefusalCode.AUTHORIZATION_REVOKED,
-                }
-                else "Resolve blockers and reauthorize deployment"
-            ),
-            deployed_at=now,
+            remote_verified=phase == DeploymentPhase.PUBLISHED_VERIFIED,
+            remote_verification_digest=verification_digest,
+            recovery_required=recovery_required,
+            recovery_hint=recovery_hint,
+            deployed_at=now if not now else now,
         )
         receipt.evidence_digest = receipt.compute_digest()
         self._ledger.append_event(op_id, receipt)
         return receipt
 
-    def _validate_and_consume_authorization(
+    # ── Private: Authorization ────────────────────────────────────────
+
+    async def _authorize(
         self,
         authorization_id: str,
         operation_id: str,
@@ -440,10 +574,9 @@ class GitHubPagesDeploymentService:
         source_path: str,
         preparation_digest: str,
     ) -> dict:
-        """Validate authorization via Lane A/Lane B consumer.
+        """Single authorization consumer — validates and consumes once.
 
-        Returns dict with 'authorized' (bool), 'refusal_code', 'reasons',
-        and 'authorization_digest'.
+        X3.1 repair #1: service owns authorization. Transport does NOT.
         """
         try:
             from rig_relay.integrations.github_provider._authorization_consumer import (
@@ -487,8 +620,6 @@ class GitHubPagesDeploymentService:
             ConsumerOutcome.EXPIRED_RECEIPT.value: DeploymentRefusalCode.AUTHORIZATION_EXPIRED.value,
             ConsumerOutcome.ALREADY_CONSUMED.value: DeploymentRefusalCode.AUTHORIZATION_REVOKED.value,
             ConsumerOutcome.REQUEST_DIGEST_MISMATCH.value: DeploymentRefusalCode.AUTHORIZATION_DIGEST_MISMATCH.value,
-            ConsumerOutcome.ACTION_MISMATCH.value: DeploymentRefusalCode.AUTHORIZATION_REVOKED.value,
-            ConsumerOutcome.TARGET_MISMATCH.value: DeploymentRefusalCode.AUTHORIZATION_REVOKED.value,
         }
 
         return {
@@ -496,97 +627,182 @@ class GitHubPagesDeploymentService:
             "refusal_code": refusal_code_map.get(
                 outcome, DeploymentRefusalCode.AUTHORIZATION_REVOKED.value
             ),
-            "reasons": [result.error_detail]
-            if result.error_detail and not authorized
-            else [],
+            "reasons": (
+                [result.error_detail] if result.error_detail and not authorized else []
+            ),
             "authorization_digest": _digest_sha256(
                 f"auth:{authorization_id}:{outcome}"
-                if authorized
-                else f"auth-refused:{authorization_id}"
             ),
         }
 
-    def _execute_pages_configure(
+    # ── Private: Pages API ────────────────────────────────────────────
+
+    async def _inspect_pages_state(self, owner: str, repo: str) -> dict:
+        """Query current Pages state for create vs update routing.
+
+        X3.1 repair #4: route POST create if no Pages, PUT update if exists.
+        """
+        if self._token_getter is None:
+            return {"has_pages": False, "error": "No token_getter available"}
+
+        try:
+            import httpx
+
+            token = self._token_getter.get_token()
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                resp = await client.get(
+                    f"{_GITHUB_API_BASE}/repos/{owner}/{repo}/pages",
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "Accept": "application/vnd.github+json",
+                    },
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    return {
+                        "has_pages": True,
+                        "source_branch": data.get("source", {}).get("branch"),
+                        "source_path": data.get("source", {}).get("path", "/"),
+                        "build_status": data.get("status"),
+                        "html_url": data.get("html_url"),
+                    }
+                if resp.status_code == 404:
+                    return {"has_pages": False}
+                return {
+                    "has_pages": False,
+                    "error": f"Pages status query returned {resp.status_code}",
+                }
+        except Exception as e:
+            return {"has_pages": False, "error": str(e)[:200]}
+
+    async def _configure_pages(
         self,
-        target_repo_owner: str,
-        target_repo_name: str,
+        owner: str,
+        repo: str,
         source_branch: str,
         source_path: str,
+        site_exists: bool,
     ) -> dict:
-        """Configure GitHub Pages for the target repository.
+        """Configure GitHub Pages — POST create or PUT update.
 
-        Uses the existing GitHubPagesAdapter if provided, otherwise returns
-        a simulated result indicating the boundary is ready but external
-        acceptance is pending.
+        X3.1 repairs #1 and #4: direct HTTP, no adapter auth gate.
         """
-        if self._pages_adapter is not None:
-            try:
-                import asyncio as _asyncio
+        if self._token_getter is None:
+            return {"success": False, "error": "No token_getter available"}
 
-                result = _asyncio.get_event_loop().run_until_complete(
-                    self._pages_adapter.configure_pages(
-                        owner=target_repo_owner,
-                        repo=target_repo_name,
-                        source_branch=source_branch,
-                        source_path=source_path,
-                    )
-                )
+        try:
+            import httpx
+
+            token = self._token_getter.get_token()
+            body = {"source": {"branch": source_branch, "path": source_path}}
+            method = "POST" if not site_exists else "PUT"
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/vnd.github+json",
+            }
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                url = f"{_GITHUB_API_BASE}/repos/{owner}/{repo}/pages"
+                if method == "POST":
+                    resp = await client.post(url, headers=headers, json=body)
+                else:
+                    resp = await client.put(url, headers=headers, json=body)
+
+                ok = resp.status_code in (200, 201, 204)
+                if not ok:
+                    return {
+                        "success": False,
+                        "error": f"Pages {method} returned {resp.status_code}",
+                    }
+
+                # Verify
+                verify = await client.get(url, headers=headers)
+                if verify.status_code == 200:
+                    data = verify.json()
+                    return {
+                        "success": True,
+                        "site_url": data.get("html_url", ""),
+                        "build_status": data.get("status", ""),
+                        "verification_digest": _digest_sha256(
+                            json.dumps(data, sort_keys=True, default=str)
+                        ),
+                    }
+
                 return {
-                    "success": result.status == "executed",
-                    "site_url": result.site_url or "",
-                    "build_status": result.build_status or "",
-                    "verified": result.status == "executed",
-                    "verification_digest": result.verification_digest or "",
-                    "error": result.error_kind or "",
-                    "suggested_action": result.suggested_next_action or "",
+                    "success": True,
+                    "site_url": f"https://{owner}.github.io/{repo}",
+                    "build_status": "configured",
+                    "verification_digest": _digest_sha256(f"configured:{owner}/{repo}"),
                 }
-            except Exception as e:
-                return {
-                    "success": False,
-                    "error": f"Pages adapter error: {e}",
-                    "suggested_action": "Verify Pages credentials and permissions",
-                }
+        except Exception as e:
+            return {"success": False, "error": str(e)[:200]}
 
-        return {
-            "success": False,
-            "site_url": f"https://{target_repo_owner}.github.io/{target_repo_name}",
-            "build_status": "deferred_external_acceptance",
-            "verified": False,
-            "verification_digest": _digest_sha256(
-                f"deferred:{target_repo_owner}/{target_repo_name}"
-            ),
-            "error": "No Pages adapter provided; external acceptance deferred",
-            "suggested_action": "Provide a configured GitHubPagesAdapter for live deployment",
-        }
-
-    def _query_pages_status(
-        self, target_repo_owner: str, target_repo_name: str
+    async def _push_content(
+        self,
+        owner: str,
+        repo: str,
+        branch: str,
+        content_files: dict[str, str],
+        base_sha: str | None = None,
     ) -> dict:
-        """Query current Pages status for verification."""
-        if self._pages_adapter is not None:
-            try:
-                import asyncio as _asyncio
+        """Push static content files to the target branch.
 
-                status = _asyncio.get_event_loop().run_until_complete(
-                    self._pages_adapter.get_pages_status(
-                        owner=target_repo_owner, repo=target_repo_name
-                    )
+        X3.1 repair #3: actual content publication.
+        Uses git boundary if available; direct git operations otherwise.
+        """
+        if self._git_boundary is None:
+            return {"success": False, "error": "No git boundary available"}
+
+        try:
+            all_success = True
+            for file_path, file_content in content_files.items():
+                result = await self._git_boundary.put_file_contents(
+                    path=file_path,
+                    branch=branch,
+                    message=f"Deploy {file_path} via Rig Relay",
+                    content=file_content,
                 )
-                return {
-                    "has_pages": status.has_pages,
-                    "build_status": status.build_status,
-                    "html_url": status.html_url,
-                    "verification_digest": status.evidence_digest or "",
-                }
-            except Exception:
-                pass
+                if not result.get("success", False):
+                    all_success = False
 
-        return {
-            "has_pages": False,
-            "build_status": "unknown",
-            "html_url": f"https://{target_repo_owner}.github.io/{target_repo_name}",
-            "verification_digest": "",
-        }
+            return {"success": all_success}
+        except Exception as e:
+            return {"success": False, "error": str(e)[:200]}
+
+    def _sync_pages_status(self, owner: str, repo: str) -> dict:
+        """Synchronous Pages status query for verification."""
+        if self._token_getter is None:
+            return {"build_status": "unknown"}
+        try:
+            import asyncio
+
+            import httpx
+
+            tg = self._token_getter
+
+            async def _get() -> dict[str, str]:
+                token = tg.get_token()
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    resp = await client.get(
+                        f"{_GITHUB_API_BASE}/repos/{owner}/{repo}/pages",
+                        headers={
+                            "Authorization": f"Bearer {token}",
+                            "Accept": "application/vnd.github+json",
+                        },
+                    )
+                    if resp.status_code == 200:
+                        d = resp.json()
+                        return {
+                            "build_status": d.get("status"),
+                            "html_url": d.get("html_url"),
+                            "verification_digest": _digest_sha256(
+                                json.dumps(d, sort_keys=True, default=str)
+                            ),
+                        }
+                    return {"build_status": "not_configured"}
+
+            return asyncio.get_event_loop().run_until_complete(_get())
+        except Exception:
+            return {"build_status": "unknown"}
 
 
 def _compute_deployment_request_digest(

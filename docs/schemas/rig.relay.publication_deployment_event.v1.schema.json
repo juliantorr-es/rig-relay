@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/schemas/rig.relay.publication_deployment_event.v1",
+  "title": "Publication Deployment Event Envelope",
+  "description": "Envelope schema for deployment outcome events in the publication deployment evidence ledger.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.publication_deployment_event.v1"
+    },
+    "operation_id": { "type": "string" },
+    "created_at": { "type": "string" },
+    "receipt": {
+      "type": "object",
+      "properties": {
+        "schema_version": { "type": "string" },
+        "receipt_id": { "type": "string" },
+        "operation_id": { "type": "string" },
+        "preparation_digest": { "type": "string" },
+        "profile_candidate_digest": { "type": "string" },
+        "preview_evidence_digest": { "type": "string" },
+        "preview_receipt_digest": { "type": "string" },
+        "compilation_result_digest": { "type": "string" },
+        "authorization_receipt_digest": { "type": "string" },
+        "deployment_phase": { "type": "string" },
+        "pages_site_url": { "type": "string" },
+        "pages_build_status": { "type": "string" },
+        "pages_configured": { "type": "boolean" },
+        "content_published": { "type": "boolean" },
+        "build_initiated": { "type": "boolean" },
+        "preview_receipt_digest": { "type": "string" },
+        "refusal_code": { "type": ["string", "null"] },
+        "refusal_reasons": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "remote_request_sent": { "type": "boolean" },
+        "remote_verified": { "type": "boolean" },
+        "remote_verification_digest": { "type": "string" },
+        "recovery_required": { "type": "boolean" },
+        "recovery_hint": { "type": "string" },
+        "deployed_at": { "type": "string" },
+        "evidence_digest": { "type": "string" }
+      },
+      "required": [
+        "schema_version", "receipt_id", "operation_id",
+        "profile_candidate_digest", "preview_evidence_digest",
+        "deployment_phase", "evidence_digest"
+      ]
+    },
+    "event_digest": { "type": "string" }
+  },
+  "required": [
+    "schema_version", "operation_id", "created_at",
+    "receipt", "event_digest"
+  ],
+  "additionalProperties": false
+}
