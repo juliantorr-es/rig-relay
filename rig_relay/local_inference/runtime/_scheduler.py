@@ -226,19 +226,21 @@ class RiggedInferenceScheduler:
     def build_projection(self) -> dict:
         return {
             "scheduler_state": {
-                "mode": "serialized_fallback",
+                "mode": "serialized_fcfs",
                 "max_concurrent": self._max_concurrent,
                 "queue_depth": len(self._queue),
                 "running_count": len(self._running),
                 "total_processed": self._total_processed,
                 "total_refused": self._total_refused,
             },
-            "batching_status": self.batching_status,
+            "batching_status": "serialized_fcfs_only",
             "batching_details": (
-                "Continuous batching pending. mlx-lm BatchGenerator API "
-                "present in installed version but requires scheduler engine "
-                "integration with external prefill + multi-request decode. "
-                "See OMLX scheduler.py for reference architecture."
+                "Serialized first-come-first-served scheduling (max_concurrent=1). "
+                "BatchGenerator-based continuous batching is architecturally wired "
+                "but not activated — start_batch_loop() is never called. "
+                "BatchGenerator is an internal mlx-lm API (not in __all__). "
+                "The public batch_generate() function is non-streaming and not usable "
+                "for interactive per-token dispatch."
             ),
         }
 
@@ -626,45 +628,25 @@ class RiggedBatchScheduler:
         logger.info("RiggedBatchScheduler: batch loop stopped")
 
     def build_projection(self) -> dict:
-        elapsed = max(time.monotonic() - self._generation_start_time, 0.001)
-        tps = self._tokens_generated / elapsed if elapsed > 0 else 0.0
-
         base: dict = {
             "scheduler_state": {
-                "mode": self._batch_status.value,
+                "mode": "serialized_fallback",
                 "max_concurrent": self._max_batch_size,
                 "queue_depth": len(self._pending),
                 "running_count": len(self._uid_to_op),
                 "total_processed": self._total_processed,
                 "total_refused": self._total_refused,
             },
-            "batching_status": self._batch_status.value,
+            "batching_status": "batch_generator_architected_but_dead",
             "batching_enabled": _HAS_BATCH_GENERATOR,
+            "batching_details": (
+                "BatchGenerator class is imported but batch loop is NEVER started. "
+                "All scheduling delegates to FCFS serialized fallback. "
+                "start_batch_loop() exists but has zero call sites. "
+                "Activation requires: calling set_model() with a real model+tokenizer, "
+                "then calling start_batch_loop() explicitly — neither occurs."
+            ),
         }
-
-        if self._batch_status == BatchingStatus.ACTIVE:
-            base["batching_details"] = (
-                f"Continuous batching active via mlx-lm BatchGenerator. "
-                f"Completion batch_size={self._completion_batch_size}, "
-                f"Prefill batch_size={self._prefill_batch_size}. "
-                f"Active sequences={len(self._uid_to_op)}, "
-                f"Completed sequences={self._completed_sequences}. "
-                f"Throughput: {tps:.1f} tokens/sec."
-            )
-            base["batching_metrics"] = {
-                "completion_batch_size": self._completion_batch_size,
-                "prefill_batch_size": self._prefill_batch_size,
-                "active_sequences": len(self._uid_to_op),
-                "completed_sequences": self._completed_sequences,
-                "tokens_generated": self._tokens_generated,
-                "throughput_tokens_per_sec": round(tps, 1),
-            }
-        else:
-            base["batching_details"] = "Continuous batching not active. " + (
-                "BatchGenerator not available in installed mlx-lm version."
-                if not _HAS_BATCH_GENERATOR
-                else "Model or tokenizer not provided — using serialized FCFS."
-            )
 
         return base
 

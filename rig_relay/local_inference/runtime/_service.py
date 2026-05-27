@@ -23,6 +23,7 @@ import hashlib
 import json
 from pathlib import Path
 import secrets
+from typing import Any
 
 from rig_relay.core.logger import logger
 from rig_relay.governance.governance_engine import GovernanceEngine
@@ -37,6 +38,7 @@ from rig_relay.local_inference.runtime._evidence import (
     emit_lifecycle_event,
     emit_refusal_receipt,
     emit_stream_terminal_event,
+    emit_tool_execution_outcome,
     emit_tool_proposal_evidence,
     reconstruct_ledgers,
 )
@@ -109,6 +111,48 @@ class RiggedLocalRuntime:
     @property
     def tool_bridge(self) -> ToolExecutionBridge:
         return self._tool_bridge
+
+    def bind_session_context(
+        self,
+        session_id: str,
+        turn_id: str = "",
+        workspace_root: str = "",
+        causation_id: str = "",
+    ) -> None:
+        """Bind a session context to the tool execution bridge.
+
+        When bound, the bridge will attempt full ToolRuntime execution
+        for admitted tool proposals instead of returning pending_session_context.
+
+        Args:
+            session_id: Active agent session identifier.
+            turn_id: Current turn within the session.
+            workspace_root: Repository or workspace root path.
+            causation_id: Causation chain identifier (defaults to mlx_tool_execution).
+        """
+        context: dict[str, Any] = {
+            "session_id": session_id,
+            "turn_id": turn_id,
+            "workspace_root": workspace_root,
+            "causation_id": causation_id or "mlx_tool_execution",
+        }
+        self._tool_bridge.bind_session(context)
+
+        try:
+            from rig_relay.core.tool_runtime import ToolRuntime
+
+            executor = ToolRuntime(source_label="local_inference_bridge")
+            self._tool_bridge.set_tool_runtime(executor)
+        except Exception:
+            pass
+
+    def unbind_session(self) -> None:
+        """Release the session context from the tool execution bridge.
+
+        After unbinding, the bridge returns to stateless-preflight-only mode.
+        """
+        self._tool_bridge.bind_session(None)
+        self._tool_bridge.set_tool_runtime(None)
 
     async def get_runtime_info(self) -> RuntimeIdentity:
         return RuntimeIdentity(
@@ -397,25 +441,29 @@ class RiggedLocalRuntime:
                 ),
             )
 
+        tool_outcomes: list[dict[str, Any]] | None = None
         try:
             if response.tool_call_proposals:
-                _handle_tool_proposals(
-                    response.tool_call_proposals, task_id_hash, op_id
+                tool_outcomes = await _handle_tool_proposals(
+                    response.tool_call_proposals,
+                    task_id_hash,
+                    op_id,
+                    bridge=self._tool_bridge,
                 )
-                for p in response.tool_call_proposals:
-                    self._tool_bridge.execute_proposal(p)
         except Exception:
             logger.exception("Tool proposal handling failed for op=%s", op_id)
 
         receipt_payload = _build_execution_receipt_payload(
             task_id_hash, response, model_id_hash, effective_class, op_id
         )
+        terminal_status = ExecutionStatus.EXECUTED
         try:
             response.evidence_receipt_id = emit_execution_receipt(
                 op_id, receipt_payload
             )
         except Exception:
             logger.exception("Failed to emit execution receipt for op=%s", op_id)
+            terminal_status = ExecutionStatus.EVIDENCE_FAILED
 
         await self._scheduler.complete(op_id, response)
 
@@ -424,9 +472,10 @@ class RiggedLocalRuntime:
             task_kind=task_kind,
             admission=admission,
             executed=True,
-            status=ExecutionStatus.EXECUTED,
+            status=terminal_status,
             response=response,
             evidence_receipt_id=response.evidence_receipt_id,
+            tool_execution_outcomes=tool_outcomes,
         )
 
     async def stream_execute(
@@ -715,6 +764,7 @@ class RiggedLocalRuntime:
                         loaded.mlx_model,
                         prompt_tokens_for_cache,
                         prompt_tokens_for_cache,
+                        privacy_class=effective_class.value,
                     )
                 except Exception:
                     pass
@@ -730,9 +780,12 @@ class RiggedLocalRuntime:
 
         try:
             if tool_proposals:
-                _handle_tool_proposals(tool_proposals, task_id_hash, req.operation_id)
-                for p in tool_proposals:
-                    self._tool_bridge.execute_proposal(p)
+                await _handle_tool_proposals(
+                    tool_proposals,
+                    task_id_hash,
+                    req.operation_id,
+                    bridge=self._tool_bridge,
+                )
         except Exception:
             logger.exception(
                 "Tool proposal handling failed for op=%s", req.operation_id
@@ -851,14 +904,51 @@ class RiggedLocalRuntime:
         cache_proj = self._cache.build_projection()
         scheduler_proj = self._scheduler.build_projection()
 
-        batching_posture = (
-            CapabilityPosture.SUPPORTED
-            if scheduler_proj.get("batching_status") == "active_batch_generator"
-            else CapabilityPosture.V1_REQUIRED_PENDING
-        )
+        batching_posture = CapabilityPosture.DEFERRED
 
         cache_write_back = (
-            "active_local_trie" if self._cache.write_back_count > 0 else "deferred"
+            "active_local_trie"
+            if self._cache.write_back_count > 0
+            else "disabled_opt_in_only"
+        )
+
+        cache_persistence_privacy = (
+            "disabled_opt_in_only"
+            if not self._cache.ssd_enabled
+            else "token_ids_only_no_raw_text"
+        )
+        cache_persistence_detail = (
+            "SSD cache is opt-in only (disabled by default). "
+            "Token IDs in cache are reversible with the tokenizer. "
+            "Set ssd_enabled=True and provide ssd_cache_dir to enable."
+            if not self._cache.ssd_enabled
+            else (
+                "SSD persistence active. Cache stores KV state as MLX arrays "
+                "(binary) and token IDs in the PromptTrie. No raw prompt text "
+                "is stored. Token IDs are reversible if the tokenizer is available."
+            )
+        )
+
+        bridge_has_full_execution = (
+            self._tool_bridge.has_session_context and self._tool_bridge.has_executor
+        )
+        tool_execution_authority = (
+            "governed_execution_through_tool_runtime"
+            if bridge_has_full_execution
+            else "governed_admission_with_pending_tool_execution"
+        )
+        tool_execution_detail = (
+            (
+                "Tool proposals are preflighted through GovernanceEngine "
+                "and executed through ToolRuntime.execute_one() with "
+                "session-bound context and evidence emission."
+            )
+            if bridge_has_full_execution
+            else (
+                "Stateless governance preflight active. "
+                "Tool execution through ToolRuntime requires session context "
+                "and an executor to be wired via bind_session_context()."
+            )
         )
 
         return {
@@ -869,12 +959,8 @@ class RiggedLocalRuntime:
                 if self._engine.is_mlx_available
                 else "unavailable",
                 "mlx_available": self._engine.is_mlx_available,
-                "authority": "governed_admission_with_pending_tool_execution",
-                "authority_detail": (
-                    "Stateless governance preflight active. "
-                    "Tool execution, checkpointing, and mutation safety "
-                    "deferred to X0 integration."
-                ),
+                "authority": tool_execution_authority,
+                "authority_detail": tool_execution_detail,
             },
             "scheduler": scheduler_proj,
             "cache": cache_proj,
@@ -883,7 +969,12 @@ class RiggedLocalRuntime:
             "capabilities": {
                 "text_generation": CapabilityPosture.SUPPORTED,
                 "streaming_generation": CapabilityPosture.SUPPORTED,
-                "tool_calling": CapabilityPosture.V1_REQUIRED_PENDING,
+                "model_tool_observation_loop": "one_shot_tool_execution_only",
+                "tool_calling": (
+                    CapabilityPosture.SUPPORTED
+                    if bridge_has_full_execution
+                    else CapabilityPosture.V1_REQUIRED_PENDING
+                ),
                 "structured_output": CapabilityPosture.V1_REQUIRED_PENDING,
                 "embeddings": CapabilityPosture.V1_REQUIRED_PENDING,
                 "reranking": CapabilityPosture.V1_REQUIRED_PENDING,
@@ -898,7 +989,7 @@ class RiggedLocalRuntime:
                 ),
                 "tool_execution_bridge": (
                     CapabilityPosture.SUPPORTED
-                    if self._tool_bridge.has_session_context
+                    if bridge_has_full_execution
                     else CapabilityPosture.V1_REQUIRED_PENDING
                 ),
             },
@@ -906,17 +997,25 @@ class RiggedLocalRuntime:
                 "secret_scanning": "enforced_before_admission",
                 "private_local_context": "allowed",
                 "secret_bearing_context": "refused",
+                "cache_persistence": cache_persistence_privacy,
+                "cache_persistence_detail": cache_persistence_detail,
             },
             "governance": {
                 "evidence": "canonical_locked_digest_chained",
-                "tool_execution": "stateless_preflight_admission_only",
-                "tool_execution_detail": (
-                    "Tool proposals are preflighted through "
-                    "GovernanceEngine.evaluate_action_legality. Full execution "
-                    "through ToolRuntime requires session context "
-                    "and is deferred to X0 Inference Studio integration."
+                "tool_execution": (
+                    "governed_execution_through_tool_runtime"
+                    if bridge_has_full_execution
+                    else "stateless_preflight_admission_only"
                 ),
+                "tool_execution_detail": tool_execution_detail,
                 "scheduler_authority": "serialized_fcfs_under_lock",
+                "scheduling_truth": "serialized_fcfs_is_the_only_live_production_path",
+                "scheduling_truth_detail": (
+                    "BatchGenerator exists architecturally but batch loop "
+                    "is never started. start_batch_loop() has zero call sites. "
+                    "BatchGenerator is an internal mlx-lm API (not in __all__). "
+                    "All generation routes through FCFS serialized scheduling."
+                ),
                 "admission_gates": "secret_scanning_before_execution",
                 "streaming_admission": "same_gates_as_execute",
                 "thread_lifecycle": "coordinated_active_stream_tracking",
@@ -933,6 +1032,16 @@ class RiggedLocalRuntime:
                     "scheduler.complete() called. On failure, yields "
                     "[EVIDENCE_UNAVAILABLE] terminal signal and calls "
                     "scheduler.fail() with evidence_emission_failed."
+                ),
+                "tool_loop_completeness": (
+                    "tool_execution_without_model_feedback_loop"
+                ),
+                "tool_loop_completeness_detail": (
+                    "Tool proposals are executed through ToolRuntime as a terminal "
+                    "side effect. Tool results are NOT returned to the model for "
+                    "continued iterative turns. The iterative agent loop "
+                    "(model -> tool -> model -> tool) is owned by "
+                    "rig_relay.core.agent_loop, not by this local inference runtime."
                 ),
             },
             "models": {
@@ -1014,9 +1123,23 @@ def _preflight_tool_proposal(proposal: ToolCallProposal) -> dict:
     }
 
 
-def _handle_tool_proposals(
-    proposals: list[ToolCallProposal], task_id_hash: str, op_id: str
-) -> None:
+async def _handle_tool_proposals(
+    proposals: list[ToolCallProposal],
+    task_id_hash: str,
+    op_id: str,
+    bridge: ToolExecutionBridge | None = None,
+) -> list[dict[str, Any]]:
+    """Preflight and optionally execute tool proposals through governance.
+
+    Performs stateless governance preflight for every proposal.
+    When a ToolExecutionBridge with session context is provided, also
+    executes admitted proposals through ToolRuntime and emits evidence
+    for every execution outcome.
+
+    Returns:
+        List of execution results for each proposal (includes preflight
+        and optionally execution_result fields).
+    """
     for p in proposals:
         logger.info(
             "runtime_tool_proposal: task=%s tool=%s call_id=%s",
@@ -1056,6 +1179,57 @@ def _handle_tool_proposals(
         )
     except Exception:
         logger.exception("Failed to emit tool proposal evidence for op=%s", op_id)
+
+    execution_results: list[dict[str, Any]] = []
+
+    if bridge is not None and bridge.has_session_context and admitted_count > 0:
+        for i, (proposal, preflight) in enumerate(zip(proposals, preflight_results)):
+            if preflight["status"] != "admitted_pending_execution":
+                execution_results.append(preflight)
+                continue
+
+            try:
+                exec_result = await bridge.execute_proposal(proposal)
+                execution_results.append(exec_result)
+            except Exception as exc:
+                logger.exception(
+                    "Tool execution failed for proposal %s: %s", proposal.call_id, exc
+                )
+                execution_results.append({
+                    "status": "failed",
+                    "reason": str(exc)[:500],
+                    "preflight": preflight,
+                })
+
+            try:
+                proposal_hash = (
+                    f"sha256:{hashlib.sha256(proposal.arguments.encode()).hexdigest()}"
+                )
+                emit_tool_execution_outcome(
+                    op_id,
+                    {
+                        "schema_version": "rig.relay.runtime_execution_event.v1",
+                        "receipt_id": op_id,
+                        "operation_id": op_id,
+                        "task_id_hash": task_id_hash,
+                        "status": execution_results[-1].get("status", "unknown"),
+                        "prompt_sha256": "",
+                        "output_sha256": "",
+                        "model_id_hash": "",
+                        "content_light": True,
+                        "proposal_hash": proposal_hash,
+                        "tool_name": proposal.tool_name,
+                        "call_id": proposal.call_id,
+                    },
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to emit tool execution evidence for op=%s", op_id
+                )
+    else:
+        execution_results = preflight_results
+
+    return execution_results
 
 
 def _build_execution_receipt_payload(

@@ -142,15 +142,30 @@ class RiggedCacheAuthority:
         return None, prompt_tokens
 
     def insert_cache(
-        self, model: object, prompt_tokens: list[int], prompt_cache: list | object
+        self,
+        model: object,
+        prompt_tokens: list[int],
+        prompt_cache: list | object,
+        privacy_class: str = "",
     ) -> None:
         """Store prompt cache for future reuse.
 
         Inserts into LRUPromptCache and local trie store. If SSD persistence
         is enabled, also writes to disk via save_prompt_cache.
+
+        Refuses cache insertion for secret-bearing context — prompt tokens
+        are reversible with the tokenizer and must not be persisted.
         """
         self._ensure_cache()
         if prompt_cache is None:
+            return
+
+        if privacy_class == "secret_bearing":
+            logger.warning(
+                "RiggedCacheAuthority: refusing cache insertion — "
+                "privacy_class=secret_bearing. Token IDs are reversible "
+                "with the tokenizer and must not be persisted."
+            )
             return
 
         if isinstance(prompt_cache, list):
@@ -260,7 +275,14 @@ class RiggedCacheAuthority:
             pass
 
     async def clear_cache(self) -> bool:
-        """Clear in-process MLX cache and reset LRU state."""
+        """Clear in-process MLX cache and reset LRU state.
+
+        This is the corruption/recovery path: on detection of corrupt cache
+        state (e.g., mismatched safetensors, stale PromptTrie entries,
+        corrupted MLX array formats), call clear_cache() to wipe all cache
+        entries and reset to a clean state. After clearing, the next
+        generation will rebuild the cache from scratch.
+        """
         self._clear_count += 1
         self._lru_cache = None
         self._cache_initialized = False
@@ -276,6 +298,31 @@ class RiggedCacheAuthority:
             return True
         except Exception:
             return False
+
+    def mark_corrupt_entry(self, model_id_hash: str) -> bool:
+        """Mark a specific model's cache entries for removal.
+
+        Intended as a targeted corruption recovery path. When a specific
+        model's cache is detected as corrupt (e.g., checkpoint version
+        mismatch, truncated safetensors), call this to remove that model's
+        entries from the in-memory trie store without clearing the entire
+        cache.
+
+        Returns True if entries existed and were removed, False otherwise.
+
+        Note: Cache store keys are derived from id(model) rather than
+        model_id_hash, so this method cannot perform exact key matching.
+        A future iteration will add a model_id_hash→cache_key reverse map.
+        For now, clear_cache() is the only guaranteed recovery path.
+        """
+        _ = model_id_hash
+        logger.warning(
+            "RiggedCacheAuthority: mark_corrupt_entry is a scaffold — "
+            "cache keys are object-id-based, not model_id_hash-based. "
+            "Use clear_cache() for full recovery until reverse-key "
+            "mapping is implemented."
+        )
+        return False
 
     def get_policy(self) -> RuntimeCachePolicy:
         lru_active = self._cache_initialized
@@ -412,6 +459,18 @@ class RiggedCacheAuthority:
             "clear_available": True,
             "ssd_cache": {
                 "enabled": self.ssd_enabled,
+                "default": "disabled_opt_in_only",
+                "privacy_posture": "token_ids_only_no_raw_text",
+                "reversibility_warning": (
+                    "Token IDs in cache are reversible with the tokenizer. "
+                    "SSD persistence is opt-in only. Set ssd_enabled=True and "
+                    "provide ssd_cache_dir to enable."
+                ),
+                "privacy_detail": (
+                    "Cache stores KV state as MLX arrays (binary) and token IDs "
+                    "in the PromptTrie. No raw prompt text is stored. However, "
+                    "token IDs are reversible if the tokenizer is available."
+                ),
                 "entries": self._ssd_entries_count,
                 "total_size_mb": round(self._ssd_total_size_mb, 2),
                 "max_entries": self._max_ssd_entries,

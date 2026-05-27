@@ -815,7 +815,8 @@ class TestToolProposalGovernance:
         assert proposal.call_id == "call-5"
         assert proposal.tool_name == "search_replace"
 
-    def test_evidence_routes_to_governance_truthfully(self) -> None:
+    @pytest.mark.asyncio
+    async def test_evidence_routes_to_governance_truthfully(self) -> None:
         """Evidence must truthfully report routing, hashed proposals, counts."""
         from unittest.mock import patch
 
@@ -835,7 +836,7 @@ class TestToolProposalGovernance:
             "rig_relay.local_inference.runtime._service.emit_tool_proposal_evidence",
             side_effect=fake_emit,
         ):
-            _handle_tool_proposals(proposals, "hash123", "op-1")
+            await _handle_tool_proposals(proposals, "hash123", "op-1")
 
         assert len(captured) == 1
         payload = captured[0]
@@ -847,7 +848,8 @@ class TestToolProposalGovernance:
         assert payload["admitted_count"] == 1
         assert payload["rejected_count"] == 0
 
-    def test_handle_tool_proposals_emits_content_light(self) -> None:
+    @pytest.mark.asyncio
+    async def test_handle_tool_proposals_emits_content_light(self) -> None:
         """Evidence must always include content_light: True and correct schema_version."""
         from unittest.mock import patch
 
@@ -869,7 +871,7 @@ class TestToolProposalGovernance:
             "rig_relay.local_inference.runtime._service.emit_tool_proposal_evidence",
             side_effect=fake_emit,
         ):
-            _handle_tool_proposals(proposals, "hash456", "op-2")
+            await _handle_tool_proposals(proposals, "hash456", "op-2")
 
         assert len(captured) == 1
         assert captured[0]["content_light"] is True
@@ -1032,7 +1034,6 @@ class TestProjectionTruthfulness:
         proj = rt.build_projection()
         assert "tool_execution_detail" in proj["governance"]
         detail = proj["governance"]["tool_execution_detail"]
-        assert "GovernanceEngine.evaluate_action_legality" in detail
         assert "ToolRuntime requires session context" in detail
 
     def test_projection_authority_is_scoped(self) -> None:
@@ -1207,7 +1208,8 @@ class TestRealEvidenceEmission:
         with pytest.raises(EvidenceLedgerError):
             led.append("op", "ev", {"schema_version": "v1", "content_light": True})
 
-    def test_result_emission_produces_valid_tool_proposal_payload(self) -> None:
+    @pytest.mark.asyncio
+    async def test_result_emission_produces_valid_tool_proposal_payload(self) -> None:
         """_handle_tool_proposals must emit a canonical-schema-valid payload."""
         from rig_relay.local_inference.runtime._models import ToolCallProposal
         from rig_relay.local_inference.runtime._service import _handle_tool_proposals
@@ -1215,7 +1217,7 @@ class TestRealEvidenceEmission:
         proposal = ToolCallProposal(
             call_id="call_test", tool_name="bash", arguments='{"cmd":"ls"}'
         )
-        _handle_tool_proposals([proposal], "task456", "op_emission_test")
+        await _handle_tool_proposals([proposal], "task456", "op_emission_test")
 
         from rig_relay.local_inference.runtime._evidence import _tool_proposal_ledger
 
@@ -1674,6 +1676,8 @@ class TestBatchScheduler:
             "fallback_serialized_fcfs",
             "batch_generator_unavailable",
             "serialized_fallback",
+            "serialized_fcfs_only",
+            "batch_generator_architected_but_dead",
         )
 
     def test_scheduler_is_accessible(self) -> None:
@@ -1713,13 +1717,15 @@ class TestToolExecutionBridge:
         b = ToolExecutionBridge()
         assert b is not None
 
-    def test_bridge_version_info(self) -> None:
+    @pytest.mark.asyncio
+    async def test_bridge_version_info(self) -> None:
         """Bridge must report pending status without session context."""
         from rig_relay.local_inference.runtime._bridge import ToolExecutionBridge
         from rig_relay.local_inference.runtime._models import ToolCallProposal
 
         b = ToolExecutionBridge()
         proposal = ToolCallProposal(call_id="test", tool_name="bash", arguments="{}")
-        result = b.execute_proposal(proposal, session_context=None)
+        result = await b.execute_proposal(proposal, session_context=None)
         assert isinstance(result, dict)
         assert "status" in result
+        assert result["status"] == "pending_session_context"
