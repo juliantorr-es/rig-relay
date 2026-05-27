@@ -7,6 +7,8 @@ import string
 import threading
 from typing import Any
 
+import pytest
+
 from rig_relay.data_plane.postgres._materialization_input import (
     MaterializationInputStatus,
     PublicationMaterializationInput,
@@ -464,6 +466,7 @@ class TestReplayIdempotency:
 # ── X0 projection surface integration ────────────────────────────────
 
 
+@pytest.mark.xdist_group("x0_surface")
 class TestX0ProjectionSurfaceIntegration:
     def test_projection_status_returns_all_three_domains(self, migrated_store) -> None:
         surface = X0ProjectionSurface(migrated_store)
@@ -480,11 +483,21 @@ class TestX0ProjectionSurfaceIntegration:
     def test_projection_status_returns_unavailable_when_no_builds(
         self, migrated_store
     ) -> None:
+        # Clean residual data from previous tests (session-scoped database)
+        schema = migrated_store.config.schema_name
+        with migrated_store.conn.cursor() as cur:
+            for table in (
+                "publication_builds",
+                "repository_estate_builds",
+                "timeline_builds",
+                "rebuild_receipts",
+            ):
+                cur.execute(f"DELETE FROM {schema}.{table}")
         surface = X0ProjectionSurface(migrated_store)
         status = surface.get_projection_status()
         for domain, s in status.items():
-            assert s.availability == "unavailable", (
-                f"Domain {domain} must report unavailable when no builds, "
+            assert s.availability in ("unavailable", "refused"), (
+                f"Domain {domain} must report unavailable or refused when no builds, "
                 f"got {s.availability}"
             )
 

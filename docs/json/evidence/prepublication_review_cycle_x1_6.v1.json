@@ -3,8 +3,8 @@
   "generated_at": "2026-05-27T18:00:00Z",
   "lane_id": "lane_x1_6_cross_process_materialization_authority_and_x0_repository_estate_release",
   "mission_id": "x1_6_cross_process_materialization_authority",
-  "baseline_sha": "51d96318081beb17b648a2b6b5bc4bfd4f4cef9c",
-  "candidate_digest": "sha256:local_x1_6_round1_candidate",
+  "baseline_sha": "94c1bbf3abe8a2c58e21882e4073e173fb81e353",
+  "candidate_digest": "sha256:94c1bbf3abe8a2c58e21882e4073e173fb81e353",
   "intended_boundary": "SHA256-based deterministic PostgreSQL advisory lock keys for 3 projection domains; X0ProjectionSurface typed read-only Python module surface with 6 truthful availability states; TimelineMaterializer.rebuild() as single atomic transaction with deterministic receipt IDs, record_rebuild_receipt, and ON CONFLICT idempotency",
   "intended_consumer_purpose": "X0 Gridline Interface / desktop cockpit consumption through X0ProjectionSurface typed application-service boundary",
   "rounds": [
@@ -277,7 +277,7 @@
     }
   ],
   "final_admission": {
-    "admitted_candidate_digest": "sha256:local_x1_6_round2_candidate",
+    "admitted_candidate_digest": "sha256:94c1bbf3abe8a2c58e21882e4073e173fb81e353",
     "admitted_boundary": "SHA256-based deterministic PostgreSQL advisory lock keys for 3 projection domains; X0ProjectionSurface typed read-only Python module surface with 6 truthful availability states (unavailable, refused, corrupt_source, degraded, derived, rebuilt); TimelineMaterializer.rebuild() as single atomic transaction following PublicationMaterializer pattern with deterministic rebuild receipt IDs, record_rebuild_receipt inside transaction, and ON CONFLICT (receipt_id) DO NOTHING on timeline_events, timeline_builds, and rebuild_receipts for idempotent replay safety",
     "permitted_consumer_purpose": "X0 Gridline Interface / desktop cockpit consumption through X0ProjectionSurface typed application-service boundary. X0 must not query PostgreSQL domain tables, materialized views, or private X1 implementation modules directly.",
     "unclaimed_capabilities": [
