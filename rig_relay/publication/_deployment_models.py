@@ -53,6 +53,7 @@ class PublicationTransitionPhase(StrEnum):
     CONTENT_PUBLICATION_STARTED = "content_publication_started"
     CONTENT_PUBLICATION_PARTIAL = "content_publication_partial"
     CONTENT_PUBLISHED = "content_published"
+    CONTENT_COMMIT_CREATED_REF_NOT_UPDATED = "content_commit_created_ref_not_updated"
     BUILD_REQUESTED = "build_requested"
     BUILD_PENDING = "build_pending"
     PUBLISHED_VERIFIED = "published_verified"
@@ -198,9 +199,14 @@ class ContentPublicationManifest(BaseModel):
     expected_files: list[str] = Field(default_factory=list)
     published_files: list[str] = Field(default_factory=list)
     failed_files: list[dict] = Field(default_factory=list)
+    blobs_created: list[str] = Field(default_factory=list)
+    tree_created: bool = False
+    commit_created: bool = False
+    ref_updated: bool = False
     publication_complete: bool = False
     publication_partial: bool = False
     commit_sha: str = ""
+    orphaned_commit_sha: str = ""
     git_publication_mode: str = "none"
     evidence_digest: str = ""
 
@@ -212,9 +218,14 @@ class ContentPublicationManifest(BaseModel):
             "expected_count": len(self.expected_files),
             "published_count": len(self.published_files),
             "failed_count": len(self.failed_files),
+            "blobs_created_count": len(self.blobs_created),
+            "tree_created": self.tree_created,
+            "commit_created": self.commit_created,
+            "ref_updated": self.ref_updated,
             "complete": self.publication_complete,
             "partial": self.publication_partial,
             "commit_sha": self.commit_sha,
+            "orphaned_commit_sha": self.orphaned_commit_sha,
             "git_publication_mode": self.git_publication_mode,
         }
         p = json.dumps(c, sort_keys=True, separators=(",", ":"))
@@ -363,7 +374,7 @@ class PortfolioSynthesisResult(BaseModel):
 
 
 class PublicationStatusContract(BaseModel):
-    """X3.3 Gate G — X0-consumable typed publication surface state."""
+    """X3.5 Gate G — X0-consumable typed publication surface state."""
 
     model_config = ConfigDict(extra="forbid")
     schema_version: str = "rig.relay.publication_status.v1"
@@ -385,7 +396,8 @@ class PublicationStatusContract(BaseModel):
     recovery_required: bool = False
     status_message: str = ""
     available_actions: list[str] = Field(default_factory=list)
-    evidence_digest: str = ""
+    projection_digest: str = ""
+    terminal_receipt_digest: str = ""
 
 
 def _now_iso() -> str:

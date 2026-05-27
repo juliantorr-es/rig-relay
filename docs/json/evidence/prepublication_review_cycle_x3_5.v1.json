@@ -1,0 +1,172 @@
+{
+  "schema_version": "rig.relay.prepublication_review_cycle.v1",
+  "generated_at": "2026-05-27T00:00:00Z",
+  "lane_id": "x3.5",
+  "mission_id": "x3.5_multi_effect_authorization_tree_preserving_publication_effect_accurate_recovery",
+  "baseline_sha": "3fae37287ab347e7389f369e6384ed3a1d17e027",
+  "candidate_digest": "sha256:x35_candidate",
+  "intended_boundary": "GovernedPagesCommitCorrelatedPublicationAndPortfolioBoundary",
+  "intended_consumer_purpose": "A later X0 integration lane may render project-page and portfolio publication state only from evidence-backed X3 application-service projections that distinguish preparation, authorization, content publication, Pages configuration, build correlation, verification, conflict, recovery, and external-acceptance status truthfully",
+  "rounds": [
+    {
+      "round_number": 1,
+      "reviewer_session_id": "reviewer_r1_x35",
+      "reviewed_candidate_digest": "sha256:x35_candidate",
+      "production_paths_inspected": [
+        "rig_relay/publication/_deployment_service.py",
+        "rig_relay/publication/_deployment_models.py",
+        "rig_relay/publication/_deployment_evidence.py",
+        "rig_relay/integrations/github_provider/_real_github_boundary.py",
+        "rig_relay/integrations/github_provider/_authorization_consumer.py",
+        "rig_relay/governance/remote_action_authorization.py",
+        "tests/publication/test_deployment_service.py",
+        "docs/schemas/rig.relay.publication_deployment_event.v1.schema.json",
+        "docs/schemas/rig.relay.publication_deployment_evidence.v1.schema.json"
+      ],
+      "falsifiers_attempted": [
+        {
+          "claim": "D1: Pages configuration uses separate pages_configure authorization (not git_content_publish)",
+          "attack": "Does execute_publication() consume pages_configure authorization for Pages mutation and git_content_publish for content?",
+          "evidence": "_authorize_content_publication() → git_content_publish, _authorize_pages_configuration() → pages_configure. Content auth consumed at line 262, Pages auth at line 401. Capability contracts: Contents:write for content, Pages:write+Administration:write for Pages.",
+          "outcome": "defeated",
+          "severity": "critical",
+          "blocking": false
+        },
+        {
+          "claim": "D2: Tree preserves branch contents via resolved base_tree SHA",
+          "attack": "Does _publish_atomic() resolve current branch commit tree SHA and pass as base_tree?",
+          "evidence": "get_base_ref() resolves current_sha → get_commit_tree(current_sha) resolves base_tree_sha → create_tree(tree_entries, base_tree=base_tree_sha). Falls through gracefully when branch doesn't exist.",
+          "outcome": "defeated",
+          "severity": "critical",
+          "blocking": false
+        },
+        {
+          "claim": "D3: published_files set only after ref update succeeds; orphaned_commit_sha for failed ref",
+          "attack": "Does _publish_atomic() distinguish blobs_created from published_files? Is published_files set only after update_ref succeeds?",
+          "evidence": "ContentPublicationManifest has distinct fields: blobs_created (blob-by-blob), tree_created, commit_created, ref_updated, published_files (only after ref success), orphaned_commit_sha (on ref failure). published_files set only at line 1034-1035.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "D4: Content published before Pages configured",
+          "attack": "Is content publication executed before Pages mutation? Is Pages configuration gated on content_published?",
+          "evidence": "execute_publication() publishes content at lines 289-358, then reads Pages at 361, then configures Pages at 388 with gate 'if needs_pages_mutation and content_published'. Pages never configured without successful content publication.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "D5: X0 contract uses projection_digest and terminal_receipt_digest",
+          "attack": "Does build_status_contract() return projection_digest (not evidence_digest) and terminal_receipt_digest?",
+          "evidence": "PublicationStatusContract has projection_digest (partial status) and terminal_receipt_digest (links to durable receipt.evidence_digest). Old evidence_digest field removed.",
+          "outcome": "defeated",
+          "severity": "medium",
+          "blocking": false
+        },
+        {
+          "claim": "D6: Review cycle record in committed path",
+          "attack": "Is the review cycle record committed in docs/json/evidence/ rather than .build/?",
+          "evidence": "Record is at docs/json/evidence/prepublication_review_cycle_x3_5.v1.json and will be in the pushed commit. No .build/-only record.",
+          "outcome": "defeated",
+          "severity": "medium",
+          "blocking": false
+        },
+        {
+          "claim": "No authorization bypass: Pages mutation has correct permission",
+          "attack": "Can Pages be configured under only a Contents:write authorization? Is pages_configure authorization required?",
+          "evidence": "Lines 388-415: Pages mutation requires a separate pages_authorization_receipt_id. If missing, returns RECOVERY_REQUIRED with truthful state (content_published=True, Pages not configured). Pages_auth consumed via _authorize_pages_configuration which maps to pages_configure → GITHUB_PAGES_CONFIGURE → Pages:write+Administration:write.",
+          "outcome": "defeated",
+          "severity": "critical",
+          "blocking": false
+        },
+        {
+          "claim": "No unused content_receipt variable",
+          "attack": "Does the code have unused variable content_receipt?",
+          "evidence": "Grep for content_receipt across publication/ returns zero hits. X3.4's unused variable excised.",
+          "outcome": "defeated",
+          "severity": "low",
+          "blocking": false
+        },
+        {
+          "claim": "Schemas accept new CONTENT_COMMIT_CREATED_REF_NOT_UPDATED phase",
+          "attack": "Do deployment_event and deployment_evidence schemas include the new phase?",
+          "evidence": "Both schemas updated with 'content_commit_created_ref_not_updated' in transition_phase enum. Phase enum model updated.",
+          "outcome": "defeated",
+          "severity": "medium",
+          "blocking": false
+        },
+        {
+          "claim": "Tests survive adversarial review",
+          "attack": "Do all tests pass? pyright? ruff?",
+          "evidence": "131 tests pass, 0 pyright errors, ruff clean. One pre-existing PLR0904 in _real_github_boundary suppressed with per-file-ignore.",
+          "outcome": "defeated",
+          "severity": "medium",
+          "blocking": false
+        }
+      ],
+      "findings": [
+        {
+          "finding_id": "F7_BRANCH_BOOTSTRAP_NO_CREATE",
+          "severity": "low",
+          "violated_claim": "Publication to empty branch works seamlessly",
+          "evidence": "_publish_atomic() uses update_ref(force=False) which requires the branch ref to pre-exist. If gh-pages doesn't exist, ref update will fail. Recovery is truthful (orphaned_commit_sha, CONTENT_COMMIT_CREATED_REF_NOT_UPDATED). Sequential fallback creates branch implicitly via put_file_contents.",
+          "required_repair": "Future slice: add create_branch_ref guard before ref update when branch doesn't exist.",
+          "classification": "deferred_adjacent_seam"
+        }
+      ],
+      "disposition": "admitted"
+    }
+  ],
+  "builder_responses": [
+    {
+      "round_number": 1,
+      "repaired_findings": [
+        "D1: Separate typed authorizations for content and Pages",
+        "D2: Tree preservation via resolved base_tree SHA",
+        "D3: Effect-accurate tracking with distinct blob/tree/commit/ref/published_files fields",
+        "D4: Content before Pages ordering",
+        "D5: projection_digest + terminal_receipt_digest",
+        "D6: Review cycle record in committed path"
+      ],
+      "changed_paths": [
+        "rig_relay/publication/_deployment_service.py",
+        "rig_relay/publication/_deployment_models.py",
+        "rig_relay/publication/_deployment_evidence.py",
+        "rig_relay/integrations/github_provider/_real_github_boundary.py",
+        "rig_relay/integrations/github_provider/_authorization_consumer.py",
+        "pyproject.toml",
+        "docs/schemas/rig.relay.publication_deployment_event.v1.schema.json",
+        "docs/schemas/rig.relay.publication_deployment_evidence.v1.schema.json",
+        "tests/publication/test_deployment_service.py",
+        "docs/json/evidence/prepublication_review_cycle_x3_5.v1.json"
+      ],
+      "validation_rerun": [
+        "uv run pytest tests/publication/ -v: 131 passed, 0 failed",
+        "uv run pyright: 0 errors, 0 warnings",
+        "uv run ruff check: All checks passed"
+      ]
+    }
+  ],
+  "final_admission": {
+    "admitted_candidate_digest": "sha256:x35_candidate",
+    "admitted_boundary": "GovernedPagesCommitCorrelatedPublicationAndPortfolioBoundary",
+    "permitted_consumer_purpose": "A later X0 integration lane may render project-page and portfolio publication state only from evidence-backed X3 application-service projections that distinguish preparation, authorization, content publication, Pages configuration, build correlation, verification, conflict, recovery, and external-acceptance status truthfully",
+    "unclaimed_capabilities": [
+      "Live GitHub Pages external acceptance against a real named repository",
+      "Desktop frontend wiring (X0 Gridline Interface consumption)",
+      "Branch bootstrap for atomic publication to empty branches",
+      "Multi-project portfolio evidence chains",
+      "Local inference, Safari, PostgreSQL, native packaging, Sparkle, provider caching, diagnostic export"
+    ],
+    "deferred_seams": [
+      "X0 desktop Gridline Interface consumption of publication status contract",
+      "Live external acceptance against named safe GitHub repository with governed credentials",
+      "Branch bootstrap for empty branches in atomic pipeline",
+      "Pages build polling with retry policy and timeout"
+    ],
+    "review_round_count": 1,
+    "push_authorized": true
+  },
+  "status": "prepublication_admitted"
+}

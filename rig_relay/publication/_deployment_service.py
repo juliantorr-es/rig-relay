@@ -201,17 +201,16 @@ class GitHubPagesDeploymentService:
         bundle: ApprovedStaticPublicationBundle | None = None,
         *,
         authorization_receipt_id: str = "",
+        pages_authorization_receipt_id: str = "",
         target_repo_owner: str = "",
         target_repo_name: str = "",
         content_files: dict[str, str] | None = None,
     ) -> PublicationTransitionReceipt:
         """Execute the full publication transition.
 
-        Gate A: transition_prep must be valid.
-        Gate B: bundle content must match preparation digest.
-        Gate C: authorize, configure Pages (create/update/no-change),
-                publish content, verify.
-        Gate D: phase receipts durably appended.
+        X3.5 ordering: validate → authorize content mutation →
+        publish approved content (commit/ref) → authorize Pages mutation →
+        configure Pages source only after content is present.
         """
         op_id = transition_prep.publication_operation_id
         now = _now_iso()
@@ -245,7 +244,7 @@ class GitHubPagesDeploymentService:
                 prep=transition_prep,
                 phase=PublicationTransitionPhase.REFUSED,
                 refusal=DeploymentRefusalCode.AUTHORIZATION_MISSING,
-                reasons=["No authorization receipt provided"],
+                reasons=["No content authorization receipt provided"],
                 now=now,
             )
 
@@ -259,107 +258,34 @@ class GitHubPagesDeploymentService:
                 now=now,
             )
 
-        auth_result = await self._authorize_transition(
+        # ── Authorize content publication (Contents:write) ──────────
+        content_auth = await self._authorize_content_publication(
             authorization_id=authorization_receipt_id, transition_prep=transition_prep
         )
-        if not auth_result["authorized"]:
+        if not content_auth["authorized"]:
             return self._record_phase(
                 op_id=op_id,
                 prep=transition_prep,
                 phase=PublicationTransitionPhase.REFUSED,
                 refusal=DeploymentRefusalCode(
-                    auth_result.get("refusal_code", "authorization_revoked")
+                    content_auth.get("refusal_code", "authorization_revoked")
                 ),
-                reasons=auth_result.get("reasons", []),
+                reasons=content_auth.get("reasons", []),
                 now=now,
-                auth_digest=auth_result.get("authorization_digest", ""),
+                auth_digest=content_auth.get("authorization_digest", ""),
             )
 
-        auth_digest = auth_result["authorization_digest"]
-
-        # ── Inspect Pages state ───────────────────────────────────────
-        pages_state = await self._inspect_pages_state(
-            target_repo_owner, target_repo_name
-        )
-        has_pages = pages_state.get("has_pages", False)
-        current_branch = pages_state.get("source_branch", "")
+        content_auth_digest = content_auth["authorization_digest"]
         source_branch = transition_prep.source_branch
 
-        if pages_state.get("error"):
-            return self._record_phase(
-                op_id=op_id,
-                prep=transition_prep,
-                phase=PublicationTransitionPhase.REFUSED,
-                refusal=DeploymentRefusalCode.PAGES_INSPECT_FAILED,
-                reasons=[pages_state["error"]],
-                now=now,
-                auth_digest=auth_digest,
-            )
-
-        # ── Configure Pages (create/update/no-change) ─────────────────
+        # ── Publish content FIRST (before Pages mutation) ────────────
+        content_published = False
         pages_created = False
         pages_updated = False
+        pages_phase = PublicationTransitionPhase.PAGES_CONFIGURATION_UNCHANGED
         cfg_result: dict = {"success": False, "site_url": "", "verification_digest": ""}
+        pages_state: dict = {}
 
-        if not has_pages:
-            cfg = await self._configure_pages(
-                target_repo_owner,
-                target_repo_name,
-                source_branch,
-                transition_prep.source_path,
-                site_exists=False,
-            )
-            cfg_result = cfg
-            if not cfg_result.get("success"):
-                return self._record_phase(
-                    op_id=op_id,
-                    prep=transition_prep,
-                    phase=PublicationTransitionPhase.REFUSED,
-                    refusal=DeploymentRefusalCode.PAGES_CREATE_FAILED,
-                    reasons=[cfg_result.get("error", "Pages create failed")],
-                    now=now,
-                    auth_digest=auth_digest,
-                )
-            pages_created = True
-            pages_phase = PublicationTransitionPhase.PAGES_CREATED
-        elif current_branch != source_branch:
-            cfg = await self._configure_pages(
-                target_repo_owner,
-                target_repo_name,
-                source_branch,
-                transition_prep.source_path,
-                site_exists=True,
-            )
-            cfg_result = cfg
-            if not cfg_result.get("success"):
-                return self._record_phase(
-                    op_id=op_id,
-                    prep=transition_prep,
-                    phase=PublicationTransitionPhase.REFUSED,
-                    refusal=DeploymentRefusalCode.PAGES_UPDATE_FAILED,
-                    reasons=[cfg_result.get("error", "Pages update failed")],
-                    now=now,
-                    auth_digest=auth_digest,
-                )
-            pages_updated = True
-            pages_phase = PublicationTransitionPhase.PAGES_UPDATED
-        else:
-            pages_phase = PublicationTransitionPhase.PAGES_CONFIGURATION_UNCHANGED
-
-        _ = self._record_phase(
-            op_id=op_id,
-            prep=transition_prep,
-            phase=pages_phase,
-            now=now,
-            auth_digest=auth_digest,
-            pages_created=pages_created,
-            pages_updated=pages_updated,
-            site_url=cfg_result.get("site_url", "")
-            if not has_pages or current_branch != source_branch
-            else pages_state.get("html_url", ""),
-        )
-
-        # ── Publish content ───────────────────────────────────────────
         if bundle_obj and not bundle_obj.is_empty():
             manifest = await self._publish_bundle(
                 bundle_obj=bundle_obj,
@@ -368,25 +294,36 @@ class GitHubPagesDeploymentService:
                 target_repo_name=target_repo_name,
                 transition_prep=transition_prep,
                 operation_id=op_id,
-                auth_digest=auth_digest,
+                auth_digest=content_auth_digest,
             )
 
             if manifest.publication_complete:
-                return self._record_phase(
+                content_published = True
+                self._record_phase(
                     op_id=op_id,
                     prep=transition_prep,
                     phase=PublicationTransitionPhase.CONTENT_PUBLISHED,
                     now=now,
-                    auth_digest=auth_digest,
-                    pages_created=pages_created,
-                    pages_updated=pages_updated,
+                    auth_digest=content_auth_digest,
                     content_published=True,
                     content_manifest_digest=manifest.evidence_digest,
                     published_commit_sha=manifest.commit_sha,
                     git_publication_mode=manifest.git_publication_mode,
-                    site_url=cfg_result.get("site_url", "")
-                    if (pages_created or pages_updated)
-                    else pages_state.get("html_url", ""),
+                )
+            elif manifest.commit_created and not manifest.ref_updated:
+                return self._record_phase(
+                    op_id=op_id,
+                    prep=transition_prep,
+                    phase=PublicationTransitionPhase.CONTENT_COMMIT_CREATED_REF_NOT_UPDATED,
+                    now=now,
+                    auth_digest=content_auth_digest,
+                    content_published=False,
+                    content_manifest_digest=manifest.evidence_digest,
+                    published_commit_sha=manifest.orphaned_commit_sha
+                    or manifest.commit_sha,
+                    git_publication_mode=manifest.git_publication_mode,
+                    recovery_required=True,
+                    recovery_hint="Content commit created but ref not updated — remote conflict or ref update failed",
                 )
             elif manifest.publication_partial:
                 return self._record_phase(
@@ -394,15 +331,13 @@ class GitHubPagesDeploymentService:
                     prep=transition_prep,
                     phase=PublicationTransitionPhase.RECOVERY_REQUIRED,
                     now=now,
-                    auth_digest=auth_digest,
-                    pages_created=pages_created,
-                    pages_updated=pages_updated,
+                    auth_digest=content_auth_digest,
                     content_published=False,
                     content_manifest_digest=manifest.evidence_digest,
                     published_commit_sha=manifest.commit_sha,
                     git_publication_mode=manifest.git_publication_mode,
                     recovery_required=True,
-                    recovery_hint="Partial content publication; retry or verify remaining files",
+                    recovery_hint="Partial content publication; retry or verify",
                 )
             else:
                 return self._record_phase(
@@ -414,9 +349,7 @@ class GitHubPagesDeploymentService:
                         f"Content push failed for {len(manifest.failed_files)} files"
                     ],
                     now=now,
-                    auth_digest=auth_digest,
-                    pages_created=pages_created,
-                    pages_updated=pages_updated,
+                    auth_digest=content_auth_digest,
                     content_manifest_digest=manifest.evidence_digest,
                     published_commit_sha=manifest.commit_sha,
                     git_publication_mode=manifest.git_publication_mode,
@@ -424,14 +357,125 @@ class GitHubPagesDeploymentService:
                     recovery_hint="All files failed; retry content push",
                 )
 
+        # ── Read Pages state (read-only, no mutation yet) ────────────
+        pages_state = await self._inspect_pages_state(
+            target_repo_owner, target_repo_name
+        )
+        has_pages = pages_state.get("has_pages", False)
+        current_branch = pages_state.get("source_branch", "")
+
+        if pages_state.get("error"):
+            # Content may have been published; record the error but
+            # report recovery (Pages config pending)
+            return self._record_phase(
+                op_id=op_id,
+                prep=transition_prep,
+                phase=PublicationTransitionPhase.RECOVERY_REQUIRED,
+                refusal=DeploymentRefusalCode.PAGES_INSPECT_FAILED,
+                reasons=[pages_state["error"]],
+                now=now,
+                auth_digest=content_auth_digest,
+                pages_created=False,
+                pages_updated=False,
+                content_published=content_published,
+                recovery_required=True,
+                recovery_hint="Content published but Pages inspection failed; configure Pages manually",
+            )
+
+        # ── Only configure Pages if content was published ───────────
+        needs_pages_mutation = not has_pages or current_branch != source_branch
+
+        if needs_pages_mutation and content_published:
+            if not pages_authorization_receipt_id:
+                return self._record_phase(
+                    op_id=op_id,
+                    prep=transition_prep,
+                    phase=PublicationTransitionPhase.RECOVERY_REQUIRED,
+                    now=now,
+                    auth_digest=content_auth_digest,
+                    content_published=True,
+                    recovery_required=True,
+                    recovery_hint="Content published but Pages configuration requires separate authorization",
+                )
+
+            pages_auth = await self._authorize_pages_configuration(
+                authorization_id=pages_authorization_receipt_id,
+                transition_prep=transition_prep,
+            )
+            if not pages_auth["authorized"]:
+                return self._record_phase(
+                    op_id=op_id,
+                    prep=transition_prep,
+                    phase=PublicationTransitionPhase.RECOVERY_REQUIRED,
+                    now=now,
+                    auth_digest=content_auth_digest,
+                    content_published=True,
+                    recovery_required=True,
+                    recovery_hint="Content published but Pages authorization refused",
+                )
+
+            pages_auth_digest = pages_auth["authorization_digest"]
+
+            if not has_pages:
+                cfg = await self._configure_pages(
+                    target_repo_owner,
+                    target_repo_name,
+                    source_branch,
+                    transition_prep.source_path,
+                    site_exists=False,
+                )
+                cfg_result = cfg
+                if not cfg_result.get("success"):
+                    return self._record_phase(
+                        op_id=op_id,
+                        prep=transition_prep,
+                        phase=PublicationTransitionPhase.RECOVERY_REQUIRED,
+                        refusal=DeploymentRefusalCode.PAGES_CREATE_FAILED,
+                        reasons=[cfg_result.get("error", "Pages create failed")],
+                        now=now,
+                        auth_digest=pages_auth_digest,
+                        content_published=True,
+                        recovery_required=True,
+                        recovery_hint="Content published but Pages creation failed",
+                    )
+                pages_created = True
+                pages_phase = PublicationTransitionPhase.PAGES_CREATED
+            else:
+                cfg = await self._configure_pages(
+                    target_repo_owner,
+                    target_repo_name,
+                    source_branch,
+                    transition_prep.source_path,
+                    site_exists=True,
+                )
+                cfg_result = cfg
+                if not cfg_result.get("success"):
+                    return self._record_phase(
+                        op_id=op_id,
+                        prep=transition_prep,
+                        phase=PublicationTransitionPhase.RECOVERY_REQUIRED,
+                        refusal=DeploymentRefusalCode.PAGES_UPDATE_FAILED,
+                        reasons=[cfg_result.get("error", "Pages update failed")],
+                        now=now,
+                        auth_digest=pages_auth_digest,
+                        content_published=True,
+                        recovery_required=True,
+                        recovery_hint="Content published but Pages update failed",
+                    )
+                pages_updated = True
+                pages_phase = PublicationTransitionPhase.PAGES_UPDATED
+        else:
+            pages_phase = PublicationTransitionPhase.PAGES_CONFIGURATION_UNCHANGED
+
         return self._record_phase(
             op_id=op_id,
             prep=transition_prep,
             phase=pages_phase,
             now=now,
-            auth_digest=auth_digest,
+            auth_digest=content_auth_digest,
             pages_created=pages_created,
             pages_updated=pages_updated,
+            content_published=content_published,
             site_url=cfg_result.get("site_url", "")
             if (pages_created or pages_updated)
             else pages_state.get("html_url", ""),
@@ -551,18 +595,20 @@ class GitHubPagesDeploymentService:
         """Gate F: Build X0-consumable typed publication surface state.
 
         All fields populated from durable evidence — no empty defaults.
+        projection_digest is a partial presentation digest (status only).
+        terminal_receipt_digest links to the durable terminal evidence
+        receipt so X0 can trace UI state back to canonical evidence.
         """
         git_mode = receipt.git_publication_mode or "none"
         published_sha = receipt.published_commit_sha or ""
         build_sha = receipt.build_commit_sha or ""
         build_matches = receipt.build_commit_matches_published
 
-        digest_raw = (
+        projection_digest = _digest_sha256(
             f"{receipt.operation_id}:{receipt.transition_phase}:"
             f"{published_sha}:{build_sha}:{build_matches}:"
             f"{transition_prep.target_surface}"
         )
-        evidence_digest = _digest_sha256(digest_raw)
 
         return PublicationStatusContract(
             publication_operation_id=receipt.operation_id,
@@ -585,7 +631,8 @@ class GitHubPagesDeploymentService:
             recovery_required=receipt.recovery_required,
             status_message=_phase_message(receipt.transition_phase),
             available_actions=_available_actions(receipt.transition_phase),
-            evidence_digest=evidence_digest,
+            projection_digest=projection_digest,
+            terminal_receipt_digest=receipt.evidence_digest or "",
         )
 
     # ── Private: Phase recording ───────────────────────────────────────
@@ -650,12 +697,38 @@ class GitHubPagesDeploymentService:
 
     # ── Private: Authorization ────────────────────────────────────────
 
-    async def _authorize_transition(
+    async def _authorize_content_publication(
         self,
         authorization_id: str,
         transition_prep: AuthorizedPublicationTransitionPreparation,
     ) -> dict:
-        """Gate A: authorize the transition preparation, not the preview receipt."""
+        """Authorize content publication — Git Data API (Contents:write)."""
+        return await self._authorize_operation(
+            authorization_id=authorization_id,
+            operation_kind="git_content_publish",
+            transition_prep=transition_prep,
+        )
+
+    async def _authorize_pages_configuration(
+        self,
+        authorization_id: str,
+        transition_prep: AuthorizedPublicationTransitionPreparation,
+    ) -> dict:
+        """Authorize Pages configuration — Pages API (Pages:write, Administration:write)."""
+        return await self._authorize_operation(
+            authorization_id=authorization_id,
+            operation_kind="pages_configure",
+            transition_prep=transition_prep,
+        )
+
+    async def _authorize_operation(
+        self,
+        *,
+        authorization_id: str,
+        operation_kind: str,
+        transition_prep: AuthorizedPublicationTransitionPreparation,
+    ) -> dict:
+        """Consume one Lane A authorization receipt for the given operation."""
         try:
             from rig_relay.integrations.github_provider._authorization_consumer import (
                 ConsumerOutcome,
@@ -674,7 +747,6 @@ class GitHubPagesDeploymentService:
         if parts and "/" not in parts:
             target = parts
 
-        # Bind authorization to preparation digest + target + operation id
         payload: dict = {
             "publication_operation_id": transition_prep.publication_operation_id,
             "preparation_digest": transition_prep.preparation_digest,
@@ -685,7 +757,7 @@ class GitHubPagesDeploymentService:
         }
         result = GitHubAuthorizationConsumer.validate_and_consume(
             authorization_id=authorization_id,
-            operation_kind="git_content_publish",
+            operation_kind=operation_kind,
             request_payload=payload,
             target_identity=target or "",
             prior_evidence_digest=transition_prep.preparation_digest,
@@ -858,8 +930,17 @@ class GitHubPagesDeploymentService:
         manifest: ContentPublicationManifest,
         gb: object,
     ) -> ContentPublicationManifest:
-        """X3.3: Atomic publication via Git Data API (blob→tree→commit→ref)."""
-        published: list[str] = []
+        """X3.5: Atomic publication via Git Data API (blob→tree→commit→ref).
+
+        Critical safety properties:
+        - Tree preservation: resolves current branch commit tree SHA as
+          base_tree so unrelated branch content is NOT destroyed.
+        - Effect-accurate tracking: blobs_created, tree_created,
+          commit_created, ref_updated are distinct; published_files
+          is set ONLY after ref update succeeds.
+        - A failed ref update records orphaned_commit_sha, not false
+          partial publication.
+        """
         failed: list[dict] = []
         blob_shas: dict[str, str] = {}
 
@@ -871,7 +952,7 @@ class GitHubPagesDeploymentService:
                 sha = result.get("blob_sha", "")
                 if sha:
                     blob_shas[file_path] = sha
-                    published.append(file_path)
+                    manifest.blobs_created.append(file_path)
                 else:
                     failed.append({
                         "path": file_path,
@@ -885,7 +966,7 @@ class GitHubPagesDeploymentService:
             manifest.compute_digest()
             return manifest
 
-        # Step 2: Get current ref SHA for base_tree and parent commit
+        # Step 2: Get current ref SHA and resolve base_tree
         current_sha = ""
         base_tree_sha = ""
         try:
@@ -893,6 +974,13 @@ class GitHubPagesDeploymentService:
             current_sha = ref_resp.get("ref_sha", "")
         except Exception:
             pass
+
+        if current_sha:
+            try:
+                tree_resp = await gb.get_commit_tree(current_sha)
+                base_tree_sha = tree_resp.get("tree_sha", "")
+            except Exception:
+                pass
 
         # Step 3: Create tree with base_tree for preservation
         tree_entries = [
@@ -908,6 +996,7 @@ class GitHubPagesDeploymentService:
                 manifest.failed_files = failed
                 manifest.compute_digest()
                 return manifest
+            manifest.tree_created = True
         except Exception as e:
             for fp in blob_shas:
                 failed.append({"path": fp, "error": f"tree creation: {e}"})
@@ -928,16 +1017,13 @@ class GitHubPagesDeploymentService:
                 manifest.failed_files = [
                     {"path": "__commit__", "error": "commit creation failed"}
                 ]
-                manifest.published_files = published
-                manifest.publication_partial = len(published) > 0
                 manifest.compute_digest()
                 return manifest
             manifest.commit_sha = commit_sha
+            manifest.commit_created = True
             manifest.git_publication_mode = "atomic_git_commit"
         except Exception as e:
             manifest.failed_files = [{"path": "__commit__", "error": str(e)[:200]}]
-            manifest.published_files = published
-            manifest.publication_partial = len(published) > 0
             manifest.compute_digest()
             return manifest
 
@@ -945,13 +1031,11 @@ class GitHubPagesDeploymentService:
         try:
             ref_result = await gb.update_ref(f"heads/{branch}", commit_sha, force=False)
             if ref_result.get("success", False):
-                manifest.published_files = published
+                manifest.ref_updated = True
+                manifest.published_files = list(blob_shas.keys())
                 manifest.publication_complete = True
-                manifest.commit_sha = commit_sha
-                manifest.git_publication_mode = "atomic_git_commit"
             else:
-                manifest.commit_sha = commit_sha
-                manifest.git_publication_mode = "atomic_git_commit"
+                manifest.orphaned_commit_sha = commit_sha
                 status = ref_result.get("status_code", 0)
                 if status == 409:
                     manifest.failed_files = [
@@ -960,8 +1044,6 @@ class GitHubPagesDeploymentService:
                             "error": "ref conflict — branch advanced since preparation",
                         }
                     ]
-                    manifest.published_files = published
-                    manifest.publication_partial = True
                 else:
                     manifest.failed_files = [
                         {
@@ -969,12 +1051,9 @@ class GitHubPagesDeploymentService:
                             "error": ref_result.get("error", "ref update failed"),
                         }
                     ]
-                    manifest.published_files = published
-                    manifest.publication_partial = True
         except Exception as e:
+            manifest.orphaned_commit_sha = manifest.commit_sha
             manifest.failed_files = [{"path": "__ref__", "error": str(e)[:200]}]
-            manifest.published_files = published
-            manifest.publication_partial = True
 
         manifest.compute_digest()
         return manifest
@@ -1032,6 +1111,7 @@ def _phase_message(phase: str) -> str:
         "content_publication_started": "Content publication started",
         "content_publication_partial": "Content publication partially complete",
         "content_published": "Content published",
+        "content_commit_created_ref_not_updated": "Content commit created but branch ref not updated — recovery required",
         "build_requested": "Build requested",
         "build_pending": "Build pending",
         "published_verified": "Publication verified",
@@ -1046,15 +1126,15 @@ def _available_actions(phase: str) -> list[str]:
     phase_actions: dict[str, list[str]] = {
         "prepared": ["authorize", "cancel"],
         "authorization_required": ["authorize", "cancel"],
-        "authorized": ["configure_pages", "publish_content", "cancel"],
-        "pages_configuration_unchanged": [
-            "publish_content",
-            "verify_publication",
+        "authorized": ["publish_content", "authorize_pages", "cancel"],
+        "pages_configuration_unchanged": ["verify_publication", "cancel"],
+        "pages_created": ["verify_publication", "cancel"],
+        "pages_updated": ["verify_publication", "cancel"],
+        "content_published": ["configure_pages", "verify_publication", "cancel"],
+        "content_commit_created_ref_not_updated": [
+            "retry_content_publication",
             "cancel",
         ],
-        "pages_created": ["publish_content", "verify_publication", "cancel"],
-        "pages_updated": ["publish_content", "verify_publication", "cancel"],
-        "content_published": ["verify_publication", "cancel"],
         "build_requested": ["verify_publication", "cancel"],
         "build_pending": ["verify_publication", "cancel"],
         "published_verified": [],

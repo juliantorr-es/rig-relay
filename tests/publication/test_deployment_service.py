@@ -365,6 +365,7 @@ class TestPagesConfiguration:
             "content_publication_started",
             "content_publication_partial",
             "content_published",
+            "content_commit_created_ref_not_updated",
             "build_requested",
             "build_pending",
             "published_verified",
@@ -811,7 +812,8 @@ class TestStatusContractPopulation:
         assert contract.build_commit_sha == "sha256:build-commit"
         assert contract.build_commit_matches_published is True
         assert contract.available_actions
-        assert contract.evidence_digest
+        assert contract.projection_digest
+        assert contract.terminal_receipt_digest
 
     def test_contract_available_actions_for_phase(self) -> None:
         prep = self._make_prep()

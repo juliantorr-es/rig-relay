@@ -948,6 +948,52 @@ class RealGitHubBoundary:
                     {"error": str(e)[:100], "request_body_hash": body_hash},
                 )
 
+    async def get_commit_tree(self, commit_sha: str) -> dict[str, Any]:
+        """Get the tree SHA for a commit. Used to resolve base_tree for
+        non-destructive tree creation.
+        """
+        import httpx
+
+        route = f"git/commits/{commit_sha}"
+        if not self._token_valid:
+            return self._record(
+                "get_commit_tree", "GET", route, 0, {"error": "token_missing"}
+            )
+        async with httpx.AsyncClient() as client:
+            try:
+                resp = await client.get(
+                    self._route(route),
+                    headers={
+                        "Authorization": f"Bearer {self._token}",
+                        "Accept": "application/vnd.github+json",
+                        "X-GitHub-Api-Version": "2022-11-28",
+                    },
+                )
+                rates = self._read_rate_limits(resp)
+                acpt = self._read_accepted_perms(resp)
+                data = resp.json() if resp.status_code == 200 else {}
+                tree_sha = data.get("tree", {}).get("sha", "")
+                return self._record(
+                    "get_commit_tree",
+                    "GET",
+                    route,
+                    resp.status_code,
+                    {
+                        "rate_limit_snapshot": rates,
+                        "accepted_permissions": acpt,
+                        "tree_sha": tree_sha if tree_sha else None,
+                        "commit_sha": commit_sha,
+                    },
+                )
+            except Exception as e:
+                return self._record(
+                    "get_commit_tree",
+                    "GET",
+                    route,
+                    0,
+                    {"error": str(e)[:100], "commit_sha": commit_sha},
+                )
+
     async def get_pages_builds_latest(self) -> dict[str, Any]:
         import httpx
 
