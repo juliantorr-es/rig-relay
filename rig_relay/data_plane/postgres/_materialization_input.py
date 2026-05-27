@@ -200,6 +200,20 @@ class PublicationMaterializationInput:
 
         identity = ledger_path_digest or "unknown"
 
+        if reconstruction.corruption_detected:
+            return cls(
+                reconstruction=reconstruction,
+                source_evidence_digest=source_digest,
+                ledger_identity_digest=identity,
+                source_status=MaterializationInputStatus.CORRUPT_SOURCE,
+                source_status_reason=(
+                    f"Ledger reconstruction detected {reconstruction.corrupt_rows} corrupt rows "
+                    f"out of {reconstruction.total_rows} total. "
+                    "Source evidence is bound to corrupt content; "
+                    "materialization may proceed but source is not verified."
+                ),
+            )
+
         return cls(
             reconstruction=reconstruction,
             source_evidence_digest=source_digest,
@@ -262,9 +276,10 @@ def compute_projection_digest(
             return hashlib.sha256(b"").hexdigest()
 
         order_cols = primary_key_columns or [cols[0]]
-        order_sql = psql.SQL(", ").join(
-            psql.Identifier(c) for c in order_cols if c in cols
-        )
+        order_cols_filtered = [c for c in order_cols if c in cols]
+        if not order_cols_filtered:
+            order_cols_filtered = [cols[0]]
+        order_sql = psql.SQL(", ").join(psql.Identifier(c) for c in order_cols_filtered)
         col_list = psql.SQL(", ").join(psql.Identifier(c) for c in cols)
 
         query = psql.SQL("SELECT {} FROM {}.{} ORDER BY {}").format(

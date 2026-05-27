@@ -18,7 +18,6 @@ from psycopg import sql as psql
 from rig_relay.core.logger import logger
 from rig_relay.data_plane.postgres._materialization_input import (
     PublicationMaterializationInput,
-    compute_projection_digest,
 )
 from rig_relay.data_plane.postgres._models import (
     MaterializationReceipt,
@@ -271,13 +270,34 @@ class PublicationMaterializer:
         )
 
     def rebuild(self, input_data: PublicationMaterializationInput) -> RebuildReceipt:
-        """Clear and rebuild publication tables. Content-digest determinism."""
+        """Clear and rebuild publication tables. Content-digest determinism.
+
+        Hashes all three publication materialization tables with primary-key
+        ordering and domain identification. Excludes non-semantic timestamps.
+        Reconstruction corruption state participates in determinism proof:
+        a rebuild over the same receipt subset but different corruption
+        state is not an equivalent publication-history projection.
+        """
+        from rig_relay.data_plane.postgres._materialization_input import (
+            compute_multi_table_digest,
+        )
+
         schema = self._schema
         now = datetime.now()
-        exclude = ["materialized_at", "built_at"]
 
-        digest_before = compute_projection_digest(
-            self._store.conn, schema, "publication_preview_receipts", exclude
+        tables: list[tuple[str, list[str]]] = [
+            ("publication_preview_receipts", ["receipt_id"]),
+            ("publication_reconstruction", ["ledger_path_hash"]),
+            ("publication_builds", ["receipt_id"]),
+        ]
+        exclude = ["materialized_at", "built_at", "receipt_id"]
+
+        digest_before = compute_multi_table_digest(
+            self._store.conn,
+            schema,
+            tables,
+            exclude_columns=exclude,
+            domain_name="publication_history",
         )
         rows_before = self._count_publication_rows()
 
@@ -298,8 +318,12 @@ class PublicationMaterializer:
 
         self.materialize(input_data)
 
-        digest_after = compute_projection_digest(
-            self._store.conn, schema, "publication_preview_receipts", exclude
+        digest_after = compute_multi_table_digest(
+            self._store.conn,
+            schema,
+            tables,
+            exclude_columns=exclude,
+            domain_name="publication_history",
         )
         rows_after = self._count_publication_rows()
 

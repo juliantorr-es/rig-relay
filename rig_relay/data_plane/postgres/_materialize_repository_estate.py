@@ -59,7 +59,13 @@ class RepositoryEstateMaterializer:
         return self.materialize(input_data)
 
     def materialize_from_projection(self, projection: Any) -> MaterializationReceipt:
-        """Materialize from a pre-built RepositoryEstateProjection."""
+        """Materialize from a pre-built RepositoryEstateProjection.
+
+        Deprecated: this path accepts an unbound projection with no source
+        evidence digest and will be refused by the materializer guard.
+        Use materialize_from_service() or construct a RepositoryEstateMaterializationInput
+        with a non-empty source_evidence_digest and VERIFIED source_status.
+        """
         input_data = RepositoryEstateMaterializationInput(projection=projection)
         return self.materialize(input_data)
 
@@ -129,17 +135,36 @@ class RepositoryEstateMaterializer:
     ) -> MaterializationReceipt:
         """Materialize projection rows into PostgreSQL projection tables.
 
-        Refuses materialization when the producer digest is missing —
-        no unstable fallback hashing is used.
+        Refuses materialization when the producer digest is missing or
+        when the input claims VERIFIED status but carries no source
+        evidence digest — no unbound bypass path exists.
         """
         projection = input_data.projection
         schema = self.store.config.schema_name
         now = datetime.now()
 
         source_status = getattr(input_data, "source_status", None)
+        source_digest = getattr(input_data, "source_evidence_digest", "")
+
         if source_status and str(source_status) == "missing_producer_digest":
             receipt_id = compute_receipt_id(
                 "materialize_repo_estate_missing_digest", "repository_estate", now
+            )
+            return MaterializationReceipt(
+                receipt_id=receipt_id,
+                domain="repository_estate",
+                source_evidence_count=0,
+                rows_materialized=0,
+                corrupt_rows=0,
+                duplicate_rows=0,
+                built_at=now,
+                evidence_source_sha256="",
+                deterministic=False,
+            )
+
+        if source_status and str(source_status) == "verified" and not source_digest:
+            receipt_id = compute_receipt_id(
+                "materialize_repo_estate_unbound", "repository_estate", now
             )
             return MaterializationReceipt(
                 receipt_id=receipt_id,

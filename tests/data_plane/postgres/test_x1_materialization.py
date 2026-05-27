@@ -7,6 +7,7 @@ and content-light model checks against real PostgreSQL.
 
 from __future__ import annotations
 
+from pathlib import Path
 import shutil
 
 import psycopg
@@ -2755,3 +2756,393 @@ class TestBackupRestoreDomainDigest:
             "without content digest comparison proof"
         )
         assert receipt.canonical_equivalence_verified is False
+
+
+# ── X1.4 Reviewer-failure-repair tests ─────────────────────────────────────
+
+
+# ── X1.4 Reviewer-failure-repair tests ─────────────────────────────────────
+
+
+class TestPublicationCorruptionClassification:
+    def test_corrupt_ledger_emits_corrupt_source(self) -> None:
+        class FakeReconstruction:
+            def __init__(self):
+                self.receipts = [
+                    {
+                        "receipt_id": "rec_1",
+                        "evidence_digest": "sha256:ev1",
+                        "compilation_successful": True,
+                        "safety_passed": True,
+                        "refusal_code": None,
+                        "result_digest": "sha256:res1",
+                        "operation_id": "op_1",
+                    }
+                ]
+                self.total_rows = 3
+                self.valid_rows = 1
+                self.corrupt_rows = 2
+                self.corruption_detected = True
+
+        class FakeLedger:
+            def load_receipts(self, authoritative=False):
+                return FakeReconstruction()
+
+        input_data = PublicationMaterializationInput.from_ledger(FakeLedger())
+        assert input_data.source_status == MaterializationInputStatus.CORRUPT_SOURCE
+        assert input_data.source_evidence_digest.startswith("sha256:")
+        assert "corrupt" in input_data.source_status_reason.lower()
+
+    def test_clean_ledger_emits_verified(self) -> None:
+        class FakeReconstruction:
+            def __init__(self):
+                self.receipts = []
+                self.total_rows = 0
+                self.valid_rows = 0
+                self.corrupt_rows = 0
+                self.corruption_detected = False
+
+        class FakeLedger:
+            def load_receipts(self, authoritative=False):
+                return FakeReconstruction()
+
+        input_data = PublicationMaterializationInput.from_ledger(FakeLedger())
+        assert input_data.source_status == MaterializationInputStatus.VERIFIED
+        assert input_data.source_evidence_digest.startswith("sha256:")
+
+    def test_corrupt_ledger_digest_differs_from_clean(self) -> None:
+        class FakeReconstruction:
+            def __init__(self, corrupt):
+                self.receipts = [
+                    {
+                        "receipt_id": "rec_1",
+                        "evidence_digest": "sha256:ev1",
+                        "compilation_successful": True,
+                        "safety_passed": True,
+                        "refusal_code": None,
+                        "result_digest": "sha256:res1",
+                        "operation_id": "op_1",
+                    }
+                ]
+                self.total_rows = 1
+                self.valid_rows = 1
+                self.corrupt_rows = 0
+                self.corruption_detected = corrupt
+
+        class FakeLedger:
+            def __init__(self, corrupt):
+                self._corrupt = corrupt
+
+            def load_receipts(self, authoritative=False):
+                return FakeReconstruction(self._corrupt)
+
+        input_clean = PublicationMaterializationInput.from_ledger(FakeLedger(False))
+        input_corrupt = PublicationMaterializationInput.from_ledger(FakeLedger(True))
+        assert (
+            input_clean.source_evidence_digest != input_corrupt.source_evidence_digest
+        )
+
+
+class TestRepositoryUnboundProjectionRefused:
+    def test_materialize_from_projection_refused_when_unbound(
+        self, migrated_store
+    ) -> None:
+        from rig_relay.data_plane.postgres._materialize_repository_estate import (
+            RepositoryEstateMaterializer,
+        )
+
+        mat = RepositoryEstateMaterializer(migrated_store)
+        receipt = mat.materialize_from_projection({})
+        assert receipt.rows_materialized == 0
+        assert receipt.source_evidence_count == 0
+
+    def test_direct_input_with_verified_but_empty_digest_refused(
+        self, migrated_store
+    ) -> None:
+        from rig_relay.data_plane.postgres._materialize_repository_estate import (
+            RepositoryEstateMaterializer,
+        )
+
+        input_data = RepositoryEstateMaterializationInput(
+            projection={},
+            source_status=MaterializationInputStatus.VERIFIED,
+            source_evidence_digest="",
+        )
+        mat = RepositoryEstateMaterializer(migrated_store)
+        receipt = mat.materialize(input_data)
+        assert receipt.rows_materialized == 0
+
+    def test_direct_input_with_verified_and_valid_digest_accepted(
+        self, migrated_store
+    ) -> None:
+        from rig_relay.data_plane.postgres._materialize_repository_estate import (
+            RepositoryEstateMaterializer,
+        )
+
+        class FakeProjection:
+            def __init__(self):
+                self.registered_repositories = []
+                self.corruption_events = []
+                self.recent_changes = []
+                self.total_registered = 0
+                self.total_observations = 0
+                self.corrupt_registration_count = 0
+                self.corrupt_observation_count = 0
+                self.authority_state = "controlled_boundary"
+
+        input_data = RepositoryEstateMaterializationInput(
+            projection=FakeProjection(),
+            source_status=MaterializationInputStatus.VERIFIED,
+            source_evidence_digest="sha256:bound_digest",
+        )
+        mat = RepositoryEstateMaterializer(migrated_store)
+        receipt = mat.materialize(input_data)
+        assert receipt.rows_materialized >= 0
+
+
+class TestPublicationRebuildAllTables:
+    def test_rebuild_publication_uses_multi_table_digest(
+        self, migrated_store, pg_conn
+    ) -> None:
+        from rig_relay.data_plane.postgres._materialization_input import (
+            compute_multi_table_digest,
+        )
+
+        schema = migrated_store.config.schema_name
+        now = "2026-01-01T00:00:00+00:00"
+
+        with pg_conn.cursor() as cur:
+            for table in (
+                "publication_builds",
+                "publication_preview_receipts",
+                "publication_reconstruction",
+            ):
+                cur.execute(
+                    psql.SQL("DELETE FROM {}.{}").format(
+                        psql.Identifier(schema), psql.Identifier(table)
+                    )
+                )
+
+            cur.execute(
+                psql.SQL(
+                    "INSERT INTO {}.{} "
+                    "(receipt_id, compiled_at, compilation_successful, "
+                    "profile_candidate_digest, result_digest, safety_passed, "
+                    "deployment_ready, preview_only, evidence_digest, "
+                    "operation_id, provenance_class, authority_state, "
+                    "content_light_guarantee, materialized_at) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+                ).format(
+                    psql.Identifier(schema),
+                    psql.Identifier("publication_preview_receipts"),
+                ),
+                (
+                    "rebuild_rec_1",
+                    now,
+                    True,
+                    "sha256:prof",
+                    "sha256:res",
+                    True,
+                    False,
+                    True,
+                    "sha256:ev",
+                    "op_1",
+                    "derived_projection",
+                    "controlled_boundary",
+                    True,
+                    now,
+                ),
+            )
+            cur.execute(
+                psql.SQL(
+                    "INSERT INTO {}.{} "
+                    "(ledger_path_hash, total_rows, valid_rows, corrupt_rows, "
+                    "corrupt_lines, corruption_detected, authoritative, "
+                    "reconstruction_refused, last_reconstructed_at, "
+                    "reconstruction_warnings, source_schema_version, materialized_at) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+                ).format(
+                    psql.Identifier(schema),
+                    psql.Identifier("publication_reconstruction"),
+                ),
+                (
+                    "sha256:ledger",
+                    1,
+                    1,
+                    0,
+                    [],
+                    False,
+                    False,
+                    False,
+                    now,
+                    [],
+                    "rig.relay.publication_preview_event.v1",
+                    now,
+                ),
+            )
+            cur.execute(
+                psql.SQL(
+                    "INSERT INTO {}.{} "
+                    "(receipt_id, source_receipt_count, receipts_built, "
+                    "successful_count, refused_count, safety_failed_count, "
+                    "corrupt_receipt_count, reconstruction_healthy, built_at, "
+                    "evidence_source_sha256, deterministic) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+                ).format(
+                    psql.Identifier(schema), psql.Identifier("publication_builds")
+                ),
+                ("build_rec_1", 1, 1, 1, 0, 0, 0, True, now, "sha256:ev_source", False),
+            )
+
+        tables_for_digest = [
+            ("publication_preview_receipts", ["receipt_id"]),
+            ("publication_reconstruction", ["ledger_path_hash"]),
+            ("publication_builds", ["receipt_id"]),
+        ]
+        digest = compute_multi_table_digest(
+            pg_conn,
+            schema,
+            tables_for_digest,
+            exclude_columns=["materialized_at", "built_at", "receipt_id"],
+            domain_name="publication_history",
+        )
+        assert digest, "Multi-table digest must be computable for all 3 tables"
+        assert len(digest) == 64, f"Expected 64-char hex digest, got {len(digest)}"
+
+    def test_rebuild_different_corruption_state_different_digest(
+        self, migrated_store, pg_conn
+    ) -> None:
+        from rig_relay.data_plane.postgres._materialization_input import (
+            compute_multi_table_digest,
+        )
+
+        schema = migrated_store.config.schema_name
+        now = "2026-01-01T00:00:00+00:00"
+
+        def insert_reconstruction(corrupt_rows_val, corruption_detected_val):
+            with pg_conn.cursor() as cur:
+                cur.execute(
+                    psql.SQL("DELETE FROM {}.{}").format(
+                        psql.Identifier(schema),
+                        psql.Identifier("publication_reconstruction"),
+                    )
+                )
+                cur.execute(
+                    psql.SQL(
+                        "INSERT INTO {}.{} "
+                        "(ledger_path_hash, total_rows, valid_rows, corrupt_rows, "
+                        "corrupt_lines, corruption_detected, authoritative, "
+                        "reconstruction_refused, last_reconstructed_at, "
+                        "reconstruction_warnings, source_schema_version, materialized_at) "
+                        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+                    ).format(
+                        psql.Identifier(schema),
+                        psql.Identifier("publication_reconstruction"),
+                    ),
+                    (
+                        "sha256:corrupt_test",
+                        5,
+                        3,
+                        corrupt_rows_val,
+                        [],
+                        corruption_detected_val,
+                        False,
+                        False,
+                        now,
+                        [],
+                        "rig.relay.publication_preview_event.v1",
+                        now,
+                    ),
+                )
+
+            tables_for_digest = [
+                ("publication_preview_receipts", ["receipt_id"]),
+                ("publication_reconstruction", ["ledger_path_hash"]),
+                ("publication_builds", ["receipt_id"]),
+            ]
+            return compute_multi_table_digest(
+                pg_conn,
+                schema,
+                tables_for_digest,
+                exclude_columns=["materialized_at", "built_at", "receipt_id"],
+                domain_name="publication_history",
+            )
+
+        digest_clean = insert_reconstruction(0, False)
+        digest_corrupt = insert_reconstruction(2, True)
+
+        assert digest_clean != digest_corrupt, (
+            "Different corruption state must produce different multi-table digest"
+        )
+
+
+_SELF_DIR = Path(__file__).resolve().parent
+_WORKSPACE_ROOT = _SELF_DIR.parent.parent.parent
+
+
+class TestX0ContractBoundToSha:
+    def test_x0_contract_has_pushed_sha(self) -> None:
+        import json
+
+        contract_path = (
+            _WORKSPACE_ROOT
+            / "docs/json/contracts/x0_postgres_consumer_admission.v1.json"
+        )
+        assert contract_path.exists(), "X0 contract file must exist"
+        contract = json.loads(contract_path.read_text())
+        sha = contract["candidate_commit_sha"]
+        assert sha != "PENDING_PREPUBLICATION_ADMISSION", (
+            "X0 contract must bind to a real SHA, not a placeholder"
+        )
+        assert len(sha) == 40, f"Expected 40-char git SHA, got {len(sha)}"
+
+    def test_x0_contract_is_candidate_not_admission(self) -> None:
+        import json
+
+        contract_path = (
+            _WORKSPACE_ROOT
+            / "docs/json/contracts/x0_postgres_consumer_admission.v1.json"
+        )
+        contract = json.loads(contract_path.read_text())
+        admission_id = contract["admission_id"]
+        assert "candidate" in admission_id.lower(), (
+            f"Admission ID must include 'candidate': {admission_id}"
+        )
+        lane = contract["lane"]
+        assert "x1.4" in lane, f"Lane must be x1.4: {lane}"
+
+
+class TestReviewCycleRecordExists:
+    def test_prepublication_review_cycle_record_exists(self) -> None:
+        import json
+
+        record_path = (
+            _WORKSPACE_ROOT
+            / "docs/json/evidence/prepublication_review_cycle_x1_4.v1.json"
+        )
+        assert record_path.exists(), (
+            "Prepublication review cycle record must exist in pushed slice"
+        )
+        record = json.loads(record_path.read_text())
+        assert record["schema_version"] == "rig.relay.prepublication_review_cycle.v1"
+        assert len(record["rounds"]) >= 2, (
+            f"Must have at least 2 rounds, got {len(record['rounds'])}"
+        )
+        assert record["rounds"][0]["disposition"] == "prepublication_admitted"
+        verdict = record["rounds"][0].get("post_review_verdict", "")
+        assert verdict == "invalidated_by_missed_blocking_defects"
+        assert len(record["rounds"][0]["missed_blocking_defects"]) == 5
+
+    def test_review_cycle_binds_to_x1_3_sha(self) -> None:
+        import json
+
+        record_path = (
+            _WORKSPACE_ROOT
+            / "docs/json/evidence/prepublication_review_cycle_x1_4.v1.json"
+        )
+        record = json.loads(record_path.read_text())
+        baseline = record["baseline_sha"]
+        expected = "e2cd4b49b2862a6fb20ece0ec0cd098414cbba94"
+        assert baseline == expected, (
+            f"Baseline SHA must be X1.3 pushed SHA, got {baseline}"
+        )

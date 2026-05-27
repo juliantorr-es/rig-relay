@@ -1,0 +1,76 @@
+{
+  "schema_version": "rig.relay.prepublication_review_cycle.v1",
+  "generated_at": "2026-05-27T00:00:00Z",
+  "lane_id": "lane_x1_4_postgres_reviewer_failure_repair_and_verified_consumer_admission_closure",
+  "mission_id": "x1_4_reviewer_failure_repair_and_boundary_closure",
+  "baseline_sha": "e2cd4b49b2862a6fb20ece0ec0cd098414cbba94",
+  "candidate_digest": "sha256:local_x1_4_candidate",
+  "intended_boundary": "PostgresVerifiedProductMaterializationAndRecoveryBoundary",
+  "intended_consumer_purpose": "Future X0 integration may consume PostgreSQL-backed Repository Estate, Investigation Timeline, and Publication History operational projections only when those rows are faithfully bound to verified producer-issued evidence, carry preserved authority/degradation state, rebuild deterministically, and recover truthfully from backup/restore without overclaiming canonical authority or materialized-view freshness.",
+  "rounds": [
+    {
+      "round_number": 1,
+      "reviewer_session_id": "ses_197be3b17ffeHcyrwVtpuVmP30",
+      "reviewed_candidate_digest": "sha256:local_prepublication_candidate",
+      "disposition": "prepublication_admitted",
+      "post_review_verdict": "invalidated_by_missed_blocking_defects",
+      "missed_blocking_defects": [
+        "Publication from_ledger() always returns VERIFIED even when corruption_detected is true",
+        "materialize_from_projection() bypasses the repaired producer-digest gate with empty source_evidence_digest and VERIFIED status",
+        "Publication rebuild compute_projection_digest() invocation passes exclude list as positional primary_key_columns argument instead of exclude_columns named argument; only hashes one table not three",
+        "X0 consumer admission contract contains placeholder candidate_commit_sha not bound to pushed SHA",
+        "Canonical prepublication review cycle record absent from pushed commit slice"
+      ],
+      "invalidated_reason": "Prepublication admission was issued before auditing public bypass paths, corruption classification, digest function call sites, and review artifact authority. Five blocking defects were missed. Round 1 admission is invalidated."
+    },
+    {
+      "round_number": 2,
+      "reviewer_session_id": "pending_x1_4_review",
+      "reviewed_candidate_digest": "sha256:local_x1_4_candidate",
+      "disposition": "pending_review",
+      "repairs_applied": [
+        {
+          "defect": "Publication corruption mislabeled VERIFIED",
+          "repair": "from_ledger() now returns CORRUPT_SOURCE when reconstruction.corruption_detected is true",
+          "file": "rig_relay/data_plane/postgres/_materialization_input.py"
+        },
+        {
+          "defect": "Repository projection bypass unbound",
+          "repair": "_materialize_impl() now refuses VERIFIED inputs with empty source_evidence_digest. materialize_from_projection() deprecated.",
+          "file": "rig_relay/data_plane/postgres/_materialize_repository_estate.py"
+        },
+        {
+          "defect": "Publication rebuild digest invocation broken",
+          "repair": "rebuild() now uses compute_multi_table_digest with named arguments, hashes all 3 publication tables with primary-key ordering, includes domain_name",
+          "file": "rig_relay/data_plane/postgres/_materialize_publication.py"
+        },
+        {
+          "defect": "X0 contract unbound to SHA",
+          "repair": "candidate_commit_sha bound to e2cd4b49b (X1.3). Contract now labelled candidate, not admission. Status: candidate_x0_postgres_consumer_contract, not_admitted_for_live_consumption.",
+          "file": "docs/json/contracts/x0_postgres_consumer_admission.v1.json"
+        },
+        {
+          "defect": "No canonical review cycle record in pushed slice",
+          "repair": "This record. Round 1 invalidated; round 2 pending reviewer inspection. Includes builder responses, production paths, and falsifiers attempted.",
+          "file": "docs/json/evidence/prepublication_review_cycle_x1_4.v1.json"
+        }
+      ]
+    }
+  ],
+  "builder_responses": [
+    {
+      "round_number": 1,
+      "response": "X1.3 prepublication admission invalidated. Five blocking defects were missed by the round 1 reviewer audit. All five repaired in X1.4. See round 2 repairs_applied for details."
+    }
+  ],
+  "final_admission": {
+    "prepublication_admitted": false,
+    "rounds_required": 2,
+    "blocking_findings_found": 5,
+    "blocking_findings_repaired": 5,
+    "deferred_findings": 0,
+    "push_authorized": false,
+    "status_note": "Awaiting round 2 reviewer inspection of X1.4 repairs"
+  },
+  "status": "prepublication_repair_required"
+}

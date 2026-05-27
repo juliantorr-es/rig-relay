@@ -1,9 +1,9 @@
 {
   "schema_version": "rig.relay.x0_postgres_consumer_admission.v1",
-  "admission_id": "x0_postgres_admission_x1_3_v1",
+  "admission_id": "candidate_x0_postgres_consumer_contract_x1_4_v1",
   "issued_at": "2026-05-27T00:00:00Z",
-  "lane": "x1.3_postgres_verified_product_materialization_and_recovery",
-  "candidate_commit_sha": "PENDING_PREPUBLICATION_ADMISSION",
+  "lane": "x1.4_postgres_verified_product_materialization_and_recovery",
+  "candidate_commit_sha": "e2cd4b49b2862a6fb20ece0ec0cd098414cbba94",
   "postgresql_authority_classification": "derived_operational_projection",
   "prohibited_claims": [
     "PostgreSQL rows are canonical facts",
