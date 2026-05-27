@@ -34,6 +34,347 @@ function switchMode(mode) {
   document.getElementById(mode + '-view').classList.add('active');
 }
 
+// ── Surface Switching ──
+
+const SURFACE_IDS = ['connect', 'repository-estate', 'project-studio', 'inference-studio', 'publish-preview'];
+
+function switchSurface(surfaceId) {
+  SURFACE_IDS.forEach(function(id) {
+    var container = document.getElementById('surface-' + id);
+    if (container) container.classList.remove('active');
+  });
+  document.querySelectorAll('#surface-nav .surface-tab').forEach(function(tab) {
+    tab.classList.remove('active');
+    tab.setAttribute('aria-selected', 'false');
+  });
+
+  var activeTab = document.querySelector('#surface-nav .surface-tab[data-surface="' + surfaceId + '"]');
+  if (activeTab) {
+    activeTab.classList.add('active');
+    activeTab.setAttribute('aria-selected', 'true');
+  }
+
+  var surfaceContainer = document.getElementById('surface-' + surfaceId);
+  var mainGrid = document.getElementById('main-grid');
+
+  if (surfaceContainer) {
+    surfaceContainer.classList.add('active');
+    if (mainGrid) mainGrid.style.display = 'none';
+  }
+
+  renderSurfaceFixture(surfaceId);
+}
+
+function showCockpit() {
+  SURFACE_IDS.forEach(function(id) {
+    var container = document.getElementById('surface-' + id);
+    if (container) container.classList.remove('active');
+  });
+  document.querySelectorAll('#surface-nav .surface-tab').forEach(function(tab) {
+    tab.classList.remove('active');
+    tab.setAttribute('aria-selected', 'false');
+  });
+  var mainGrid = document.getElementById('main-grid');
+  if (mainGrid) mainGrid.style.display = '';
+}
+
+// ── Visual State System ──
+// Proven/claimed/planned/narrative/redacted from E0 EvidenceStatus
+// Connected/disconnected/deferred/pending/refused/blocked/error for service state
+
+function renderStatusChip(el, status, label) {
+  if (!el) return;
+  var cls = 'status-chip';
+  if (status === 'connected' || status === 'granted' || status === 'synced' || status === 'cloned' || status === 'ok' || status === 'available') cls += ' connected';
+  else if (status === 'disconnected' || status === 'refused' || status === 'failed' || status === 'error') cls += ' disconnected';
+  else if (status === 'deferred' || status === 'blocked' || status === 'warning') cls += ' deferred';
+  else cls += ' pending';
+  el.className = cls;
+  setText(el, label || status);
+}
+
+function renderEvidenceTag(status) {
+  var cls = 'evidence-tag';
+  if (status === 'proven') cls += ' proven';
+  else if (status === 'claimed') cls += ' claimed';
+  else if (status === 'planned') cls += ' planned';
+  else if (status === 'narrative') cls += ' narrative';
+  else cls += ' narrative';
+  return '<span class="' + cls + '">' + escapeHtml(status) + '</span>';
+}
+
+// ── P0 Intent Stubs ──
+// Emit typed intents through bridge only. Never call authority locally.
+// These match the declared O0 intent contract.
+
+function emitP0Intent(intentName, params) {
+  var payload = {
+    intent_name: intentName,
+    parameters: params || {},
+    source: 'p0_gridline_frontend',
+    fixture_backed: true,
+    authority: 'none_local'
+  };
+  if (wsClient && _appAuthority.isConnected()) {
+    wsClient.sendMessage({
+      type: 'desktop_intent_request',
+      intent_name: intentName,
+      parameters: params || {},
+      dry_run: true,
+      source_surface: 'p0_gridline'
+    });
+  }
+  console.log('[P0 Intent emitted]', intentName, JSON.stringify(payload).substring(0, 100));
+}
+
+// ── Surface Fixture Rendering ──
+// Consumes window.__P0_FIXTURES__ fixture data. All rendering is fixture-backed
+// until O0 publishes live bridge aggregation.
+
+function _getFixture(surfaceId) {
+  if (!window.__P0_FIXTURES__) return null;
+  switch (surfaceId) {
+    case 'connect': return window.__P0_FIXTURES__.connect;
+    case 'repository-estate': return window.__P0_FIXTURES__.repository_estate;
+    case 'project-studio': return window.__P0_FIXTURES__.project_studio;
+    case 'inference-studio': return window.__P0_FIXTURES__.inference_studio;
+    case 'publish-preview': return window.__P0_FIXTURES__.publish_preview;
+    default: return null;
+  }
+}
+
+function renderSurfaceFixture(surfaceId) {
+  var fix = _getFixture(surfaceId);
+  if (!fix) return;
+
+  switch (surfaceId) {
+    case 'connect': renderConnectSurface(fix); break;
+    case 'repository-estate': renderRepositoryEstateSurface(fix); break;
+    case 'project-studio': renderProjectStudioSurface(fix); break;
+    case 'inference-studio': renderInferenceStudioSurface(fix); break;
+    case 'publish-preview': renderPublishPreviewSurface(fix); break;
+  }
+}
+
+function renderConnectSurface(fix) {
+  var cb = fix.carte_blanche || {};
+  renderStatusChip(document.getElementById('cb-status-chip'), cb.status, cb.status === 'connected' ? 'Carte Blanche Connected' : cb.status);
+  setText(document.getElementById('cb-detail'), fix._fixture_disclaimer || '');
+
+  var ra = fix.repository_access || {};
+  var raEl = document.getElementById('repo-access-status');
+  if (raEl) {
+    raEl.innerHTML = (ra.status === 'granted' ? renderEvidenceTag('proven') : renderEvidenceTag('planned')) +
+      ' Repository access: <strong>' + escapeHtml(ra.status) + '</strong>' +
+      (ra.token_present ? ' &middot; Token present' : ' &middot; No token');
+  }
+
+  var pa = fix.publication_approval || {};
+  var paEl = document.getElementById('publication-approval-status');
+  if (paEl) {
+    paEl.innerHTML = renderEvidenceTag(pa.status === 'granted' ? 'proven' : 'planned') +
+      ' Publication approval: <strong>' + escapeHtml(pa.status) + '</strong>' +
+      (pa.reason ? '<br><span class="status-detail">' + escapeHtml(pa.reason) + '</span>' : '');
+  }
+}
+
+function renderRepositoryEstateSurface(fix) {
+  var repos = fix.repositories || [];
+  var repoList = document.getElementById('repo-list-container');
+  if (repoList) {
+    var html = '';
+    repos.forEach(function(r) {
+      var statusTag = '';
+      if (r.clone_status === 'cloned') statusTag = renderEvidenceTag('proven');
+      else if (r.clone_status === 'failed') statusTag = renderEvidenceTag('claimed');
+      else statusTag = renderEvidenceTag('planned');
+      html += '<div class="repo-card">' +
+        '<div class="repo-name">' + escapeHtml(r.display_name) + '</div>' +
+        '<div class="repo-meta">' + statusTag +
+        ' ' + escapeHtml(r.full_name) + ' &middot; ' + escapeHtml(r.branch) + ' &middot; ' + escapeHtml(r.clone_status) +
+        (r.publication_ready ? ' <span class="evidence-tag proven">public-ready</span>' : ' <span class="evidence-tag planned">private</span>') +
+        (r.publication_blockers && r.publication_blockers.length ? '<br><span class="status-detail">Blockers: ' + escapeHtml(r.publication_blockers.join(', ')) + '</span>' : '') +
+        '</div></div>';
+    });
+    if (repos.length === 0) html = '<div class="status-detail">No repositories discovered.</div>';
+    repoList.innerHTML = html;
+  }
+
+  var intake = fix.intake_status || {};
+  var intakeEl = document.getElementById('repo-intake-status');
+  if (intakeEl) {
+    renderStatusChip(intakeEl.querySelector('.status-chip') || intakeEl, intake.status, 'Intake: ' + (intake.status || 'idle'));
+    var detail = intakeEl.querySelector('.status-detail');
+    if (detail) setText(detail, (intake.repos_discovered || 0) + ' discovered, ' + (intake.repos_imported || 0) + ' imported, ' + (intake.repos_failed || 0) + ' failed');
+  }
+
+  var sync = fix.sync_status || {};
+  var syncEl = document.getElementById('repo-intake-status');
+  if (syncEl && sync.status === 'synced') {
+    syncEl.innerHTML += '<br><span class="status-detail">Last synced: ' + escapeHtml(sync.last_sync_at || 'never') + '</span>';
+  }
+}
+
+function renderProjectStudioSurface(fix) {
+  var os = fix.operator_session || {};
+  var osEl = document.getElementById('operator-session-status');
+  if (osEl) {
+    osEl.innerHTML = '<span class="status-line">Session: <strong>' + escapeHtml(os.status || 'idle') + '</strong> &middot; Phase: ' + escapeHtml(os.phase || 'idle') + '</span>' +
+      '<br><span class="status-detail">' + escapeHtml(os.purpose || '') + ' on ' + escapeHtml(os.repository_label || '') + '</span>';
+    if (os.pending_decisions && os.pending_decisions.length) {
+      osEl.innerHTML += '<br><span class="status-detail" style="color:var(--warning-color)">⚠ Pending: ' + escapeHtml(os.pending_decisions.join(', ')) + '</span>';
+    }
+    if (os.blocked_capabilities && os.blocked_capabilities.length) {
+      osEl.innerHTML += '<br><span class="status-detail" style="color:var(--error-color)">Blocked: ' + escapeHtml(os.blocked_capabilities.join(', ')) + '</span>';
+    }
+  }
+
+  var tsEl = document.getElementById('operator-tool-summary');
+  if (tsEl && os.tool_summary) {
+    var toolHtml = '<table class="kv">';
+    os.tool_summary.forEach(function(t) {
+      var hasFailure = t.failures > 0 || t.refusals > 0;
+      toolHtml += '<tr><td class="k">' + escapeHtml(t.tool_name) + '</td><td class="' + (hasFailure ? 'warning' : 'ok') + '">' + t.calls + ' calls &middot; ' + t.successes + ' ok</td></tr>';
+    });
+    toolHtml += '</table>';
+    tsEl.innerHTML = toolHtml;
+  }
+
+  var propEl = document.getElementById('operator-proposals');
+  if (propEl && os.proposal_dispositions) {
+    var disp = os.proposal_dispositions;
+    var keys = Object.keys(disp);
+    if (keys.length > 0) {
+      var propHtml = '<div class="status-line">Proposals: ' + (os.proposal_count || 0) + '</div>';
+      keys.forEach(function(k) {
+        propHtml += '<span class="evidence-tag ' + (k === 'refused' ? 'narrative' : 'claimed') + '">' + escapeHtml(k) + ': ' + disp[k] + '</span> ';
+      });
+      propEl.innerHTML = propHtml;
+    } else {
+      setText(propEl, 'No proposals yet.');
+    }
+  }
+
+  var pu = fix.project_understanding || {};
+  var usEl = document.getElementById('understanding-status');
+  if (usEl) {
+    usEl.innerHTML = '<span class="status-line">Study status: <strong>' + escapeHtml(pu.study_status || 'not_started') + '</strong></span>' +
+      '<br><span class="status-detail">' + (pu.facts_discovered || 0) + ' facts (' + (pu.facts_with_provenance || 0) + ' with provenance) &middot; ' + (pu.draft_narrative_count || 0) + ' drafts (' + (pu.draft_narrative_awaiting_approval || 0) + ' awaiting approval)</span>';
+  }
+
+  var udEl = document.getElementById('understanding-details');
+  if (udEl) {
+    var detailsHtml = '<table class="kv">';
+    if (pu.languages_detected) detailsHtml += '<tr><td class="k">Languages</td><td>' + escapeHtml(pu.languages_detected.join(', ')) + '</td></tr>';
+    if (pu.frameworks_detected) detailsHtml += '<tr><td class="k">Frameworks</td><td>' + escapeHtml(pu.frameworks_detected.join(', ')) + '</td></tr>';
+    if (pu.withheld_reasons) detailsHtml += '<tr><td class="k warning">Withheld</td><td>' + escapeHtml(pu.withheld_material_count + ' items: ' + pu.withheld_reasons.join(', ')) + '</td></tr>';
+    detailsHtml += '<tr><td class="k">Portfolio</td><td>' + escapeHtml(pu.portfolio_eligibility || 'unknown') + '</td></tr>';
+    detailsHtml += '<tr><td class="k">Approval</td><td>' + escapeHtml(pu.approval_status || 'unknown') + '</td></tr>';
+    detailsHtml += '</table>';
+    udEl.innerHTML = detailsHtml;
+  }
+}
+
+function renderInferenceStudioSurface(fix) {
+  var lr = fix.local_runtime || {};
+  var irEl = document.getElementById('inference-runtime-status');
+  if (irEl) {
+    renderStatusChip(irEl.querySelector('.status-chip') || irEl, lr.available ? 'available' : 'offline', (lr.available ? 'Runtime Available' : 'Runtime Offline'));
+    var detail = irEl.querySelector('.status-detail');
+    if (detail) setText(detail, (lr.available ? 'Local inference ready (' + escapeHtml(lr.runtime_kind || 'unknown') + ')' : 'No local runtime configured'));
+  }
+
+  var ts = fix.task_suitability || [];
+  var tasksGrid = document.getElementById('inference-tasks');
+  if (tasksGrid) {
+    var taskHtml = '';
+    ts.forEach(function(t) {
+      var suitable = t.suitable;
+      taskHtml += '<div class="task-card ' + (suitable ? 'suitable' : 'unsuitable') + '">' +
+        '<div class="task-name">' + escapeHtml(t.task_kind) + '</div>' +
+        '<div class="task-status">' + renderEvidenceTag(suitable ? 'proven' : 'claimed') + ' ' +
+        (suitable ? 'JSON_OBJECT_FORMATTING_ONLY admitted' : escapeHtml(t.refusal_reason || 'Refused')) +
+        '</div></div>';
+    });
+    tasksGrid.innerHTML = taskHtml;
+  }
+
+  var drafts = fix.drafts || [];
+  var draftList = document.getElementById('inference-drafts');
+  if (draftList) {
+    var draftHtml = '<h3>Drafts (' + drafts.length + ')</h3>';
+    if (drafts.length === 0) draftHtml += '<div class="draft-item">No drafts.</div>';
+    drafts.forEach(function(d) {
+      var needsApproval = d.requires_approval || d.output_disposition === 'review_required';
+      draftHtml += '<div class="draft-item">' +
+        '<strong>' + escapeHtml(d.task_kind) + '</strong>: ' + escapeHtml(d.draft_sha256 ? d.draft_sha256.substring(0, 16) + '...' : 'unknown') +
+        ' <span class="evidence-tag ' + (needsApproval ? 'claimed' : 'proven') + '">' + (needsApproval ? 'review-required' : 'approved') + '</span>' +
+        ' (' + (d.draft_byte_count || 0) + ' bytes)' +
+        '</div>';
+    });
+    draftList.innerHTML = draftHtml;
+  }
+
+  var refusals = fix.refusal_explanations || [];
+  var refusalList = document.getElementById('inference-refusals');
+  if (refusalList) {
+    var refHtml = '<h3>Refusals (' + refusals.length + ')</h3>';
+    if (refusals.length === 0) {
+      refHtml += '<div class="refusal-item" style="color:var(--text-secondary)">No refusals — all suitable tasks executed.</div>';
+    } else {
+      refusals.forEach(function(r) {
+        refHtml += '<div class="refusal-item">' +
+          '<strong>' + escapeHtml(r.task_kind) + '</strong>: ' + escapeHtml(r.refusal_reason || r.status) +
+          ' (code: ' + escapeHtml(r.refusal_code || 'UNKNOWN') + ')' +
+          '</div>';
+      });
+    }
+    refusalList.innerHTML = refHtml;
+  }
+}
+
+function renderPublishPreviewSurface(fix) {
+  var pr = fix.publication_readiness || {};
+  var readinessEl = document.getElementById('publish-readiness');
+  if (readinessEl) {
+    renderStatusChip(readinessEl.querySelector('.status-chip') || readinessEl, pr.can_publish ? 'ready' : 'deferred', pr.can_publish ? 'Ready to Publish' : 'Not Ready');
+    var detail = readinessEl.querySelector('.status-detail');
+    if (detail) {
+      var detailText = pr.content_light_check_passed ? 'Content-light check: passed. ' : 'Content-light check: NOT passed! ';
+      detailText += pr.public_safety_check_passed ? 'Public safety: passed. ' : 'Public safety: NOT passed! ';
+      if (pr.blockers && pr.blockers.length) detailText += 'Blockers: ' + pr.blockers.join('; ') + '.';
+      setText(detail, detailText);
+    }
+  }
+
+  var pc = fix.profile_candidate || {};
+  var sectionsGrid = document.getElementById('publish-sections');
+  if (sectionsGrid) {
+    var sectionsHtml = '';
+    (pc.public_sections || []).forEach(function(s) {
+      sectionsHtml += '<div class="section-card ' + (s.ready ? 'ready' : 'not-ready') + '">' +
+        '<strong>' + escapeHtml(s.title) + '</strong> ' + renderEvidenceTag(s.status) +
+        (s.reason ? '<br><span class="status-detail" style="font-size:0.7rem">' + escapeHtml(s.reason) + '</span>' : '') +
+        '</div>';
+    });
+    sectionsGrid.innerHTML = sectionsHtml;
+  }
+
+  var withheldEl = document.getElementById('publish-withheld');
+  if (withheldEl) {
+    var withheldHtml = '<h3>Withheld from Public Preview</h3>';
+    if (pc.withoutheld_sections) {
+      pc.withheld_sections.forEach(function(w) {
+        withheldHtml += '<div class="withheld-item"><strong>' + escapeHtml(w.section_id) + '</strong>: ' + escapeHtml(w.reason) + ' (' + escapeHtml(w.privacy_class) + ')</div>';
+      });
+    } else {
+      withheldHtml += '<div class="withheld-item">No explicitly withheld sections.</div>';
+    }
+    withheldHtml += '<div class="withheld-item" style="margin-top:8px;color:var(--text-muted)">Any section not in public_sections above is withheld by default. Private/internal-only material is never rendered in this preview.</div>';
+    withheldEl.innerHTML = withheldHtml;
+  }
+}
+
 // ── Sanitize: textContent only for untrusted content ──
 
 function setText(el, text) {
@@ -1216,6 +1557,22 @@ document.addEventListener('DOMContentLoaded', function() {
       sendMessage();
     }
   });
+
+  // Surface tab listeners
+  document.querySelectorAll('#surface-nav .surface-tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      var surface = this.getAttribute('data-surface');
+      if (!surface) return;
+      if (this.classList.contains('active')) {
+        showCockpit();
+      } else {
+        switchSurface(surface);
+      }
+    });
+  });
+
+  // Start with cockpit visible, deactivate hardcoded surface active class
+  showCockpit();
 
   // Init
   if (typeof ProjectionWebSocketClient !== 'undefined') {

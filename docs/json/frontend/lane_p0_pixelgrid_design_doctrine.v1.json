@@ -1,0 +1,424 @@
+{
+  "schema_version": "rig.relay.pixelgrid_design_doctrine.v1",
+  "doctrine_id": "p0-doctrine-37abc24ff198d392",
+  "lane": "P0",
+  "corpus_source": ".build/pixelgridui-transcripts/",
+  "corpus_size": 44,
+  "transcripts_digested": 44,
+  "principles_extracted": 30,
+  "content_light": true,
+  "corpus_completion": "complete — all 44 available transcripts digested (140 blocked by IP ban)",
+  "extraction_policy": "Paraphrased only. No raw transcript text. Every principle carries video_id and summary digest for traceability. No principle is promoted to canonical product truth until implemented and proven.",
+  "principles": [
+    {
+      "principle_id": "p0-pg-001",
+      "principle_kind": "layout_strategy",
+      "source_video_id": "4HwdEhPCuKc",
+      "principle_summary": "Data-attribute-driven modular layout: components are generated dynamically from a declarative config array, DOM state is signaled through data- attributes rather than class toggles within inline style overrides.",
+      "surface_applicability": [
+        "gridline"
+      ],
+      "product_implication": "The Gridline cockpit layout must be driven by a declarative widget config array, with panels generated dynamically and their state managed through data- attributes rather than ad-hoc class toggles. This enables the cockpit to rehydrate layout from a config payload without hardcoded DOM structure.",
+      "component_implication": "Define each cockpit widget (status chip, evidence rail, log stream) as a config entry with kind, position, and initial-disclosure-level fields. The layout engine iterates the config array, generates DOM nodes, and sets data-disclosure and data-status attributes for CSS-driven state changes.",
+      "implementation_disposition": "applied_in_this_slice",
+      "digest_sha256": "sha256:824e19bc3dc78ff142132ef18281b13ef8d865a443ef8bf3ad40c120f688e3e9"
+    },
+    {
+      "principle_id": "p0-pg-002",
+      "principle_kind": "token_system",
+      "source_video_id": "d1iKBakSDKs",
+      "principle_summary": "Central theme token authority with surface-scoped presets: one token source defines background, foreground, muted, and accent colors per surface section, with opacity control for layered elements.",
+      "surface_applicability": [
+        "gridline",
+        "project_page",
+        "portfolio_site"
+      ],
+      "product_implication": "Rig Relay must define a single CSS custom property token file as the authority for all three surfaces (Gridline, project page, portfolio site). Each surface applies a surface-scoped token set from the same source, ensuring color consistency without duplication. Layered panels (modals, overlays, expanded views) use opacity tokens from the same system.",
+      "component_implication": "Create a tokens.css file with :root-level custom properties (--rr-color-bg, --rr-color-fg, --rr-color-muted, --rr-color-accent) and surface-scoped overrides via [data-surface='gridline'], [data-surface='project-page'], and [data-surface='portfolio-site'] attribute selectors. Add --rr-opacity-overlay and --rr-opacity-disabled tokens for layered surfaces.",
+      "implementation_disposition": "applied_in_this_slice",
+      "digest_sha256": "sha256:aa6892de4c42b5d2c9d123f6bf7d0013abced686f1521936c611dbf736432710"
+    },
+    {
+      "principle_id": "p0-pg-003",
+      "principle_kind": "token_system",
+      "source_video_id": "gJMhUTCMOsc",
+      "principle_summary": "Integer-multiplied spacing system from a single base unit of 0.25rem (4px): every gap, padding, and margin derives from this base through multiplication, the scale doubles at key layout points, and consistent rhythm eliminates guesswork.",
+      "surface_applicability": [
+        "gridline",
+        "project_page",
+        "portfolio_site"
+      ],
+      "product_implication": "Every spacing value in the Gridline cockpit, project page, and portfolio site must derive from a single --rr-space-unit CSS variable (0.25rem). This eliminates arbitrary padding values and ensures a consistent visual rhythm across all widgets, cards, nav bars, and evidence panels.",
+      "component_implication": "Define a spacing token scale: --rr-space-xs (0.25rem), --rr-space-sm (0.5rem), --rr-space-md (1rem), --rr-space-lg (2rem), --rr-space-xl (4rem). All component padding, gap, and margin must reference these tokens, never raw px/rem values. Audit existing hardcoded spacing values and replace with token references.",
+      "implementation_disposition": "applied_in_this_slice",
+      "digest_sha256": "sha256:a144e0a8fb5f34e3d063e006a728cace1f176b8adbf5b9d578fa49d7d6a313a6"
+    },
+    {
+      "principle_id": "p0-pg-004",
+      "principle_kind": "interaction_grammar",
+      "source_video_id": "8ehY-OprOm8",
+      "principle_summary": "Fixed-window scrolling content with snap-to-center: a container has a fixed viewport height, content scrolls within it via momentum, items snap to the visual center of the window, and mutation is gated behind confirm/reject actions.",
+      "surface_applicability": [
+        "gridline"
+      ],
+      "product_implication": "The evidence rail (log entries, checkpoint history, tool-call stream) should use a fixed-height container where entries scroll vertically and snap to the center. The confirm/reject action pattern maps directly to checkpoint approval and tool-permission gating: the agent proposes a mutation, the human must confirm or reject before execution.",
+      "component_implication": "Implement an evidence-rail component with: (1) a fixed-height container with overflow-y: auto and scroll-snap-type: y mandatory, (2) each log entry styled with scroll-snap-align: center, (3) a highlighted snap zone (translucent overlay band at container center via CSS pseudo-elements), (4) confirm/reject buttons that appear when a pending-action entry is snapped into view.",
+      "implementation_disposition": "queued",
+      "digest_sha256": "sha256:c8631dee531f45f6e06c7db0b83ecf2b9b8a680b365b41e300d7443c34d24e76"
+    },
+    {
+      "principle_id": "p0-pg-005",
+      "principle_kind": "layout_strategy",
+      "source_video_id": "dwI0QANfFXs",
+      "principle_summary": "Cascade layer architecture to prevent specificity wars: @layer rules define an explicit priority order (reset, base, components, utilities, overrides), third-party styles stay in a vendor layer, and !important becomes unnecessary.",
+      "surface_applicability": [
+        "gridline",
+        "project_page",
+        "portfolio_site"
+      ],
+      "product_implication": "Rig Relay's CSS must define an explicit cascade layer order. The pywebview bridge loads a mix of framework base styles, widget-specific component styles, and user-theme overrides. Without layer ordering, specificity fights between these sources will produce brittle, unmaintainable styles that are hard to debug in an embedded webview.",
+      "component_implication": "Define CSS layers in priority order: @layer reset, tokens, primitives, layout, components, overrides, vendor. Place framework resets in 'reset', design tokens in 'tokens', basic HTML element defaults in 'primitives', grid/flex layout rules in 'layout', widget-specific styles in 'components', theme variants in 'overrides', and any third-party widget CSS in 'vendor'.",
+      "implementation_disposition": "queued",
+      "digest_sha256": "sha256:fc8dec05de265377d9d41b26005fc1e8a71e22f3c3cd8da95d6b1c625eb54279"
+    },
+    {
+      "principle_id": "p0-pg-006",
+      "principle_kind": "motion_pattern",
+      "source_video_id": "iNJIq_Fk0a4",
+      "principle_summary": "View Transitions API pattern for seamless surface transitions: the browser captures before/after snapshots and crossfades between them, eliminating abrupt flashes, and fluid contextual navigation helps users maintain their mental model of application state.",
+      "surface_applicability": [
+        "gridline"
+      ],
+      "product_implication": "Cockpit mode switches (Operator \u2192 Review \u2192 System \u2192 Technical) should animate as fluid transitions rather than jarring full-page redraws. The user's mental model of the application state must survive the mode switch \u2014 the layout shift should feel like moving between rooms in the same building, not teleporting to a different application.",
+      "component_implication": "Use the View Transitions API (document.startViewTransition) to wrap cockpit mode changes. Each mode layout should assign a unique view-transition-name to its root container so the browser can crossfade between snapshots. Fall back to a CSS opacity transition for pywebview environments that do not support View Transitions yet.",
+      "implementation_disposition": "queued",
+      "digest_sha256": "sha256:f3b4cd2a868291f0128d71526897e92f7b3a49e4571dff40b953c0b26ab8aa42"
+    },
+    {
+      "principle_id": "p0-pg-007",
+      "principle_kind": "information_architecture",
+      "source_video_id": "B-WyFjubr7s",
+      "principle_summary": "Structured data shapes as UI transport contracts: a data shape mismatch breaks consumers silently because expected fields are absent or unknown fields are received, so the data envelope is the contract the UI travels in and must be validated before rendering.",
+      "surface_applicability": [
+        "gridline",
+        "project_page",
+        "portfolio_site"
+      ],
+      "product_implication": "Every WebSocket projection consumed by the Gridline frontend must be validated against its schema before rendering. When a projection arrives with missing or unexpected fields, the affected widget must degrade to an empty-state or error-state card rather than crashing the bridge or rendering broken partial content.",
+      "component_implication": "Implement a projection validation middleware in the frontend bridge: before any widget receives its projection slice, validate field presence against the expected schema shape. Widgets must handle three states explicitly: (1) projection valid \u2192 render, (2) projection missing required fields \u2192 show degraded-empty card with 'data incomplete' label, (3) projection malformed \u2192 show error card with refresh action.",
+      "implementation_disposition": "queued",
+      "digest_sha256": "sha256:001414498aa686a6537c126bdb4a105acdc76c1080d56fbf43eeabb33f5abe84"
+    },
+    {
+      "principle_id": "p0-pg-008",
+      "principle_kind": "motion_pattern",
+      "source_video_id": "h5mzYIMSWRw",
+      "principle_summary": "Delta-time animation with a single shared animation heartbeat: measure elapsed time on each frame rather than counting frames, apply deltas to keep motion consistent across all refresh rates, and attach custom updates to one shared loop rather than running separate requestAnimationFrame instances.",
+      "surface_applicability": [
+        "gridline"
+      ],
+      "product_implication": "When Rig Relay implements animated UI elements (loading spinners, status-transition pulses, count-up metrics, progress bars), all animations must share one requestAnimationFrame loop with delta-time calculation. This prevents drift between concurrent animations and ensures consistent speed on the embedded webview regardless of host display refresh rate.",
+      "component_implication": "Create a shared animation heartbeat module that: (1) runs a single requestAnimationFrame loop, (2) computes delta-time on each tick, (3) maintains a registry of animation callbacks, (4) calls each callback with the delta-time value. All animated components (spinner, pulse, progress, count-up) register with this heartbeat instead of starting their own RAF loop.",
+      "implementation_disposition": "reference_only",
+      "digest_sha256": "sha256:c5b9f564216b84b9c5dc4194613e104be3f90b90a0edec0832606acbb17f9f3d"
+    },
+    {
+      "principle_id": "p0-pg-009",
+      "principle_kind": "component_primitive",
+      "source_video_id": "B2H15w9i5kg",
+      "principle_summary": "Every component that attaches temporary visual state must provide a complete teardown that returns the element to its exact original state — not just stopping the behavior but removing all traces (inline styles, classes, listeners).",
+      "surface_applicability": [
+        "gridline"
+      ],
+      "product_implication": "Surface lifecycle: when switching between Connect/RepositoryEstate/ProjectStudio/etc., each surface must clean up its own event listeners, timers, and DOM mutations.",
+      "component_implication": "Surface lifecycle: when switching between Connect/RepositoryEstate/ProjectStudio/etc., each surface must clean up its own event listeners, timers, and DOM mutations.",
+      "implementation_disposition": "queued",
+      "digest_sha256": "sha256:2f4d4b3bbeb96b2f939e01f90f778b23b04fbc1599de61817766a8436645d7d6"
+    },
+    {
+      "principle_id": "p0-pg-010",
+      "principle_kind": "motion_pattern",
+      "source_video_id": "bVSkp3BO8bU",
+      "principle_summary": "Use transitions for simple two-state UI changes (expand/collapse, show/hide) and keyframe animations for multi-step entrance/exit sequences. Constrain motion to GPU-composited properties (transform, opacity).",
+      "surface_applicability": [
+        "gridline"
+      ],
+      "product_implication": "Surface tab switching should use CSS transitions for the active state change, not abrupt display toggles.",
+      "component_implication": "Surface tab switching should use CSS transitions for the active state change, not abrupt display toggles.",
+      "implementation_disposition": "queued",
+      "digest_sha256": "sha256:f600b9277ac26b92f76fd71e24b12543f7c77cfebf1a331f2a9e850227e66712"
+    },
+    {
+      "principle_id": "p0-pg-011",
+      "principle_kind": "component_primitive",
+      "source_video_id": "gnRiN5A2Ah0",
+      "principle_summary": "Group all side effects a component creates into a single lifecycle container. Teardown must be one atomic operation that kills animations, restores original styles, removes listeners, and runs custom cleanup.",
+      "surface_applicability": [
+        "gridline"
+      ],
+      "product_implication": "Each surface renderer should register its DOM listeners and timers in a scoped context that is destroyed on surface switch.",
+      "component_implication": "Each surface renderer should register its DOM listeners and timers in a scoped context that is destroyed on surface switch.",
+      "implementation_disposition": "queued",
+      "digest_sha256": "sha256:69f2887f782b79ec15db4cbf65c0eabacf521b2645c5263b46c8830cda782a4d"
+    },
+    {
+      "principle_id": "p0-pg-012",
+      "principle_kind": "information_architecture",
+      "source_video_id": "jHRHV1MNR5s",
+      "principle_summary": "Prefer the simplest, most resilient tool for each UI concern — native platform capabilities over JavaScript reimplementations. Every JS reimplementation carries parse cost, hydration cost, dependency weight, and accessibility risk that the platform version already solved.",
+      "surface_applicability": [
+        "gridline"
+      ],
+      "product_implication": "For desktop: prefer OS-native controls (system dialogs, native context menus, platform disclosure widgets) before custom-rendering in a webview.",
+      "component_implication": "For desktop: prefer OS-native controls (system dialogs, native context menus, platform disclosure widgets) before custom-rendering in a webview.",
+      "implementation_disposition": "reference_only",
+      "digest_sha256": "sha256:7f2e5f9e2397e12fcfff8b9a4499b6e9b4f580ba0e7f9bb7819b940b7954516f"
+    },
+    {
+      "principle_id": "p0-pg-013",
+      "principle_kind": "token_system",
+      "source_video_id": "jmAbYQd1G_Y",
+      "principle_summary": "Design systems need three levels of defaults: global tokens that affect all components, inheritable defaults that cascade down to children (which can be overridden per instance), and scoped defaults that only apply within a specific container.",
+      "surface_applicability": [
+        "gridline",
+        "project_page"
+      ],
+      "product_implication": "CSS custom property architecture: :root for global, component-specific selectors for scoped overrides, never hardcoded values.",
+      "component_implication": "CSS custom property architecture: :root for global, component-specific selectors for scoped overrides, never hardcoded values.",
+      "implementation_disposition": "applied_in_this_slice",
+      "digest_sha256": "sha256:2c813e672aa10ad6e278734a8ad417242124ff5fe5c972a2baec2229c660dc44"
+    },
+    {
+      "principle_id": "p0-pg-014",
+      "principle_kind": "token_system",
+      "source_video_id": "kF01nm5l5ec",
+      "principle_summary": "Define a small set of design tokens at the top of the style layer and derive every visual decision from those tokens. Change one variable and the entire design shifts consistently. When building character-level animations, lock element dimensions before animation to prevent layout reflow.",
+      "surface_applicability": [
+        "gridline"
+      ],
+      "product_implication": "The existing 28 CSS custom properties in :root (styles.css) are the single authority. New surfaces only add surface-specific overrides.",
+      "component_implication": "The existing 28 CSS custom properties in :root (styles.css) are the single authority. New surfaces only add surface-specific overrides.",
+      "implementation_disposition": "applied_in_this_slice",
+      "digest_sha256": "sha256:07d7cfb0ad73514cdf9221fa616ea29194d7b1563c48f348691423fa935d7c8e"
+    },
+    {
+      "principle_id": "p0-pg-015",
+      "principle_kind": "component_primitive",
+      "source_video_id": "KP1p-LgxO5E",
+      "principle_summary": "Before adopting a component library, audit what the platform already provides natively. Each JS component you skip eliminates parse cost, hydration cost, dependency weight, and framework lock-in.",
+      "surface_applicability": [
+        "gridline"
+      ],
+      "product_implication": "P0 uses vanilla JS with no framework. The existing cockpit's pattern (native DOM APIs, textContent for XSS safety, no SPA router) follows this principle.",
+      "component_implication": "P0 uses vanilla JS with no framework. The existing cockpit's pattern (native DOM APIs, textContent for XSS safety, no SPA router) follows this principle.",
+      "implementation_disposition": "applied_in_this_slice",
+      "digest_sha256": "sha256:4cac498da762553af25dead386740c83e2c2fc2a38b89ef5f5f5fbf927da5939"
+    },
+    {
+      "principle_id": "p0-pg-016",
+      "principle_kind": "token_system",
+      "source_video_id": "m-IGibAiJo8",
+      "principle_summary": "Compose design from tiny, standardized, single-purpose tokens that are self-documenting at the point of use. Any developer reading the markup immediately understands the visual result without hunting through stylesheets.",
+      "surface_applicability": [
+        "gridline"
+      ],
+      "product_implication": "CSS class naming: .status-chip.connected, .evidence-tag.proven — self-documenting compound classes rather than generic .chip .green-label.",
+      "component_implication": "CSS class naming: .status-chip.connected, .evidence-tag.proven — self-documenting compound classes rather than generic .chip .green-label.",
+      "implementation_disposition": "applied_in_this_slice",
+      "digest_sha256": "sha256:e3cdf4d1332ec7106338949f8a281d0daf9e44b943dc5eda2d83c4c01dd3dd03"
+    },
+    {
+      "principle_id": "p0-pg-017",
+      "principle_kind": "component_primitive",
+      "source_video_id": "M5RPtpSVk6c",
+      "principle_summary": "Every reusable UI component must scope its DOM queries to its own container element — never query the whole document. Without scoping, components with repeated class names will accidentally target elements in other component instances.",
+      "surface_applicability": [
+        "gridline"
+      ],
+      "product_implication": "Each surface renderer takes a DOM container node and only queries within it. The fixture renderers are already scoped to surface-specific DOM IDs.",
+      "component_implication": "Each surface renderer takes a DOM container node and only queries within it. The fixture renderers are already scoped to surface-specific DOM IDs.",
+      "implementation_disposition": "applied_in_this_slice",
+      "digest_sha256": "sha256:1f37219c6d726c45ac21ff846bab7a736b35aa6b60578e71418d91497fba5b00"
+    },
+    {
+      "principle_id": "p0-pg-018",
+      "principle_kind": "interaction_grammar",
+      "source_video_id": "n3ZvxaDxBuQ",
+      "principle_summary": "When a scroll-driven or real-time value drives UI updates, guard every DOM write with a dirty-check: store the last-rendered state and skip the update if nothing changed. This prevents redundant repaints during high-frequency events without debouncing away accuracy.",
+      "surface_applicability": [
+        "gridline"
+      ],
+      "product_implication": "Projection updates should compare new data to current rendered state and skip DOM writes if nothing changed. Not yet implemented in P0 renderers.",
+      "component_implication": "Projection updates should compare new data to current rendered state and skip DOM writes if nothing changed. Not yet implemented in P0 renderers.",
+      "implementation_disposition": "queued",
+      "digest_sha256": "sha256:a7ae01256a2b09842c3aa60dbf0c6345b323a95eb76a9cf7a90f05a81ef0626b"
+    },
+    {
+      "principle_id": "p0-pg-019",
+      "principle_kind": "token_system",
+      "source_video_id": "NdXTYmUwY3Y",
+      "principle_summary": "Logic that previously required JavaScript (theme toggling, responsive value switching, feature detection fallbacks) can now live inside CSS properties themselves via the if() function and style queries.",
+      "surface_applicability": [
+        "gridline",
+        "project_page"
+      ],
+      "product_implication": "CSS if() can handle surface-specific theme variations without JS class toggling — future optimization, not needed for initial P0 release.",
+      "component_implication": "CSS if() can handle surface-specific theme variations without JS class toggling — future optimization, not needed for initial P0 release.",
+      "implementation_disposition": "reference_only",
+      "digest_sha256": "sha256:72f0ad2d5c2f40d47d4e23dc7812d2fed1ad80fdd5881e2270a9efa76ec0329a"
+    },
+    {
+      "principle_id": "p0-pg-020",
+      "principle_kind": "visual_grammar",
+      "source_video_id": "Q5Xrc99q1Dc",
+      "principle_summary": "Every visual property should decompose into magnitude and variant, letting designers swap the shape language without recomputing dimensions. A corner is a two-axis control: border-radius sets the size, corner-shape sets the style.",
+      "surface_applicability": [
+        "gridline",
+        "project_page"
+      ],
+      "product_implication": "CSS architecture: border-radius controls corner size independently of corner shape. Design tokens should follow the magnitude+variant decomposition pattern.",
+      "component_implication": "CSS architecture: border-radius controls corner size independently of corner shape. Design tokens should follow the magnitude+variant decomposition pattern.",
+      "implementation_disposition": "queued",
+      "digest_sha256": "sha256:4f0d15f63eebd9bec46aa721f94db04d5f19b06d55bda53eb840866dbd146bed"
+    },
+    {
+      "principle_id": "p0-pg-021",
+      "principle_kind": "motion_pattern",
+      "source_video_id": "q78kMRp7bsM",
+      "principle_summary": "Motion design has two fundamental units: the atomic transition (one property change) and the sequence (multiple transitions choreographed as a single narrative). Sequences need shared transport controls — play, pause, reverse, reset.",
+      "surface_applicability": [
+        "gridline"
+      ],
+      "product_implication": "Entrance sequences, page transitions, and multi-step reveals should be modeled as timelines with shared controls, not independent tweens.",
+      "component_implication": "Entrance sequences, page transitions, and multi-step reveals should be modeled as timelines with shared controls, not independent tweens.",
+      "implementation_disposition": "queued",
+      "digest_sha256": "sha256:5e7188d55b876d4c777db5bbd0acedeae8664fa6d2aeb421fa4904da45a3bcd4"
+    },
+    {
+      "principle_id": "p0-pg-022",
+      "principle_kind": "interaction_grammar",
+      "source_video_id": "QoI33L-qGA4",
+      "principle_summary": "Any interaction that triggers a visual effect must kill the previous effect on that target before starting a new one. Without this, rapid interactions stack effects, producing jittery, unpredictable motion.",
+      "surface_applicability": [
+        "gridline"
+      ],
+      "product_implication": "Rapid tab switching or intent button clicks should cancel any in-progress animation on the target before starting the new one.",
+      "component_implication": "Rapid tab switching or intent button clicks should cancel any in-progress animation on the target before starting the new one.",
+      "implementation_disposition": "queued",
+      "digest_sha256": "sha256:55d30d975fd5ed756bcc4de7da74d3baa2f787ce7d61878aea000ff296fe5416"
+    },
+    {
+      "principle_id": "p0-pg-023",
+      "principle_kind": "interaction_grammar",
+      "source_video_id": "QsSU9-8LFik",
+      "principle_summary": "Component state should be derived from the DOM structure, not mirrored in JavaScript. This eliminates an entire class of state-synchronization bugs where JS state and DOM state drift apart.",
+      "surface_applicability": [
+        "gridline"
+      ],
+      "product_implication": "UI surface states should be derived from the projection data object, not maintained in parallel JS boolean flags. The fixture renderers already follow this by reading directly from __P0_FIXTURES__.",
+      "component_implication": "UI surface states should be derived from the projection data object, not maintained in parallel JS boolean flags. The fixture renderers already follow this by reading directly from __P0_FIXTURES__.",
+      "implementation_disposition": "applied_in_this_slice",
+      "digest_sha256": "sha256:57576156236b302d899648d17f93f6671ab4f6f4f863c1be77058db0b1e30848"
+    },
+    {
+      "principle_id": "p0-pg-024",
+      "principle_kind": "visual_grammar",
+      "source_video_id": "uaLSQ7ffs6o",
+      "principle_summary": "Break free from the rectangular box model by defining the visible region of any element independently of its layout box. Use percentage-based shape coordinates so shapes scale with their container across screen sizes.",
+      "surface_applicability": [
+        "gridline",
+        "project_page"
+      ],
+      "product_implication": "Non-rectangular surfaces (avatar clips, decorative panels, call-to-action surfaces) can use clip-path without raster images.",
+      "component_implication": "Non-rectangular surfaces (avatar clips, decorative panels, call-to-action surfaces) can use clip-path without raster images.",
+      "implementation_disposition": "reference_only",
+      "digest_sha256": "sha256:cde8ee492c966e611dbcc698f7d1e218b14c64c50cc08996af7a3ed8c4c1cf09"
+    },
+    {
+      "principle_id": "p0-pg-025",
+      "principle_kind": "motion_pattern",
+      "source_video_id": "veHToJopqkM",
+      "principle_summary": "Scroll-driven animations need a dedicated stage that stays pinned in the viewport while the user scrolls through a tall track. The timeline must rebuild on resize — animation positions computed from element bounds become stale when the layout changes.",
+      "surface_applicability": [
+        "gridline"
+      ],
+      "product_implication": "Any animation that depends on measured positions must declare resize as a re-initialization trigger. Desktop window resize must invalidate position-derived animation data.",
+      "component_implication": "Any animation that depends on measured positions must declare resize as a re-initialization trigger. Desktop window resize must invalidate position-derived animation data.",
+      "implementation_disposition": "queued",
+      "digest_sha256": "sha256:8395798948328d43aa68f4b627f6a9474133b01176b02d7e2fb622c81df04ff5"
+    },
+    {
+      "principle_id": "p0-pg-026",
+      "principle_kind": "token_system",
+      "source_video_id": "vhrE3ko2hGA",
+      "principle_summary": "A complete visual design can be governed by 5–6 CSS custom properties at the root level: background, text color, accent, muted alpha, and border alpha. Every element derives its color from these tokens. This is the minimal viable design token surface.",
+      "surface_applicability": [
+        "gridline",
+        "project_page",
+        "portfolio_site"
+      ],
+      "product_implication": "The existing styles.css :root block already has ~28 tokens. The principle validates this approach — reduce to minimal surface, derive all values from roots.",
+      "component_implication": "The existing styles.css :root block already has ~28 tokens. The principle validates this approach — reduce to minimal surface, derive all values from roots.",
+      "implementation_disposition": "applied_in_this_slice",
+      "digest_sha256": "sha256:999b8e56ea6f7b28ce0b54e97383c5b40675b966537bc2d018129968a27aea73"
+    },
+    {
+      "principle_id": "p0-pg-027",
+      "principle_kind": "visual_grammar",
+      "source_video_id": "wdfmdK9Kvsw",
+      "principle_summary": "Z-index is scoped to the nearest stacking context. Two elements in different stacking contexts cannot be compared by z-index alone. Every overlay surface must be isolated in its own stacking context so its z-index is relative to its parent layer, not fighting a global arms race.",
+      "surface_applicability": [
+        "gridline"
+      ],
+      "product_implication": "The surface containers and the cockpit are separate stacking contexts. The expanded-overlay uses position:fixed + z-index:100 — it should be isolated.",
+      "component_implication": "The surface containers and the cockpit are separate stacking contexts. The expanded-overlay uses position:fixed + z-index:100 — it should be isolated.",
+      "implementation_disposition": "queued",
+      "digest_sha256": "sha256:2e9e0f7237deb7d50ec86b1f5775264f1a445cb23372cebef1401f1323992ed1"
+    },
+    {
+      "principle_id": "p0-pg-028",
+      "principle_kind": "information_architecture",
+      "source_video_id": "wSj1x8IteUw",
+      "principle_summary": "A design system is the union of visual rules, design assets, coded implementations, and the governance layer that keeps them synchronized. Without governance, the Figma file and the codebase drift apart within weeks.",
+      "surface_applicability": [
+        "gridline",
+        "project_page"
+      ],
+      "product_implication": "The doctrine artifact itself is the governance layer — how tokens propagate, how components are versioned, how design changes are reviewed.",
+      "component_implication": "The doctrine artifact itself is the governance layer — how tokens propagate, how components are versioned, how design changes are reviewed.",
+      "implementation_disposition": "reference_only",
+      "digest_sha256": "sha256:915297c1805b13cb53adcce95593a54b53bf71a8d964abefc1f897d86c9c9b56"
+    },
+    {
+      "principle_id": "p0-pg-029",
+      "principle_kind": "content_presentation",
+      "source_video_id": "y4735vedu88",
+      "principle_summary": "Generate UI from data, not from handcrafted HTML. Before querying expected DOM containers, check if they exist and return early if absent — this makes rendering code safe to include on pages where the component isn't present.",
+      "surface_applicability": [
+        "gridline"
+      ],
+      "product_implication": "Each surface renderer checks for the existence of its container element before rendering. All P0 renderSurfaceFixture functions already guard with if(el) checks.",
+      "component_implication": "Each surface renderer checks for the existence of its container element before rendering. All P0 renderSurfaceFixture functions already guard with if(el) checks.",
+      "implementation_disposition": "applied_in_this_slice",
+      "digest_sha256": "sha256:28d07cb7a8a71b16e9ebbb9e22240e6952f931f106ee7450322a74cc1bf08b93"
+    },
+    {
+      "principle_id": "p0-pg-030",
+      "principle_kind": "visual_grammar",
+      "source_video_id": "Z2iPLBS1bSY",
+      "principle_summary": "The core mental model for concave shapes is \"box minus circle\" — place a circle just outside the corner and subtract its area. Four implementation tiers exist from decade-old hacks to new native properties.",
+      "surface_applicability": [
+        "project_page",
+        "portfolio_site"
+      ],
+      "product_implication": "Concave corners enable tickets, boarding-pass layouts, nested badges, and scooped panel edges — advanced shape vocabulary for project-page and portfolio surfaces.",
+      "component_implication": "Concave corners enable tickets, boarding-pass layouts, nested badges, and scooped panel edges — advanced shape vocabulary for project-page and portfolio surfaces.",
+      "implementation_disposition": "reference_only",
+      "digest_sha256": "sha256:c362fa8115a8b3f9d72ae040294e51d919ae600602408fabe903aa856d590ec5"
+    }
+  ],
+  "applied_count": 11,
+  "queued_count": 13,
+  "reference_count": 6,
+  "generated_at": "2026-05-27T00:49:44Z"
+}

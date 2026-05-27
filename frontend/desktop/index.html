@@ -163,6 +163,139 @@
   padding: 2px 0;
   color: var(--text-secondary, #a6adc8);
 }
+/* ── Surface Navigation ── */
+#surface-nav {
+  display: flex;
+  gap: 2px;
+  background: var(--card-bg);
+  border-radius: 0;
+  padding: 4px 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+.surface-tab {
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  padding: 6px 18px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  font-family: var(--font-sans);
+  border-bottom: 2px solid transparent;
+}
+.surface-tab:hover { color: var(--text-primary); }
+.surface-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+/* ── Surface Containers ── */
+.surface-container {
+  display: none;
+  overflow-y: auto;
+}
+.surface-container.active {
+  display: flex;
+}
+.surface-content {
+  padding: 24px;
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+}
+.surface-content h2 {
+  font-size: 1.3rem;
+  margin: 0 0 20px 0;
+  color: var(--text-primary);
+}
+.surface-content h3 {
+  font-size: 0.95rem;
+  margin: 16px 0 8px 0;
+  color: var(--text-secondary);
+}
+/* Fixture banner */
+.fixture-banner {
+  margin-top: 24px;
+  padding: 8px 14px;
+  background: rgba(198, 144, 38, 0.1);
+  border: 1px solid rgba(198, 144, 38, 0.2);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  color: var(--warning-color);
+  text-align: center;
+}
+/* Status blocks */
+.status-block {
+  margin: 12px 0;
+  padding: 12px;
+  background: var(--card-bg-alt);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+.status-chip {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.status-chip.connected { background: rgba(87,171,90,0.1); color: var(--ok-color); border: 1px solid rgba(87,171,90,0.2); }
+.status-chip.disconnected { background: rgba(229,83,75,0.1); color: var(--error-color); border: 1px solid rgba(229,83,75,0.2); }
+.status-chip.deferred { background: rgba(198,144,38,0.1); color: var(--warning-color); border: 1px solid rgba(198,144,38,0.2); }
+.status-chip.pending { background: rgba(83,155,245,0.1); color: var(--info-color); border: 1px solid rgba(83,155,245,0.2); }
+.status-detail { margin-top: 8px; font-size: 0.8rem; color: var(--text-secondary); }
+.status-line { font-size: 0.82rem; color: var(--text-primary); }
+/* Connect layout */
+.connect-layout { display: flex; flex-direction: column; gap: 16px; }
+.connect-card { padding: 20px; background: var(--card-bg); border-radius: var(--radius-lg); border: 1px solid var(--border-subtle); }
+.connect-section { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-subtle); }
+/* Repository Estate */
+.repo-card {
+  padding: 14px;
+  margin-bottom: 12px;
+  background: var(--card-bg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+}
+.repo-card .repo-name { font-weight: 600; font-size: 0.95rem; }
+.repo-card .repo-meta { font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px; }
+/* Studio layout */
+.studio-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.studio-panel { padding: 16px; background: var(--card-bg); border-radius: var(--radius-md); border: 1px solid var(--border-subtle); }
+/* Task grid for Inference Studio */
+.task-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 12px 0; }
+.task-card { padding: 12px; background: var(--card-bg); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); }
+.task-card .task-name { font-weight: 600; font-size: 0.85rem; }
+.task-card .task-status { font-size: 0.75rem; margin-top: 4px; }
+.task-card.suitable { border-left: 3px solid var(--ok-color); }
+.task-card.unsuitable { border-left: 3px solid var(--error-color); opacity: 0.7; }
+/* Draft list */
+.draft-item { padding: 8px 0; border-bottom: 1px solid var(--border-subtle); font-size: 0.8rem; }
+.draft-item:last-child { border-bottom: none; }
+/* Refusal list */
+.refusal-item { padding: 8px 0; font-size: 0.8rem; color: var(--error-color); }
+/* Publish section grid */
+.section-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+.section-card { padding: 10px; background: var(--card-bg); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); font-size: 0.8rem; }
+.section-card.ready { border-left: 3px solid var(--ok-color); }
+.section-card.not-ready { border-left: 3px solid var(--warning-color); opacity: 0.8; }
+/* Withheld sections */
+.withheld-section { margin-top: 16px; padding: 12px; background: rgba(229,83,75,0.05); border-radius: var(--radius-sm); border: 1px solid rgba(229,83,75,0.15); }
+.withheld-section h3 { color: var(--error-color); }
+.withheld-item { font-size: 0.78rem; padding: 4px 0; color: var(--text-secondary); }
+/* Evidence status tags */
+.evidence-tag { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 0.7rem; margin-right: 4px; }
+.evidence-tag.proven { background: rgba(87,171,90,0.15); color: var(--ok-color); }
+.evidence-tag.claimed { background: rgba(83,155,245,0.15); color: var(--info-color); }
+.evidence-tag.planned { background: rgba(198,144,38,0.15); color: var(--warning-color); }
+.evidence-tag.narrative { background: rgba(170,170,170,0.15); color: var(--text-muted); }
+/* Responsive */
+@media (max-width: 900px) {
+  .studio-layout { grid-template-columns: 1fr; }
+  .task-grid, .section-grid { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
@@ -183,6 +316,14 @@
     <span class="header-spacer"></span>
     <span id="status-safety" class="header-chip" role="status" aria-live="polite" aria-label="Safety status"><span class="header-dot" aria-hidden="true"></span>Unknown</span>
   </header>
+
+  <nav id="surface-nav" role="navigation" aria-label="Product surfaces">
+    <button class="surface-tab active" data-surface="connect" role="tab" aria-selected="true">Connect</button>
+    <button class="surface-tab" data-surface="repository-estate" role="tab">Repository Estate</button>
+    <button class="surface-tab" data-surface="project-studio" role="tab">Project Studio</button>
+    <button class="surface-tab" data-surface="inference-studio" role="tab">Inference Studio</button>
+    <button class="surface-tab" data-surface="publish-preview" role="tab">Publish Preview</button>
+  </nav>
 
   <div id="mode-bar" role="tablist" aria-label="Layout mode">
     <button class="mode-option active" data-mode="operator" role="tab" aria-selected="true" aria-controls="main-grid">Operator</button>
@@ -260,6 +401,79 @@
     </div>
   </div>
 
+  <div id="surface-connect" class="surface-container" role="region" aria-label="Connect surface">
+    <div class="surface-content">
+      <div id="connect-main" class="connect-layout">
+        <div class="connect-card">
+          <h2>Connect</h2>
+          <div id="connect-carte-blanche" class="status-block">
+            <span class="status-chip" id="cb-status-chip">Disconnected</span>
+            <div id="cb-detail" class="status-detail">Fixture-backed — live bridge deferred to O0.</div>
+          </div>
+          <div class="connect-section" id="connect-repo-access">
+            <h3>Repository Access</h3>
+            <div id="repo-access-status" class="status-line"></div>
+          </div>
+          <div class="connect-section" id="connect-publication-approval">
+            <h3>Publication Approval</h3>
+            <div id="publication-approval-status" class="status-line"></div>
+          </div>
+          <div class="fixture-banner">⚠ Fixture-backed projection — not live service data</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="surface-repository-estate" class="surface-container" role="region" aria-label="Repository Estate surface">
+    <div class="surface-content">
+      <h2>Repository Estate</h2>
+      <div id="repo-list-container" class="repo-list"></div>
+      <div id="repo-intake-status" class="status-block"></div>
+      <div class="fixture-banner">⚠ Fixture-backed projection — not live service data</div>
+    </div>
+  </div>
+
+  <div id="surface-project-studio" class="surface-container" role="region" aria-label="Project Studio surface">
+    <div class="surface-content">
+      <h2>Project Studio</h2>
+      <div class="studio-layout">
+        <div id="studio-operator" class="studio-panel">
+          <h3>Operator Session</h3>
+          <div id="operator-session-status"></div>
+          <div id="operator-tool-summary"></div>
+          <div id="operator-proposals"></div>
+        </div>
+        <div id="studio-understanding" class="studio-panel">
+          <h3>Project Understanding</h3>
+          <div id="understanding-status"></div>
+          <div id="understanding-details"></div>
+        </div>
+      </div>
+      <div class="fixture-banner">⚠ Fixture-backed projection — not live service data</div>
+    </div>
+  </div>
+
+  <div id="surface-inference-studio" class="surface-container" role="region" aria-label="Inference Studio surface">
+    <div class="surface-content">
+      <h2>Inference Studio</h2>
+      <div id="inference-runtime-status" class="status-block"></div>
+      <div id="inference-tasks" class="task-grid"></div>
+      <div id="inference-drafts" class="draft-list"></div>
+      <div id="inference-refusals" class="refusal-list"></div>
+      <div class="fixture-banner">⚠ Fixture-backed projection — not live service data</div>
+    </div>
+  </div>
+
+  <div id="surface-publish-preview" class="surface-container" role="region" aria-label="Publish Preview surface">
+    <div class="surface-content">
+      <h2>Publish Preview</h2>
+      <div id="publish-readiness" class="status-block"></div>
+      <div id="publish-sections" class="section-grid"></div>
+      <div id="publish-withheld" class="withheld-section"></div>
+      <div class="fixture-banner">⚠ Fixture-backed projection — not live service data</div>
+    </div>
+  </div>
+
   <div id="expanded-overlay" role="dialog" aria-label="Expanded widget" aria-modal="true">
     <button id="expanded-close-btn" class="close-btn" aria-label="Close expanded view">&times;</button>
     <div id="expanded-content" class="expanded-widget"></div>
@@ -284,6 +498,13 @@
     </div>
     <div class="notification-rail-list" id="notification-rail-list" role="list" aria-label="Notification list"></div>
   </div>
+
+  <!-- P0 fixture data layer — O0-shaped projection fixtures -->
+  <script src="js/fixtures/p0-fixture-connect.js"></script>
+  <script src="js/fixtures/p0-fixture-repository-estate.js"></script>
+  <script src="js/fixtures/p0-fixture-project-studio.js"></script>
+  <script src="js/fixtures/p0-fixture-inference-studio.js"></script>
+  <script src="js/fixtures/p0-fixture-publish-preview.js"></script>
 
   <script type="module" src="js/delight.js"></script>
   <script type="module" src="js/boot/orchestrator.js"></script>

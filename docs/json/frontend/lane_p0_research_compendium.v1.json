@@ -1,0 +1,131 @@
+{
+  "schema_version": "rig.relay.research_compendium.v1",
+  "research_id": "p0-research-20260526",
+  "lane": "P0",
+  "topics": [
+    "animated_svg_techniques",
+    "webkit_html_css_js_features",
+    "nintendo_ui_ux_guidelines",
+    "desktop_webview_accessibility",
+    "procedural_background_music"
+  ],
+  "animated_svg": {
+    "summary": "SVG animation techniques for a WebKit-rendered desktop app. Three tiers: CSS @keyframes (declarative ambient), Web Animations API (imperative interactive), SMIL (path morphing). GPU-composited properties only: transform, opacity, filter(drop-shadow). Stroke-dashoffset for line-drawing and progress indicators. SVG symbol + currentColor + CSS custom properties for theme-aware animated icons. Use will-change sparingly. Honor prefers-reduced-motion.",
+    "recommendations": [
+      "CSS @keyframes for loading spinners, ambient backgrounds, dash-offset progress",
+      "WAAPI element.animate() for icon state transitions (play/pause, expand/collapse)",
+      "CSS filter: drop-shadow() for hover/active glow (GPU-composited)",
+      "CSS custom properties on SVG symbols for resolution-independent themed icons",
+      "Avoid: SVG filter primitives on animated elements (CPU-bound), width/height animations (triggers layout), will-change in static CSS (memory bloat)"
+    ],
+    "citation_count": 13,
+    "primary_sources": ["MDN Web Docs", "CSS-Tricks (Sara Soueidan, Chris Coyier)", "web.dev (Rachel Andrew)", "WebKit blog"]
+  },
+  "webkit_features": {
+    "summary": "Modern CSS/HTML/JS features shipping in Safari 26.x (2025-2026) that a pywebview/WKWebView desktop app can exploit. Critical new features: @layer cascade layers, View Transitions API (single-document), popover API + commandfor, <dialog>, field-sizing: content, :has() parent selector, content-visibility: auto, scrollend event, scroll-driven animations (threaded in 26.4). pywebview WKWebView provides full Safari feature parity. Service Workers NOT available (requires HTTPS origin).",
+    "p0_immediate": [
+      "content-visibility: auto on chat history and scrollable lists (one CSS line, large performance win)",
+      "@layer cascade layers in CSS (eliminates specificity bugs)"
+    ],
+    "p1_medium": [
+      "<dialog> for modals/confirmations (built-in focus trap, backdrop, ESC)",
+      "popover + commandfor for dropdowns and tooltips (declarative, no z-index wars)",
+      "field-sizing: content for chat input (auto-growing without JS)",
+      ":has() for state-driven styling (fewer JS state mirrors)"
+    ],
+    "p2_later": [
+      "View Transitions for layout-mode switches (smooth Operator→Review→System)",
+      "scrollend event for chat auto-scroll",
+      "Threaded scroll-driven animations for 'new content' indicators"
+    ],
+    "not_in_safari": ["interpolate-size: allow-keywords", "corner-shape", "if() CSS function", "Customizable <select>", "Cross-document View Transitions"],
+    "citation_count": 8,
+    "primary_sources": ["WebKit.org blog (Safari 26.1-26.5 release notes)", "Caniuse.com", "pywebview docs"]
+  },
+  "nintendo_ui_ux": {
+    "summary": "Nintendo does not publish public UI/UX guidelines. Best primary source: CEDEC 2018 presentation on Switch OS design. Core philosophy: radical minimalism (<200KB home menu), game-first (NES inspiration — boot directly to game), near-zero animation budget, no background music, flat navigation (one level deep), no ads in system UI, family-safe by default. Switch 2 adds 'Basic Dark' theme but maintains same flat architecture. Key transferable principles: minimize startup resources, avoid deep menu nesting, keep transitions under 200ms, offer dark/light only (no theme store), ensure keyboard navigability, make app reopen near-instant.",
+    "transferable_principles": [
+      "Minimize startup resource usage; keep boot time under 1 second",
+      "Flat navigation — surface core actions directly, avoid deep nesting",
+      "No background music by default — audio as functional feedback only",
+      "Dark/Light only — no theme system complexity",
+      "All UI keyboard-navigable with generous click targets",
+      "Session restore near-instant on app reopen",
+      "No promotional content in app chrome",
+      "Destructive actions: single undo, not confirmation dialog",
+      "Subtle click sounds on button press; optional haptic feedback",
+      "Persistent sidebar/toolbar with recognizable icons"
+    ],
+    "not_transferable": [
+      "Physical cartridge metaphor", "Controller rumble as UI feedback",
+      "Always-fullscreen single-task model", "Motion controls as UI input",
+      "Sleep mode with game-state preservation", "WebKit-based in-app store",
+      "Local multiplayer UI patterns"
+    ],
+    "citation_count": 5,
+    "primary_sources": ["CEDEC 2018 Nintendo Switch OS Development Session (via Nintendo Life)", "Wikipedia — Nintendo Switch system software", "Nintendo Developer Portal"]
+  },
+  "accessibility": {
+    "summary": "Comprehensive accessibility audit for a pywebview/WKWebView desktop app. Current codebase: strong ARIA coverage (30+ aria-labels, live regions, landmark roles, proper focus-visible). Key gaps: missing skip link, no prefers-color-scheme: light, no prefers-contrast support, no focus trapping in modal dialog, missing KeyboardEvent handlers for arrow-key navigation in tabs, missing keyboard shortcuts (Cmd+Enter, Cmd+K). WebKit on macOS fully supports ARIA → NSAccessibility mapping for VoiceOver. Testing tools: axe-core injection, macOS Accessibility Inspector, Lighthouse (via --server-only mode).",
+    "current_strengths": [
+      "30+ aria-label attributes on interactive elements",
+      "aria-live='polite' on chat transcript, status chips, notifications",
+      "aria-relevant='additions' on chat transcript",
+      "aria-selected on tabs and mode buttons",
+      "Proper landmark roles (navigation, main, complementary, contentinfo, dialog, region)",
+      "prefers-reduced-motion already implemented (CSS + JS guard)",
+      "role='log' + role='status' for live regions"
+    ],
+    "gaps": [
+      "Missing skip link for bypass blocks (WCAG 2.4.1 Level A)",
+      "No prefers-color-scheme: light support (dark-only palette)",
+      "No prefers-contrast: more support",
+      "No forced-colors: active support",
+      "Focus trapping in modal dialog missing (declared aria-modal without JS)",
+      "No arrow-key navigation in tab panels (WAI-ARIA APG Tabs Pattern)",
+      "No keyboard shortcuts (Cmd+Enter, Cmd+K, Cmd+1-4)",
+      "AccentColor system keyword not used (hardcoded blue)",
+      "No automated accessibility testing in CI pipeline",
+      "No VoiceOver manual testing script"
+    ],
+    "user_defaults_status": {
+      "prefers-reduced-motion": "implemented",
+      "prefers-color-scheme": "not_implemented",
+      "prefers-contrast": "not_implemented",
+      "forced-colors": "not_implemented",
+      "prefers-reduced-transparency": "not_baseline_deferred"
+    },
+    "citation_count": 10,
+    "primary_sources": ["WCAG 2.2 Recommendation", "MDN ARIA Guide", "WebKit blog", "Apple Developer Accessibility docs", "WAI-ARIA Authoring Practices"]
+  },
+  "procedural_background_music": {
+    "summary": "Feasibility assessment for procedurally generated ambient background music in a pywebview desktop app. Technical feasibility: HIGH — Web Audio API + Tone.js are production-ready. MVP: 4-layer ambient drone (sub-bass, mid pad, high shimmer, gentle pulse) via pure synthesis, ~100-200 lines of JS. CPU budget: 2-5%. Parameter mapping: agent activity → note density/filter openness; tool execution → rhythmic pulse layer; error state → subtle harmonic shift. Default to OFF, require user opt-in. Zero copyright risk with pure synthesis. Key design principle: volume should be barely perceptible ('you don't notice it until it's gone').",
+    "recommended_stack": {
+      "library": "Tone.js",
+      "approach": "Pure synthesis (4 oscillators + filters + LFO)",
+      "transport": "WebSocket from Python backend pushes audio_state → JS AudioEngine.update()",
+      "parameter_ramp_speed": "2-8 seconds for all transitions (smooth, non-distracting)"
+    },
+    "parameter_mapping": {
+      "agent_idle": "reduce note density, lower filter cutoff, slower LFO",
+      "agent_thinking": "slightly brighter filter, subtle harmonic motion",
+      "tool_executing": "add gentle rhythmic pulse layer",
+      "tool_completed": "brief harmonic lift (resolution)",
+      "error": "subtle dissonance — detune oscillators, minor shift",
+      "session_start": "fade in over 8 seconds",
+      "session_end": "fade out over 10 seconds"
+    },
+    "user_controls": ["volume slider", "enable/disable toggle", "style selector (ambient drone / lo-fi pulse / nature blend)"],
+    "accessibility": "default OFF, opt-in only, volume very low, no abrupt changes, prefer-no-audio-reactivity media query analogue",
+    "citation_count": 18,
+    "primary_sources": ["Web Audio API Spec (W3C)", "Tone.js", "Brain.fm Nature Communications Biology (2024)", "Endel Frontiers in Computational Neuroscience (2022)", "Paul Weir GDC talks (No Man's Sky)", "FMOD/Wwise Interactive Music docs", "Brian Eno Generative Music (1996)"]
+  },
+  "corpus_coverage": {
+    "pixelgrid_transcripts_digested": 44,
+    "pixelgrid_channel_total": 184,
+    "principles_extracted": 30,
+    "principles_applied": 11,
+    "youtube_ip_ban": "active — 140 transcripts blocked, 24-48h standard window"
+  },
+  "generated_at": "2026-05-26T18:00:00Z"
+}
