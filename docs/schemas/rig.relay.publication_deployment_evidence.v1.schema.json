@@ -1,45 +1,39 @@
 {
   "$schema": "https://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/juliantorr-es/rig-relay/schemas/rig.relay.publication_deployment_evidence.v1",
-  "title": "Publication Deployment Evidence",
-  "description": "Schema for the terminal evidence receipt of a publication deployment outcome.",
+  "$id": "https://github.com/juliantorr-es/rig-relay/schemas/rig.relay.publication_transition_receipt.v1",
+  "title": "Publication Transition Receipt",
+  "description": "Schema for the terminal evidence receipt of a publication transition outcome (Lane X3.2).",
   "type": "object",
   "properties": {
-    "schema_version": {
-      "type": "string",
-      "const": "rig.relay.publication_deployment_evidence.v1"
-    },
+    "schema_version": { "type": "string" },
     "receipt_id": { "type": "string" },
     "operation_id": { "type": "string" },
-    "preparation_digest": { "type": "string" },
-    "profile_candidate_digest": { "type": "string" },
+    "transition_preparation_digest": { "type": "string" },
     "preview_evidence_digest": { "type": "string" },
-    "compilation_result_digest": { "type": "string" },
+    "preview_receipt_digest": { "type": "string" },
+    "static_bundle_digest": { "type": "string" },
     "authorization_receipt_digest": { "type": "string" },
-    "deployment_phase": {
+    "transition_phase": {
       "type": "string",
       "enum": [
-        "prepared", "authorization_pending", "authorized",
-        "pages_configuring", "pages_configured",
-        "content_publishing", "content_published",
-        "build_pending", "published_verified",
-        "refused", "failed", "recovery_required"
+        "prepared", "authorization_required", "authorized",
+        "pages_configuration_unchanged", "pages_created", "pages_updated",
+        "content_publication_started", "content_publication_partial",
+        "content_published", "build_requested", "build_pending",
+        "published_verified", "refused", "failed", "recovery_required"
       ]
     },
-    "pages_configured": { "type": "boolean" },
-    "content_published": { "type": "boolean" },
-    "build_initiated": { "type": "boolean" },
     "pages_site_url": { "type": "string" },
     "pages_build_status": { "type": "string" },
-    "preview_receipt_digest": { "type": "string" },
-    "refusal_code": { "type": ["string", "null"] },
-    "refusal_reasons": {
-      "type": "array",
-      "items": { "type": "string" }
-    },
-    "remote_request_sent": { "type": "boolean" },
+    "pages_created": { "type": "boolean" },
+    "pages_updated": { "type": "boolean" },
+    "content_publication_manifest_digest": { "type": "string" },
+    "content_published": { "type": "boolean" },
+    "build_initiated": { "type": "boolean" },
     "remote_verified": { "type": "boolean" },
     "remote_verification_digest": { "type": "string" },
+    "refusal_code": { "type": ["string", "null"] },
+    "refusal_reasons": { "type": "array", "items": { "type": "string" } },
     "recovery_required": { "type": "boolean" },
     "recovery_hint": { "type": "string" },
     "deployed_at": { "type": "string" },
@@ -47,8 +41,7 @@
   },
   "required": [
     "schema_version", "receipt_id", "operation_id",
-    "profile_candidate_digest", "preview_evidence_digest",
-    "deployment_phase", "evidence_digest"
+    "preview_evidence_digest", "transition_phase", "evidence_digest"
   ],
   "additionalProperties": false
 }

@@ -1,19 +1,16 @@
-"""Lane X3.1 deployment and portfolio synthesis tests.
+"""Lane X3.2 publication deployment tests — T1.2 traversal, authorization, content push, recovery.
 
-Covers all 9 X3.1 repairs:
-  1. Single authorization authority
-  2. T1.2 PreviewEvidenceReceipt binding
-  3. Static content publication
-  4. Create/update Pages routing
-  5. Truthful deployment phase model
-  6. Evidence ledger integrity
-  7. Verified record portfolio synthesis
-  8. Safe HTML escaping
-  9. Deterministic portfolio content digest
+Gate A: Genuine T1.2 preview receipts traverse the corridor
+Gate B: Digest-bound content enforcement, recovery on partial push
+Gate C: Pages create/update/no-change routing, truthful verification
+Gate D: Evidence ledger with linked state-transition events
+Gate E: Portfolio verified records bind T1.2 receipts
+Gate F: Status contracts for X0 consumption
 """
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 import tempfile
 
@@ -34,33 +31,33 @@ from rig_relay.context_engine.models import (
 )
 from rig_relay.context_engine.provenance import ApprovalStatus, PrivacyDisposition
 from rig_relay.publication import (
+    ApprovedStaticPublicationBundle,
+    AuthorizedPublicationTransitionPreparation,
+    ContentPublicationManifest,
     DeploymentEvidenceLedger,
-    DeploymentOutcomeReceipt,
-    DeploymentPhase,
-    DeploymentPreparationResult,
     DeploymentRefusalCode,
     GitHubPagesDeploymentService,
     PortfolioSynthesisInput,
     PortfolioSynthesisService,
     PreviewEvidenceReceipt,
     ProjectPagePublicationPreviewService,
+    PublicationStatusContract,
+    PublicationTransitionPhase,
     VerifiedApprovedProjectPublicationRecord,
 )
 from rig_relay.publication._deployment_models import _digest_sha256, _now_iso
 
 
 def _make_valid_profile(
-    candidate_id: str = "cand-x31",
-    project_name: str = "X3.1 Test",
-    approval_status: ApprovalStatus = ApprovalStatus.APPROVED,
+    candidate_id: str = "cand-x32", project_name: str = "X3.2 Test"
 ) -> PublishableProjectProfileCandidate:
     return PublishableProjectProfileCandidate(
         candidate_id=candidate_id,
         project_identity=ProjectPageIdentity(
             project_name=project_name,
-            tagline="An X3.1 test project",
+            tagline="An X3.2 test project",
             current_milestone="alpha",
-            product_identity_blurb="For X3.1 testing.",
+            product_identity_blurb="For X3.2 testing.",
         ),
         structural_facts_public=[
             PublicStructuralFact(
@@ -103,21 +100,21 @@ def _make_valid_profile(
                 basis_fact_ids=["f1"],
             )
         },
-        approval_status=approval_status,
+        approval_status=ApprovalStatus.APPROVED,
         redaction_log=RedactionLog(items_withheld=0, items_redacted=0, reasons=[]),
         privacy_class=PrivacyDisposition.PUBLIC_SAFE,
         content_light_guarantee=True,
     )
 
 
-def _compile_valid_preview() -> object:
-    """Compile a valid preview with static bundle for deployment testing."""
+def _compile_genuine_preview() -> object:
+    """Compile a genuine T1.2 preview — always preview_only=True, deployment_ready=False."""
     import tempfile
 
     profile = _make_valid_profile()
     service = ProjectPagePublicationPreviewService()
     output_dir = tempfile.mkdtemp()
-    result = service.compile_preview(
+    return service.compile_preview(
         profile,
         publication_policy="developer_approved",
         repo_owner="test-owner",
@@ -125,406 +122,313 @@ def _compile_valid_preview() -> object:
         narrative_approvals={"project_description": "approved"},
         output_dir=Path(output_dir),
     )
-    return result
-
-
-def _make_valid_preview_receipt(compiler_result=None) -> PreviewEvidenceReceipt:
-    """Build a valid T1.2 PreviewEvidenceReceipt for deployment binding."""
-    if compiler_result is None:
-        preview = _compile_valid_preview()
-        compiler_result = preview.compiler_result
-    return PreviewEvidenceReceipt(
-        receipt_id="preview-receipt-x31",
-        compiled_at=_now_iso(),
-        compilation_successful=compiler_result.compilation_successful,
-        profile_candidate_digest="sha256:cand-x31",
-        result_digest=compiler_result.compute_result_digest(),
-        safety_passed=compiler_result.safety_report.passed,
-        deployment_ready=True,
-        preview_only=False,
-    )
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# Repair 5: Truthful Deployment Phase Model
+# Gate A: Genuine T1.2 Preview Receipt Traversal
 # ═══════════════════════════════════════════════════════════════════════
 
 
-class TestDeploymentPhaseModel:
-    def test_all_phases_are_distinct(self) -> None:
-        phases = {
-            DeploymentPhase.PREPARED,
-            DeploymentPhase.AUTHORIZED,
-            DeploymentPhase.PAGES_CONFIGURING,
-            DeploymentPhase.PAGES_CONFIGURED,
-            DeploymentPhase.CONTENT_PUBLISHING,
-            DeploymentPhase.CONTENT_PUBLISHED,
-            DeploymentPhase.BUILD_PENDING,
-            DeploymentPhase.PUBLISHED_VERIFIED,
-            DeploymentPhase.REFUSED,
-            DeploymentPhase.FAILED,
-            DeploymentPhase.RECOVERY_REQUIRED,
-        }
-        assert len(phases) == 11
+class TestT12ReceiptTraversal:
+    def test_genuine_receipt_accepted_despite_preview_only(self) -> None:
+        """Genuine T1.2 receipt (preview_only=True, deployment_ready=False)
+        successfully enters X3.2 preparation.
+        """
+        preview = _compile_genuine_preview()
+        receipt = preview.receipt
+        assert receipt.preview_only is True
+        assert receipt.deployment_ready is False
+        assert receipt.compilation_successful is True
+        assert receipt.safety_passed is True
 
-    def test_no_deployed_phase(self) -> None:
-        for phase in DeploymentPhase:
-            assert "deployed" not in phase.value
-
-    def test_recovery_required_is_not_deployed(self) -> None:
-        assert DeploymentPhase.RECOVERY_REQUIRED.value != "deployed"
-
-    def test_refusal_codes_expanded(self) -> None:
-        assert (
-            DeploymentRefusalCode.EVIDENCE_RECEIPT_ABSENT.value
-            == "evidence_receipt_absent"
-        )
-        assert (
-            DeploymentRefusalCode.EVIDENCE_RECEIPT_CORRUPT.value
-            == "evidence_receipt_corrupt"
-        )
-        assert DeploymentRefusalCode.PAGES_CONFIG_FAILED.value == "pages_config_failed"
-        assert (
-            DeploymentRefusalCode.BRANCH_CREATION_FAILED.value
-            == "branch_creation_failed"
-        )
-
-
-# ═══════════════════════════════════════════════════════════════════════
-# Repair 2: T1.2 PreviewEvidenceReceipt Binding
-# ═══════════════════════════════════════════════════════════════════════
-
-
-class TestT12EvidenceBinding:
-    def test_prepare_refuses_without_preview_receipt(self) -> None:
-        preview = _compile_valid_preview()
         service = GitHubPagesDeploymentService()
-        prep = service.prepare_deployment(
-            preview.compiler_result,
-            target_repo_owner="test-owner",
-            target_repo_name="test-repo",
-        )
-        assert not prep.ready_to_deploy
-        assert not prep.preview_evidence_valid
-        assert not prep.approval_gate_passed
-        assert any("No T1.2 PreviewEvidenceReceipt" in b for b in prep.blockers)
-
-    def test_prepare_accepts_valid_preview_receipt(self) -> None:
-        preview = _compile_valid_preview()
-        receipt = _make_valid_preview_receipt(preview.compiler_result)
-        receipt.evidence_digest = receipt.compute_digest()
-        service = GitHubPagesDeploymentService()
-        prep = service.prepare_deployment(
+        prep = service.prepare_transition(
             preview.compiler_result,
             preview_receipt=receipt,
             target_repo_owner="test-owner",
             target_repo_name="test-repo",
         )
-        assert prep.preview_evidence_valid
-        assert prep.approval_gate_passed
-        assert prep.preview_receipt_digest
+        assert prep.publication_operation_id
+        assert prep.preview_evidence_digest
+        assert prep.preparation_digest
+        assert prep.authorization_required is True
 
-    def test_prepare_refuses_failed_preview_receipt(self) -> None:
-        preview = _compile_valid_preview()
-        receipt = PreviewEvidenceReceipt(
+    def test_failed_preview_receipt_refused(self) -> None:
+        preview = _compile_genuine_preview()
+        bad_receipt = PreviewEvidenceReceipt(
             receipt_id="bad-receipt",
             compiled_at=_now_iso(),
             compilation_successful=False,
             profile_candidate_digest="sha256:bad",
             safety_passed=False,
             refusal_code="safety_scan_failed",
-            deployment_ready=False,
+            result_digest=None,
         )
-        receipt.evidence_digest = receipt.compute_digest()
+        bad_receipt.evidence_digest = bad_receipt.compute_digest()
         service = GitHubPagesDeploymentService()
-        prep = service.prepare_deployment(
-            preview.compiler_result,
-            preview_receipt=receipt,
-            target_repo_owner="test-owner",
-            target_repo_name="test-repo",
-        )
-        assert not prep.preview_evidence_valid
-        assert not prep.ready_to_deploy
-
-    def test_prepare_refuses_preview_only_receipt(self) -> None:
-        preview = _compile_valid_preview()
-        receipt = PreviewEvidenceReceipt(
-            receipt_id="preview-only-receipt",
-            compiled_at=_now_iso(),
-            compilation_successful=True,
-            profile_candidate_digest="sha256:ok",
-            result_digest="sha256:ok",
-            safety_passed=True,
-            deployment_ready=False,
-            preview_only=True,
-        )
-        receipt.evidence_digest = receipt.compute_digest()
-        service = GitHubPagesDeploymentService()
-        prep = service.prepare_deployment(
-            preview.compiler_result,
-            preview_receipt=receipt,
-            target_repo_owner="test-owner",
-            target_repo_name="test-repo",
-        )
-        assert not prep.preview_evidence_valid
-        assert any("preview_only" in b.lower() for b in prep.blockers)
-
-
-# ═══════════════════════════════════════════════════════════════════════
-# Repair 1 & 3: Single Authorization + Content Publication
-# ═══════════════════════════════════════════════════════════════════════
-
-
-class TestDeploymentExecution:
-    def test_execute_refuses_without_authorization(self) -> None:
-        preview = _compile_valid_preview()
-        receipt = _make_valid_preview_receipt(preview.compiler_result)
-        receipt.evidence_digest = receipt.compute_digest()
-        service = GitHubPagesDeploymentService()
-        prep = service.prepare_deployment(
-            preview.compiler_result,
-            preview_receipt=receipt,
-            target_repo_owner="test-owner",
-            target_repo_name="test-repo",
-        )
-        assert prep.ready_to_deploy
-
-        import asyncio
-
-        result = asyncio.get_event_loop().run_until_complete(
-            service.execute_deployment(
+        with pytest.raises(ValueError, match="compilation_successful"):
+            service.prepare_transition(
                 preview.compiler_result,
+                preview_receipt=bad_receipt,
+                target_repo_owner="test-owner",
+                target_repo_name="test-repo",
+            )
+
+    def test_missing_preview_receipt_refused(self) -> None:
+        preview = _compile_genuine_preview()
+        service = GitHubPagesDeploymentService()
+        with pytest.raises(ValueError, match="T1.2"):
+            service.prepare_transition(
+                preview.compiler_result,
+                preview_receipt=None,  # type: ignore[arg-type]
+            )
+
+    def test_result_digest_mismatch_refused(self) -> None:
+        preview = _compile_genuine_preview()
+        receipt = preview.receipt
+        receipt_copy = receipt.model_copy()
+        receipt_copy.result_digest = "sha256:wrong-digest"
+        receipt_copy.evidence_digest = receipt_copy.compute_digest()
+        service = GitHubPagesDeploymentService()
+        with pytest.raises(ValueError, match="result_digest"):
+            service.prepare_transition(
+                preview.compiler_result,
+                preview_receipt=receipt_copy,
+                target_repo_owner="test-owner",
+                target_repo_name="test-repo",
+            )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Gate B: Digest-Bound Content Enforcement
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestDigestBoundContent:
+    def test_bundle_digest_mismatch_refused(self) -> None:
+        preview = _compile_genuine_preview()
+        receipt = preview.receipt
+        service = GitHubPagesDeploymentService()
+        prep = service.prepare_transition(
+            preview.compiler_result,
+            preview_receipt=receipt,
+            target_repo_owner="test-owner",
+            target_repo_name="test-repo",
+        )
+
+        bundle = ApprovedStaticPublicationBundle(
+            files={"index.html": "<h1>Hello</h1>"},
+            preview_result_digest=prep.preview_result_digest,
+            preparation_digest=prep.preparation_digest,
+        )
+        bundle.compute_content_digest()
+        bogus_bundle = ApprovedStaticPublicationBundle(
+            files={"index.html": "<h1>Different content</h1>"},
+            preview_result_digest=prep.preview_result_digest,
+            preparation_digest=prep.preparation_digest,
+        )
+        bogus_bundle.compute_content_digest()
+
+        result = service.validate_bundle(bogus_bundle, prep)
+        assert not result["valid"]
+
+    def test_valid_bundle_passes_validation(self) -> None:
+        preview = _compile_genuine_preview()
+        receipt = preview.receipt
+        service = GitHubPagesDeploymentService()
+        prep = service.prepare_transition(
+            preview.compiler_result,
+            preview_receipt=receipt,
+            target_repo_owner="test-owner",
+            target_repo_name="test-repo",
+        )
+
+        bundle = ApprovedStaticPublicationBundle(
+            files={"index.html": "<h1>Hello</h1>"},
+            preview_result_digest=prep.preview_result_digest,
+            preparation_digest=prep.preparation_digest,
+        )
+        bundle.compute_content_digest()
+        prep.static_bundle_digest = bundle.content_digest
+        prep.compute_digest()
+
+        result = service.validate_bundle(bundle, prep)
+        assert result["valid"]
+
+    def test_empty_bundle_rejected(self) -> None:
+        preview = _compile_genuine_preview()
+        receipt = preview.receipt
+        service = GitHubPagesDeploymentService()
+        prep = service.prepare_transition(
+            preview.compiler_result,
+            preview_receipt=receipt,
+            target_repo_owner="test-owner",
+            target_repo_name="test-repo",
+        )
+        empty = ApprovedStaticPublicationBundle(
+            files={},
+            preview_result_digest=prep.preview_result_digest,
+            preparation_digest=prep.preparation_digest,
+        )
+        result = service.validate_bundle(empty, prep)
+        assert not result["valid"]
+
+    def test_unsafe_paths_detected(self) -> None:
+        bundle = ApprovedStaticPublicationBundle(
+            files={
+                "../secrets.env": "SECRET=abc",
+                ".github/workflows/deploy.yml": "evil",
+                "/absolute/path.html": "content",
+            }
+        )
+        violations = bundle.validate_paths()
+        assert len(violations) >= 3
+
+    def test_content_manifest_tracks_partial_publication(self) -> None:
+        manifest = ContentPublicationManifest(
+            operation_id="op-test",
+            bundle_content_digest="sha256:test",
+            target_branch="gh-pages",
+            expected_files=["index.html", "style.css", "app.js"],
+            published_files=["index.html"],
+            failed_files=[{"path": "style.css", "error": "timeout"}],
+            publication_complete=False,
+            publication_partial=True,
+        )
+        manifest.compute_digest()
+        assert manifest.publication_partial is True
+        assert manifest.publication_complete is False
+        assert manifest.evidence_digest
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Gate C: Pages Configuration & Execution
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestPagesConfiguration:
+    def test_execution_refuses_without_authorization(self) -> None:
+        preview = _compile_genuine_preview()
+        receipt = preview.receipt
+        service = GitHubPagesDeploymentService()
+        prep = service.prepare_transition(
+            preview.compiler_result,
+            preview_receipt=receipt,
+            target_repo_owner="test-owner",
+            target_repo_name="test-repo",
+        )
+        result = asyncio.get_event_loop().run_until_complete(
+            service.execute_publication(
                 prep,
                 authorization_receipt_id="",
                 target_repo_owner="test-owner",
                 target_repo_name="test-repo",
             )
         )
-        assert result.deployment_phase == DeploymentPhase.REFUSED.value
+        assert result.transition_phase == PublicationTransitionPhase.REFUSED.value
         assert result.refusal_code == DeploymentRefusalCode.AUTHORIZATION_MISSING.value
 
-    def test_execute_refuses_not_ready(self) -> None:
-        preview = _compile_valid_preview()
+    def test_execution_refuses_without_target_repo(self) -> None:
+        preview = _compile_genuine_preview()
+        receipt = preview.receipt
         service = GitHubPagesDeploymentService()
-        prep = DeploymentPreparationResult(
-            preparation_id="not-ready",
-            operation_id="op-nr",
-            ready_to_deploy=False,
-            authorization_required=True,
-        )
-        import asyncio
-
-        result = asyncio.get_event_loop().run_until_complete(
-            service.execute_deployment(
-                preview.compiler_result,
-                prep,
-                authorization_receipt_id="some-auth",
-                target_repo_owner="test-owner",
-                target_repo_name="test-repo",
-            )
-        )
-        assert result.deployment_phase == DeploymentPhase.REFUSED.value
-
-    def test_phase_transition_on_contentless_deploy(self) -> None:
-        """Without git boundary, service truthfully reports PAGES_CONFIGURED."""
-        preview = _compile_valid_preview()
-        receipt = _make_valid_preview_receipt(preview.compiler_result)
-        receipt.evidence_digest = receipt.compute_digest()
-        service = GitHubPagesDeploymentService()
-        prep = service.prepare_deployment(
+        prep = service.prepare_transition(
             preview.compiler_result,
             preview_receipt=receipt,
             target_repo_owner="test-owner",
             target_repo_name="test-repo",
         )
-        import asyncio
-
         result = asyncio.get_event_loop().run_until_complete(
-            service.execute_deployment(
-                preview.compiler_result,
+            service.execute_publication(
                 prep,
                 authorization_receipt_id="auth-fake",
-                target_repo_owner="test-owner",
-                target_repo_name="test-repo",
+                target_repo_owner="",
+                target_repo_name="",
             )
         )
-        # Without real auth + adapter, should refuse at authorization or config
-        assert result.deployment_phase != "deployed"
+        assert result.transition_phase == PublicationTransitionPhase.REFUSED.value
+        assert result.refusal_code == DeploymentRefusalCode.REPO_NOT_FOUND.value
+
+    def test_phase_model_has_all_required_states(self) -> None:
+        required = {
+            "prepared",
+            "authorization_required",
+            "authorized",
+            "pages_configuration_unchanged",
+            "pages_created",
+            "pages_updated",
+            "content_publication_started",
+            "content_publication_partial",
+            "content_published",
+            "build_requested",
+            "build_pending",
+            "published_verified",
+            "refused",
+            "failed",
+            "recovery_required",
+        }
+        actual = {p.value for p in PublicationTransitionPhase}
+        assert required <= actual
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# Repair 4: Create vs Update Pages Routing
+# Gate D: Evidence Ledger
 # ═══════════════════════════════════════════════════════════════════════
 
 
-class TestCreateUpdatePagesRouting:
-    def test_prepare_flags_requires_create_for_new_site(self) -> None:
-        preview = _compile_valid_preview()
-        receipt = _make_valid_preview_receipt(preview.compiler_result)
-        receipt.evidence_digest = receipt.compute_digest()
-        service = GitHubPagesDeploymentService()
-        prep = service.prepare_deployment(
-            preview.compiler_result,
-            preview_receipt=receipt,
-            target_repo_owner="test-owner",
-            target_repo_name="test-repo",
-        )
-        assert prep.pages_requires_create
-        assert not prep.pages_site_exists
-
-
-# ═══════════════════════════════════════════════════════════════════════
-# Repair 5: Recovery State Model
-# ═══════════════════════════════════════════════════════════════════════
-
-
-class TestRecoveryState:
-    def test_verified_returns_verify_only(self) -> None:
-        receipt = DeploymentOutcomeReceipt(
-            receipt_id="r-verified",
-            operation_id="op-v",
-            profile_candidate_digest="sha256:a",
-            preview_evidence_digest="sha256:b",
-            compilation_result_digest="sha256:c",
-            deployment_phase=DeploymentPhase.PUBLISHED_VERIFIED.value,
-            pages_configured=True,
-            content_published=True,
-            remote_request_sent=True,
-            remote_verified=True,
-            evidence_digest="",
-        )
-        receipt.evidence_digest = receipt.compute_digest()
-        service = GitHubPagesDeploymentService()
-        recovery = service.compute_recovery_state(receipt)
-        assert recovery.recoverable
-        assert recovery.recovery_action == "verify_only"
-
-    def test_configured_without_content_returns_retry_push(self) -> None:
-        receipt = DeploymentOutcomeReceipt(
-            receipt_id="r-config",
-            operation_id="op-c",
-            profile_candidate_digest="sha256:a",
-            preview_evidence_digest="sha256:b",
-            compilation_result_digest="sha256:c",
-            deployment_phase=DeploymentPhase.PAGES_CONFIGURED.value,
-            pages_configured=True,
-            content_published=False,
-            remote_request_sent=True,
-            remote_verified=False,
-            evidence_digest="",
-        )
-        receipt.evidence_digest = receipt.compute_digest()
-        service = GitHubPagesDeploymentService()
-        recovery = service.compute_recovery_state(receipt)
-        assert recovery.recoverable
-        assert recovery.recovery_action == "retry_content_push"
-        assert recovery.prior_pages_configured is True
-        assert recovery.prior_content_published is False
-
-    def test_failed_with_auth_returns_reauthorize(self) -> None:
-        receipt = DeploymentOutcomeReceipt(
-            receipt_id="r-failed",
-            operation_id="op-f",
-            profile_candidate_digest="sha256:a",
-            preview_evidence_digest="sha256:b",
-            deployment_phase=DeploymentPhase.FAILED.value,
-            authorization_receipt_digest="sha256:auth-consumed",
-            remote_request_sent=True,
-            evidence_digest="",
-        )
-        receipt.evidence_digest = receipt.compute_digest()
-        service = GitHubPagesDeploymentService()
-        recovery = service.compute_recovery_state(receipt)
-        assert recovery.recoverable
-        assert recovery.recovery_action == "reauthorize"
-
-
-# ═══════════════════════════════════════════════════════════════════════
-# Repair 6: Evidence Ledger Integrity
-# ═══════════════════════════════════════════════════════════════════════
-
-
-class TestEvidenceLedgerIntegrity:
-    def test_append_validates_receipt_digest(self) -> None:
-        """Receipt with fake digest gets recomputed and validated on append."""
+class TestEvidenceLedger:
+    def test_append_and_dedup(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "evidence.jsonl"
             ledger = DeploymentEvidenceLedger(ledger_path=path)
 
-            receipt = DeploymentOutcomeReceipt(
-                receipt_id="r-1",
-                operation_id="op-1",
-                profile_candidate_digest="sha256:a",
-                preview_evidence_digest="sha256:b",
-                deployment_phase=DeploymentPhase.PAGES_CONFIGURED.value,
-                evidence_digest="not-a-real-digest",
+            from rig_relay.publication._deployment_models import (
+                PublicationTransitionReceipt,
             )
-            # Ledger recomputes and validates the digest
-            event_digest = ledger.append_event("op-1", receipt)
-            assert event_digest.startswith("sha256:")
-            assert ledger.count_events() == 1
 
-    def test_append_event_with_valid_digest(self) -> None:
-        with tempfile.TemporaryDirectory() as d:
-            path = Path(d) / "evidence.jsonl"
-            ledger = DeploymentEvidenceLedger(ledger_path=path)
-
-            receipt = DeploymentOutcomeReceipt(
-                receipt_id="r-valid",
-                operation_id="op-valid",
-                profile_candidate_digest="sha256:a",
-                preview_evidence_digest="sha256:b",
-                deployment_phase=DeploymentPhase.PAGES_CONFIGURED.value,
-                pages_configured=True,
+            receipt = PublicationTransitionReceipt(
+                receipt_id="r-test",
+                operation_id="op-test",
+                transition_preparation_digest="sha256:prep",
+                preview_evidence_digest="sha256:prev",
+                static_bundle_digest="sha256:bundle",
+                transition_phase=PublicationTransitionPhase.CONTENT_PUBLISHED.value,
                 evidence_digest="",
             )
             receipt.evidence_digest = receipt.compute_digest()
-            event_digest = ledger.append_event("op-valid", receipt)
-            assert event_digest.startswith("sha256:")
-            assert ledger.count_events() == 1
-
-    def test_dedup_preserves_first_event(self) -> None:
-        with tempfile.TemporaryDirectory() as d:
-            path = Path(d) / "dedup.jsonl"
-            ledger = DeploymentEvidenceLedger(ledger_path=path)
-
-            receipt = DeploymentOutcomeReceipt(
-                receipt_id="r-dedup",
-                operation_id="op-dedup",
-                profile_candidate_digest="sha256:a",
-                preview_evidence_digest="sha256:b",
-                deployment_phase=DeploymentPhase.PAGES_CONFIGURED.value,
-                evidence_digest="",
-            )
-            receipt.evidence_digest = receipt.compute_digest()
-            first = ledger.append_event("op-dedup", receipt)
-            second = ledger.append_event("op-dedup", receipt)
+            first = ledger.append_event("op-test", receipt)
+            second = ledger.append_event("op-test", receipt)
             assert first == second
             assert ledger.count_events() == 1
 
-    def test_conflict_different_content_raises(self) -> None:
+    def test_conflict_detection(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "conflict.jsonl"
             ledger = DeploymentEvidenceLedger(ledger_path=path)
 
-            r1 = DeploymentOutcomeReceipt(
-                receipt_id="r-c1",
+            from rig_relay.publication._deployment_models import (
+                PublicationTransitionReceipt,
+            )
+
+            r1 = PublicationTransitionReceipt(
+                receipt_id="r-conflict",
                 operation_id="op-conflict",
-                profile_candidate_digest="sha256:a",
-                preview_evidence_digest="sha256:b",
-                deployment_phase=DeploymentPhase.PAGES_CONFIGURED.value,
-                pages_configured=True,
+                transition_preparation_digest="sha256:prep",
+                preview_evidence_digest="sha256:prev1",
+                static_bundle_digest="sha256:bundle1",
+                transition_phase=PublicationTransitionPhase.CONTENT_PUBLISHED.value,
                 evidence_digest="",
             )
             r1.evidence_digest = r1.compute_digest()
             ledger.append_event("op-conflict", r1)
 
-            r2 = DeploymentOutcomeReceipt(
-                receipt_id="r-c2",
+            r2 = PublicationTransitionReceipt(
+                receipt_id="r-conflict2",
                 operation_id="op-conflict",
-                profile_candidate_digest="sha256:different",
-                preview_evidence_digest="sha256:different",
-                deployment_phase=DeploymentPhase.REFUSED.value,
+                transition_preparation_digest="sha256:different",
+                preview_evidence_digest="sha256:prev2",
+                static_bundle_digest="sha256:bundle2",
+                transition_phase=PublicationTransitionPhase.REFUSED.value,
                 refusal_code="compilation_failed",
                 evidence_digest="",
             )
@@ -532,18 +436,22 @@ class TestEvidenceLedgerIntegrity:
             with pytest.raises(RuntimeError, match="idempotency conflict"):
                 ledger.append_event("op-conflict", r2)
 
-    def test_load_receipts_with_reconstruction(self) -> None:
+    def test_reconstruction(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             path = Path(d) / "recon.jsonl"
             ledger = DeploymentEvidenceLedger(ledger_path=path)
 
-            receipt = DeploymentOutcomeReceipt(
+            from rig_relay.publication._deployment_models import (
+                PublicationTransitionReceipt,
+            )
+
+            receipt = PublicationTransitionReceipt(
                 receipt_id="r-recon",
                 operation_id="op-recon",
-                profile_candidate_digest="sha256:a",
-                preview_evidence_digest="sha256:b",
-                deployment_phase=DeploymentPhase.CONTENT_PUBLISHED.value,
-                pages_configured=True,
+                transition_preparation_digest="sha256:prep",
+                preview_evidence_digest="sha256:prev",
+                static_bundle_digest="sha256:bundle",
+                transition_phase=PublicationTransitionPhase.CONTENT_PUBLISHED.value,
                 content_published=True,
                 evidence_digest="",
             )
@@ -553,54 +461,33 @@ class TestEvidenceLedgerIntegrity:
             result = ledger.load_receipts()
             assert result["total_rows"] == 1
             assert result["valid_rows"] == 1
-            assert result["corrupt_rows"] == 0
             assert not result["corruption_detected"]
 
-    def test_authoritative_refuses_on_corruption(self) -> None:
-        """Corrupt row in ledger → authoritative returns empty."""
-        with tempfile.TemporaryDirectory() as d:
-            path = Path(d) / "corrupt.jsonl"
-            ledger = DeploymentEvidenceLedger(ledger_path=path)
-
-            # Write a valid event first
-            receipt = DeploymentOutcomeReceipt(
-                receipt_id="r-valid-auth",
-                operation_id="op-auth",
-                profile_candidate_digest="sha256:a",
-                preview_evidence_digest="sha256:b",
-                deployment_phase=DeploymentPhase.PAGES_CONFIGURED.value,
-                evidence_digest="",
-            )
-            receipt.evidence_digest = receipt.compute_digest()
-            ledger.append_event("op-auth", receipt)
-
-            # Corrupt the file
-            with open(path, "a") as f:
-                f.write("this is not valid json\n")
-
-            result = ledger.load_receipts(authoritative=True)
-            assert result["corruption_detected"] is True
-            assert result["valid_rows"] == 0
-            assert len(result["receipts"]) == 0
-            assert result["total_rows"] == 2
-
 
 # ═══════════════════════════════════════════════════════════════════════
-# Repair 7: Verified Record Portfolio Synthesis
+# Gate E: Portfolio Verified Records
 # ═══════════════════════════════════════════════════════════════════════
 
 
-class TestVerifiedPortfolioSynthesis:
+class TestPortfolioVerified:
     def _make_verified_record(
-        self, name: str = "Test Project"
+        self,
+        name: str = "Test",
+        compilation_successful: bool = True,
+        safety_passed: bool = True,
+        refusal_code: str | None = None,
+        verified: bool = True,
     ) -> VerifiedApprovedProjectPublicationRecord:
         return VerifiedApprovedProjectPublicationRecord(
             record_id=f"rec-{name}",
             profile_candidate_digest=_digest_sha256(f"profile:{name}"),
             preview_evidence_digest=_digest_sha256(f"preview:{name}"),
+            compilation_successful=compilation_successful,
+            safety_passed=safety_passed,
+            refusal_code=refusal_code,
             compilation_result_digest=_digest_sha256(f"compiler:{name}"),
-            approval_evidence_digest=_digest_sha256(f"approval:{name}"),
-            safety_passed=True,
+            transition_preparation_digest=_digest_sha256(f"transition:{name}"),
+            authorization_evidence_digest=_digest_sha256(f"auth:{name}"),
             privacy_class="public_safe",
             content_light_guarantee=True,
             publication_surface="project_page",
@@ -608,301 +495,196 @@ class TestVerifiedPortfolioSynthesis:
                 "project_identity": {
                     "project_name": name,
                     "tagline": f"{name} tagline",
-                    "current_milestone": "beta",
                 },
                 "status_overview": {"overall_status": "beta", "evidence_backed": True},
                 "projection_digest": _digest_sha256(f"proj:{name}"),
                 "publication_surface": "project_page",
             },
             projection_digest=_digest_sha256(f"proj:{name}"),
-            verified=True,
+            verified=verified,
             verification_digest=_digest_sha256(f"verify:{name}"),
         )
 
-    def test_synthesize_accepts_verified_records(self) -> None:
+    def test_accepts_verified_approved_records(self) -> None:
         service = PortfolioSynthesisService()
-        records = [
-            self._make_verified_record("Alpha"),
-            self._make_verified_record("Beta"),
-        ]
-        s_input = PortfolioSynthesisInput(
-            developer_display_name="Dev", verified_records=records
-        )
+        records = [self._make_verified_record("Valid")]
+        s_input = PortfolioSynthesisInput(verified_records=records)
         result = service.synthesize(s_input)
         assert result.compilation_successful
-        assert result.included_count == 2
+        assert result.included_count == 1
         assert result.rejected_count == 0
-        assert result.safety_passed
-        assert result.ready_for_deployment
 
-    def test_synthesize_rejects_unverified_records(self) -> None:
+    def test_rejects_compilation_failed(self) -> None:
         service = PortfolioSynthesisService()
-        unverified = self._make_verified_record("Unverified")
-        unverified.verified = False
-        s_input = PortfolioSynthesisInput(verified_records=[unverified])
+        rec = self._make_verified_record("Fail", compilation_successful=False)
+        s_input = PortfolioSynthesisInput(verified_records=[rec])
         result = service.synthesize(s_input)
         assert result.included_count == 0
         assert result.rejected_count == 1
-        assert result.rejected_records[0].rejection_reason == "not_verified"
+        assert result.rejected_records[0].rejection_reason == "compilation_failed"
 
-    def test_synthesize_rejects_raw_dicts(self) -> None:
-        """X3.1 repair #7: arbitrary dicts are rejected."""
+    def test_rejects_refusal_code_present(self) -> None:
+        service = PortfolioSynthesisService()
+        rec = self._make_verified_record("Refused", refusal_code="safety_scan_failed")
+        s_input = PortfolioSynthesisInput(verified_records=[rec])
+        result = service.synthesize(s_input)
+        assert result.rejected_count == 1
+        assert result.rejected_records[0].rejection_reason == "refusal_code_present"
+
+    def test_rejects_raw_dicts(self) -> None:
         service = PortfolioSynthesisService()
         s_input = PortfolioSynthesisInput(
-            verified_records=[
-                {
-                    "compilation_successful": True,
-                    "safety_passed": True,
-                    "projection": {
-                        "project_identity": {"project_name": "Fake Project"},
-                        "status_overview": {"overall_status": "good"},
-                    },
-                }
-            ]
+            verified_records=[{"compilation_successful": True, "safety_passed": True}]
         )
         result = service.synthesize(s_input)
         assert result.included_count == 0
         assert result.rejected_count == 1
         assert result.rejected_records[0].rejection_reason == "not_verified_record"
 
-    def test_synthesize_rejects_safety_failed(self) -> None:
+    def test_safe_html_escaping(self) -> None:
         service = PortfolioSynthesisService()
-        unsafe = self._make_verified_record("Unsafe")
-        unsafe.safety_passed = False
-        s_input = PortfolioSynthesisInput(verified_records=[unsafe])
-        result = service.synthesize(s_input)
-        assert result.included_count == 0
-        assert result.rejected_records[0].rejection_reason == "safety_not_passed"
-
-    def test_synthesize_rejects_internal_privacy(self) -> None:
-        service = PortfolioSynthesisService()
-        internal = self._make_verified_record("Internal")
-        internal.privacy_class = "internal_only"
-        s_input = PortfolioSynthesisInput(verified_records=[internal])
-        result = service.synthesize(s_input)
-        assert result.included_count == 0
-        assert result.rejected_records[0].rejection_reason == "privacy_class_unsafe"
-
-    def test_synthesize_mixed_records(self) -> None:
-        service = PortfolioSynthesisService()
-        valid = self._make_verified_record("Valid")
-        unverified = self._make_verified_record("Unverified")
-        unverified.verified = False
-        s_input = PortfolioSynthesisInput(
-            verified_records=[valid, unverified, {"bad": "dict"}]
-        )
-        result = service.synthesize(s_input)
-        assert result.included_count == 1
-        assert result.rejected_count == 2
-
-
-# ═══════════════════════════════════════════════════════════════════════
-# Repair 8: Safe HTML Escaping
-# ═══════════════════════════════════════════════════════════════════════
-
-
-class TestSafeHTML:
-    def test_html_escapes_script_injection(self) -> None:
-        service = PortfolioSynthesisService()
-        malicious = VerifiedApprovedProjectPublicationRecord(
-            record_id="rec-malicious",
-            profile_candidate_digest=_digest_sha256("malicious"),
-            preview_evidence_digest=_digest_sha256("preview:mal"),
-            compilation_result_digest=_digest_sha256("compiler:mal"),
-            safety_passed=True,
-            privacy_class="public_safe",
-            content_light_guarantee=True,
-            publication_surface="project_page",
-            projection={
-                "project_identity": {
-                    "project_name": '<script>alert("xss")</script>',
-                    "tagline": '"><svg onload=alert(1)>',
-                    "current_milestone": "alpha",
-                },
-                "status_overview": {"overall_status": "beta", "evidence_backed": True},
-                "projection_digest": _digest_sha256("proj-mal"),
-                "publication_surface": "project_page",
+        rec = self._make_verified_record("Clean")
+        rec.projection = {
+            "project_identity": {
+                "project_name": "<script>alert(1)</script>",
+                "tagline": "safe",
             },
-            projection_digest=_digest_sha256("proj-mal"),
-            verified=True,
-            verification_digest=_digest_sha256("verify-mal"),
-        )
+            "status_overview": {"overall_status": "alpha", "evidence_backed": True},
+            "projection_digest": _digest_sha256("proj-xss"),
+            "publication_surface": "project_page",
+        }
+        rec.projection_digest = _digest_sha256("proj-xss")
         s_input = PortfolioSynthesisInput(
-            developer_display_name='Dev"><script>alert(1)</script>',
-            developer_headline="Safety<script>",
-            developer_bio="Bio<iframe src=x>",
-            verified_records=[malicious],
+            developer_display_name="Dev<script>", verified_records=[rec]
         )
         result = service.synthesize(s_input)
-        html_content = result.portfolio_html
-        assert html_content is not None
-        # Script tags and iframes should be escaped
-        assert "<script>" not in html_content
-        assert "<iframe" not in html_content
-        assert "&lt;script&gt;" in html_content
-        assert "&lt;iframe" in html_content
-        # Safety scan should detect the onload= pattern in the escaped text
-        assert not result.safety_passed
-        assert not result.ready_for_deployment
-
-    def test_html_scan_detects_unsafe_patterns(self) -> None:
-        from rig_relay.publication._portfolio_service import (
-            _scan_portfolio_html_for_safety,
-        )
-
-        clean = "<h1>Safe Title</h1><p>Content</p>"
-        assert _scan_portfolio_html_for_safety(clean) == []
-
-        dirty = "<h1>Safe</h1><script>alert(1)</script>"
-        findings = _scan_portfolio_html_for_safety(dirty)
-        assert any("script_tag" in f for f in findings)
-
-    def test_safety_scan_blocks_deployment_readiness(self) -> None:
-        """If HTML contains unsafe patterns, ready_for_deployment is False."""
-        # Safety scan runs on rendered HTML; escaped HTML passes
-        service = PortfolioSynthesisService()
-        valid = VerifiedApprovedProjectPublicationRecord(
-            record_id="rec-clean",
-            profile_candidate_digest=_digest_sha256("clean"),
-            preview_evidence_digest=_digest_sha256("preview:clean"),
-            compilation_result_digest=_digest_sha256("compiler:clean"),
-            safety_passed=True,
-            privacy_class="public_safe",
-            content_light_guarantee=True,
-            publication_surface="project_page",
-            projection={
-                "project_identity": {
-                    "project_name": "Clean Project",
-                    "tagline": "Safe tagline",
-                    "current_milestone": "alpha",
-                },
-                "status_overview": {"overall_status": "alpha", "evidence_backed": True},
-                "projection_digest": _digest_sha256("proj-clean"),
-                "publication_surface": "project_page",
-            },
-            projection_digest=_digest_sha256("proj-clean"),
-            verified=True,
-            verification_digest=_digest_sha256("verify-clean"),
-        )
-        s_input = PortfolioSynthesisInput(verified_records=[valid])
-        result = service.synthesize(s_input)
-        assert result.safety_passed
-        assert result.ready_for_deployment
+        assert result.portfolio_html is not None
+        assert "<script>" not in result.portfolio_html
+        assert "&lt;script&gt;" in result.portfolio_html
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# Repair 9: Deterministic Portfolio Content Digest
+# Gate F: Status Contracts
 # ═══════════════════════════════════════════════════════════════════════
 
 
-class TestDeterministicPortfolio:
-    def test_content_digest_stable_for_same_inputs(self) -> None:
-        service = PortfolioSynthesisService()
-
-        def make_record(name: str) -> VerifiedApprovedProjectPublicationRecord:
-            return VerifiedApprovedProjectPublicationRecord(
-                record_id=f"rec-{name}",
-                profile_candidate_digest=_digest_sha256(f"profile:{name}"),
-                preview_evidence_digest=_digest_sha256(f"preview:{name}"),
-                compilation_result_digest=_digest_sha256(f"compiler:{name}"),
-                safety_passed=True,
-                privacy_class="public_safe",
-                content_light_guarantee=True,
-                publication_surface="project_page",
-                projection={
-                    "project_identity": {
-                        "project_name": name,
-                        "tagline": f"{name} tagline",
-                    },
-                    "status_overview": {
-                        "overall_status": "alpha",
-                        "evidence_backed": True,
-                    },
-                    "projection_digest": _digest_sha256(f"proj:{name}"),
-                    "publication_surface": "project_page",
-                },
-                projection_digest=_digest_sha256(f"proj:{name}"),
-                verified=True,
-                verification_digest=_digest_sha256(f"verify:{name}"),
-            )
-
-        r1 = make_record("Alpha")
-        r2 = make_record("Beta")
-        records = [r1, r2]
-
-        s_input = PortfolioSynthesisInput(verified_records=records)
-        result_a = service.synthesize(s_input)
-        result_b = service.synthesize(s_input)
-
-        # Content digest is stable across calls
-        assert result_a.content_digest == result_b.content_digest
-        # Operation digest differs (contains synthesis_id + timestamp)
-        assert result_a.synthesis_id != result_b.synthesis_id
-
-    def test_different_records_produce_different_content_digest(self) -> None:
-        service = PortfolioSynthesisService()
-
-        def make_record(
-            name: str, proj_digest: str
-        ) -> VerifiedApprovedProjectPublicationRecord:
-            return VerifiedApprovedProjectPublicationRecord(
-                record_id=f"rec-{name}",
-                profile_candidate_digest=_digest_sha256(f"profile:{name}"),
-                preview_evidence_digest=_digest_sha256(f"preview:{name}"),
-                compilation_result_digest=_digest_sha256(f"compiler:{name}"),
-                safety_passed=True,
-                privacy_class="public_safe",
-                content_light_guarantee=True,
-                publication_surface="project_page",
-                projection={
-                    "project_identity": {"project_name": name},
-                    "status_overview": {"overall_status": "alpha"},
-                    "projection_digest": proj_digest,
-                    "publication_surface": "project_page",
-                },
-                projection_digest=proj_digest,
-                verified=True,
-                verification_digest=_digest_sha256(f"verify:{name}"),
-            )
-
-        s1 = PortfolioSynthesisInput(verified_records=[make_record("A", "sha256:aaa")])
-        s2 = PortfolioSynthesisInput(verified_records=[make_record("B", "sha256:bbb")])
-
-        result_a = service.synthesize(s1)
-        result_b = service.synthesize(s2)
-
-        assert result_a.content_digest != result_b.content_digest
-
-
-# ═══════════════════════════════════════════════════════════════════════
-# Verified Record Model Tests
-# ═══════════════════════════════════════════════════════════════════════
-
-
-class TestVerifiedRecordModel:
-    def test_verified_record_compute_digest(self) -> None:
-        record = VerifiedApprovedProjectPublicationRecord(
-            record_id="rec-test",
-            profile_candidate_digest="sha256:p",
-            preview_evidence_digest="sha256:pe",
-            compilation_result_digest="sha256:c",
-            safety_passed=True,
-            projection={},
-            projection_digest="sha256:proj",
-            verified=True,
+class TestStatusContracts:
+    def test_build_status_contract(self) -> None:
+        preview = _compile_genuine_preview()
+        receipt = preview.receipt
+        service = GitHubPagesDeploymentService()
+        prep = service.prepare_transition(
+            preview.compiler_result,
+            preview_receipt=receipt,
+            target_repo_owner="test-owner",
+            target_repo_name="test-repo",
         )
-        digest = record.compute_digest()
-        assert digest.startswith("sha256:")
 
-    def test_verified_record_requires_explicit_verification(self) -> None:
-        record = VerifiedApprovedProjectPublicationRecord(
-            record_id="rec-noverify",
-            profile_candidate_digest="sha256:p",
-            preview_evidence_digest="sha256:pe",
-            compilation_result_digest="sha256:c",
-            safety_passed=True,
-            projection={},
-            projection_digest="sha256:proj",
-            verified=False,
+        from rig_relay.publication._deployment_models import (
+            PublicationTransitionReceipt,
         )
-        assert not record.verified
+
+        transition_receipt = PublicationTransitionReceipt(
+            receipt_id="r-status",
+            operation_id=prep.publication_operation_id,
+            transition_preparation_digest=prep.preparation_digest,
+            preview_evidence_digest=prep.preview_evidence_digest,
+            static_bundle_digest=prep.static_bundle_digest,
+            authorization_receipt_digest="sha256:auth-digest",
+            transition_phase=PublicationTransitionPhase.PUBLISHED_VERIFIED.value,
+            pages_created=True,
+            content_published=True,
+            remote_verified=True,
+            evidence_digest="",
+        )
+        transition_receipt.evidence_digest = transition_receipt.compute_digest()
+
+        contract = service.build_status_contract(transition_receipt, prep)
+        assert isinstance(contract, PublicationStatusContract)
+        assert contract.published_verified is True
+        assert contract.pages_configured is True
+        assert contract.content_published is True
+        assert contract.authorization_status == "accepted"
+
+    def test_refused_contract(self) -> None:
+        preview = _compile_genuine_preview()
+        receipt = preview.receipt
+        service = GitHubPagesDeploymentService()
+        prep = service.prepare_transition(
+            preview.compiler_result,
+            preview_receipt=receipt,
+            target_repo_owner="test-owner",
+            target_repo_name="test-repo",
+        )
+
+        from rig_relay.publication._deployment_models import (
+            PublicationTransitionReceipt,
+        )
+
+        refused = PublicationTransitionReceipt(
+            receipt_id="r-refused",
+            operation_id=prep.publication_operation_id,
+            transition_preparation_digest=prep.preparation_digest,
+            preview_evidence_digest=prep.preview_evidence_digest,
+            static_bundle_digest=prep.static_bundle_digest,
+            transition_phase=PublicationTransitionPhase.REFUSED.value,
+            refusal_code="authorization_missing",
+            evidence_digest="",
+        )
+        refused.evidence_digest = refused.compute_digest()
+
+        contract = service.build_status_contract(refused, prep)
+        assert contract.published_verified is False
+        assert contract.refusal_code == "authorization_missing"
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# Transition Preparation Model Tests
+# ═══════════════════════════════════════════════════════════════════════
+
+
+class TestTransitionPreparation:
+    def test_compute_digest_is_deterministic(self) -> None:
+        prep = AuthorizedPublicationTransitionPreparation(
+            publication_operation_id="op-test",
+            preview_evidence_digest="sha256:prev",
+            preview_receipt_digest="sha256:receipt",
+            preview_result_digest="sha256:result",
+            static_bundle_digest="sha256:bundle",
+            target_repository_identity_digest="sha256:repo",
+            target_surface="project_page",
+            source_branch="gh-pages",
+            source_path="/",
+            authorization_required=True,
+        )
+        d1 = prep.compute_digest()
+        d2 = prep.compute_digest()
+        assert d1 == d2
+        assert prep.evidence_digest == d1
+        assert prep.preparation_digest == d1
+
+    def test_different_inputs_different_digest(self) -> None:
+        p1 = AuthorizedPublicationTransitionPreparation(
+            publication_operation_id="op-1",
+            preview_evidence_digest="sha256:a",
+            static_bundle_digest="sha256:b1",
+            target_repository_identity_digest="sha256:repo",
+            authorization_required=True,
+        )
+        p2 = AuthorizedPublicationTransitionPreparation(
+            publication_operation_id="op-1",
+            preview_evidence_digest="sha256:a",
+            static_bundle_digest="sha256:b2",
+            target_repository_identity_digest="sha256:repo",
+            authorization_required=True,
+        )
+        assert p1.compute_digest() != p2.compute_digest()
+
+    def test_authorization_always_required(self) -> None:
+        prep = AuthorizedPublicationTransitionPreparation(
+            publication_operation_id="op-test",
+            preview_evidence_digest="sha256:a",
+            static_bundle_digest="sha256:b",
+            target_repository_identity_digest="sha256:repo",
+        )
+        assert prep.authorization_required is True

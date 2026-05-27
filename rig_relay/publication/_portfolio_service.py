@@ -1,9 +1,7 @@
-"""Portfolio Synthesis Service — Lane X3.1 portfolio publication authority.
+"""Portfolio Synthesis Service — Lane X3.2 portfolio publication authority.
 
-X3.1 repairs:
-  7. Only verified approved records enter synthesis (not arbitrary dicts)
-  8. Safe HTML escaping on all public values
-  9. Deterministic output — operation identity separate from content digest
+X3.2 Gate E: Verified records must bind real T1.2 preview receipts.
+X3.1 repairs retained: safe HTML escaping, deterministic content digest.
 """
 
 from __future__ import annotations
@@ -168,6 +166,20 @@ class PortfolioSynthesisService:
                 rejection_reason="not_verified",
                 rejection_detail="Record is not verified",
             )
+        if not record.compilation_successful:
+            return False, PortfolioProjectionRejection(
+                profile_candidate_digest=record.profile_candidate_digest,
+                compilation_receipt_digest=record.verification_digest,
+                rejection_reason="compilation_failed",
+                rejection_detail="Compilation was not successful",
+            )
+        if record.refusal_code is not None:
+            return False, PortfolioProjectionRejection(
+                profile_candidate_digest=record.profile_candidate_digest,
+                compilation_receipt_digest=record.verification_digest,
+                rejection_reason="refusal_code_present",
+                rejection_detail=f"Refusal code: {record.refusal_code}",
+            )
         if not record.safety_passed:
             return False, PortfolioProjectionRejection(
                 profile_candidate_digest=record.profile_candidate_digest,
@@ -230,7 +242,7 @@ class PortfolioSynthesisService:
                 "projection_digest": rec.projection_digest,
                 "publication_surface": proj.get("publication_surface", "project_page"),
                 "preview_evidence_digest": rec.preview_evidence_digest,
-                "approval_evidence_digest": rec.approval_evidence_digest,
+                "approval_evidence_digest": rec.authorization_evidence_digest,
             }
             project_entries.append(entry)
 

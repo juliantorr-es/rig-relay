@@ -15,7 +15,7 @@ import os
 from pathlib import Path
 from typing import Any
 
-from rig_relay.publication._deployment_models import DeploymentOutcomeReceipt
+from rig_relay.publication._deployment_models import PublicationTransitionReceipt
 
 DEPLOYMENT_LEDGER_DIR = Path(".build/rig-relay/publication")
 DEPLOYMENT_LEDGER_FILE = "publication_deployment_evidence.v1.jsonl"
@@ -102,15 +102,16 @@ def _validate_event_against_schema(event: dict) -> None:
 def _compute_governance_digest(receipt: dict[str, Any]) -> str:
     """Governance-scoped digest for conflict detection — only outcome fields."""
     canonical = {
-        "deployment_phase": receipt.get("deployment_phase", ""),
-        "pages_configured": receipt.get("pages_configured", False),
+        "transition_phase": receipt.get("transition_phase", ""),
+        "pages_created": receipt.get("pages_created", False),
+        "pages_updated": receipt.get("pages_updated", False),
         "content_published": receipt.get("content_published", False),
         "build_initiated": receipt.get("build_initiated", False),
         "remote_verified": receipt.get("remote_verified", False),
         "refusal_code": receipt.get("refusal_code"),
         "refusal_reasons": sorted(receipt.get("refusal_reasons", [])),
         "preview_evidence_digest": receipt.get("preview_evidence_digest", ""),
-        "compilation_result_digest": receipt.get("compilation_result_digest", ""),
+        "static_bundle_digest": receipt.get("static_bundle_digest", ""),
         "authorization_receipt_digest": receipt.get("authorization_receipt_digest", ""),
     }
     payload = json.dumps(canonical, sort_keys=True, separators=(",", ":"))
@@ -123,23 +124,27 @@ def _verify_receipt_digest(receipt: dict[str, Any]) -> None:
         "schema_version": receipt.get("schema_version", ""),
         "receipt_id": receipt.get("receipt_id", ""),
         "operation_id": receipt.get("operation_id", ""),
-        "preparation_digest": receipt.get("preparation_digest", ""),
-        "profile_candidate_digest": receipt.get("profile_candidate_digest", ""),
+        "transition_preparation_digest": receipt.get(
+            "transition_preparation_digest", ""
+        ),
         "preview_evidence_digest": receipt.get("preview_evidence_digest", ""),
         "preview_receipt_digest": receipt.get("preview_receipt_digest", ""),
-        "compilation_result_digest": receipt.get("compilation_result_digest", ""),
+        "static_bundle_digest": receipt.get("static_bundle_digest", ""),
         "authorization_receipt_digest": receipt.get("authorization_receipt_digest", ""),
-        "deployment_phase": receipt.get("deployment_phase", ""),
+        "transition_phase": receipt.get("transition_phase", ""),
         "pages_site_url": receipt.get("pages_site_url", ""),
         "pages_build_status": receipt.get("pages_build_status", ""),
-        "pages_configured": receipt.get("pages_configured", False),
+        "pages_created": receipt.get("pages_created", False),
+        "pages_updated": receipt.get("pages_updated", False),
+        "content_publication_manifest_digest": receipt.get(
+            "content_publication_manifest_digest", ""
+        ),
         "content_published": receipt.get("content_published", False),
         "build_initiated": receipt.get("build_initiated", False),
-        "refusal_code": receipt.get("refusal_code"),
-        "refusal_reasons": sorted(receipt.get("refusal_reasons", [])),
-        "remote_request_sent": receipt.get("remote_request_sent", False),
         "remote_verified": receipt.get("remote_verified", False),
         "remote_verification_digest": receipt.get("remote_verification_digest", ""),
+        "refusal_code": receipt.get("refusal_code"),
+        "refusal_reasons": sorted(receipt.get("refusal_reasons", [])),
         "recovery_required": receipt.get("recovery_required", False),
         "deployed_at": receipt.get("deployed_at", ""),
     }
@@ -185,7 +190,9 @@ class DeploymentEvidenceLedger:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._lock_path = ledger_path.with_suffix(ledger_path.suffix + ".lock")
 
-    def append_event(self, operation_id: str, receipt: DeploymentOutcomeReceipt) -> str:
+    def append_event(
+        self, operation_id: str, receipt: PublicationTransitionReceipt
+    ) -> str:
         """Persist a deployment outcome receipt as a content-light event.
 
         Returns the event_digest. Under fcntl lock:
