@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "rig.relay.native.package_evidence.v1",
+  "title": "Native App Package Evidence",
+  "description": "Content-light evidence artifact for a native macOS .app bundle build.",
+  "type": "object",
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.relay.native.package_evidence.v1" },
+    "identity": {
+      "type": "object",
+      "properties": {
+        "bundle_identifier": { "type": "string" },
+        "bundle_name": { "type": "string" },
+        "short_version": { "type": "string" },
+        "build_version": { "type": "string" },
+        "minimum_system_version": { "type": "string" },
+        "executable_path": { "type": "string" },
+        "bundle_path": { "type": "string" }
+      },
+      "required": ["bundle_identifier", "bundle_name", "short_version", "build_version"]
+    },
+    "build_config": { "type": "string" },
+    "build_sha256": { "type": "string" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "entitlements_path": { "type": ["string", "null"] },
+    "entitlements_sha256": { "type": ["string", "null"] },
+    "resources_count": { "type": "integer" },
+    "extension_embedded": { "type": "boolean" },
+    "extension_bundle_id": { "type": ["string", "null"] },
+    "signed": { "type": "boolean" },
+    "signing_identity": { "type": ["string", "null"] },
+    "notarized": { "type": "boolean" },
+    "notarization_ticket_stapled": { "type": "boolean" },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "blocking_issues": { "type": "array", "items": { "type": "string" } }
+  },
+  "required": ["schema_version", "identity", "build_config", "build_sha256", "timestamp"],
+  "additionalProperties": false
+}

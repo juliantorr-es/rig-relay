@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "rig.relay.native.signing_evidence.v1",
+  "title": "Native Code Signing Evidence",
+  "description": "Content-light evidence of a codesign operation. No raw certificates, keys, or binaries.",
+  "type": "object",
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.relay.native.signing_evidence.v1" },
+    "identity_used": { "type": "string" },
+    "identity_type": { "type": "string" },
+    "hardened_runtime": { "type": "boolean" },
+    "timestamp_included": { "type": "boolean" },
+    "entitlements_sha256": { "type": "string" },
+    "bundle_sha256_after": { "type": "string" },
+    "signed_at": { "type": "string", "format": "date-time" },
+    "status": { "type": "string", "enum": ["signed", "failed"] },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  },
+  "required": ["schema_version", "identity_used", "identity_type", "entitlements_sha256", "bundle_sha256_after", "signed_at", "status"],
+  "additionalProperties": false
+}

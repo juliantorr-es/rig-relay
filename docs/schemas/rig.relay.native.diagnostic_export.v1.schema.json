@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "rig.relay.native.diagnostic_export.v1",
+  "title": "Native Diagnostic Export Bundle",
+  "description": "Content-light diagnostic export for support and user review. No raw credentials, tokens, prompts, model outputs, or absolute private paths.",
+  "type": "object",
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.relay.native.diagnostic_export.v1" },
+    "export_id": { "type": "string" },
+    "exported_at": { "type": "string", "format": "date-time" },
+    "app_identity": {
+      "type": "object",
+      "properties": {
+        "bundle_identifier": { "type": "string" },
+        "bundle_name": { "type": "string" },
+        "short_version": { "type": "string" },
+        "build_version": { "type": "string" },
+        "minimum_system_version": { "type": "string" },
+        "executable_path": { "type": "string" },
+        "bundle_path": { "type": "string" }
+      },
+      "required": ["bundle_identifier", "bundle_name", "short_version", "build_version"]
+    },
+    "signing_status": { "type": "object" },
+    "notarization_status": { "type": "object" },
+    "update_status": { "type": "object" },
+    "recovery_state": { "type": "object" },
+    "extension_available": { "type": "boolean" },
+    "extension_connection_state": { "type": "string" },
+    "native_bridge_healthy": { "type": "boolean" },
+    "frontend_resources_present": { "type": "boolean" },
+    "health_checks": { "type": "array" },
+    "content_light_violations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field_name": { "type": "string" },
+          "reason": { "type": "string" },
+          "redacted_value": { "type": "string", "const": "[REDACTED]" }
+        },
+        "required": ["field_name", "reason"]
+      }
+    },
+    "content_policy": { "type": "string", "const": "content_light" },
+    "redacted": { "type": "boolean" },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "blocking": { "type": "array", "items": { "type": "string" } }
+  },
+  "required": ["schema_version", "export_id", "exported_at", "app_identity", "content_policy", "redacted"],
+  "additionalProperties": false
+}

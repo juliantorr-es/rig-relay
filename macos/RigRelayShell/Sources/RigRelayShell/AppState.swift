@@ -66,11 +66,17 @@ final class AppState: ObservableObject {
 
     private let sessionId = "webkit_host_\(UUID().uuidString.prefix(8))"
     let messageBridge = NativeMessageBridge()
+    let safariExtensionHost = SafariExtensionHost(
+        allowedBundleId: "com.rigrelay.RigRelayShell.SafariExtension"
+    )
+    let extensionStatusVM: ExtensionStatusViewModel
 
     var resourceLocator: ResourceLocator { ResourceLocator() }
 
     init() {
-        // No default remote URL assumption — resources resolved from bundle
+        self.extensionStatusVM = ExtensionStatusViewModel(
+            extensionHost: safariExtensionHost
+        )
     }
 
     // ── Frontend URL Resolution (bundled resources only) ──
@@ -190,10 +196,16 @@ final class AppState: ObservableObject {
             ])
 
         case "get_extension_status":
+            extensionStatusVM.refresh()
             sendToFrontend([
                 "kind": "extension_status",
-                "status": "unknown",
-                "message": "Safari extension contract published; live extension implementation deferred to Q0",
+                "status": extensionStatusVM.connectionState,
+                "contract_version": extensionStatusVM.contractVersion,
+                "supported_kinds": extensionStatusVM.supportedKinds,
+                "convergence_complete": extensionStatusVM.convergenceComplete,
+                "handoff_url": extensionStatusVM.handoffURL as Any? ?? NSNull(),
+                "last_message": extensionStatusVM.lastMessageTimestamp as Any? ?? NSNull(),
+                "blocking": extensionStatusVM.blockingRequirements,
                 "trace_id": traceId
             ])
 

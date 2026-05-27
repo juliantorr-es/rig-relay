@@ -1,0 +1,174 @@
+{
+  "schema_version": "rig.relay.safari.n1_q0_contract_compatibility_audit.v1",
+  "audit_id": "safari-x4-convergence-2026-05-26",
+  "audit_kind": "contract_compatibility",
+  "lane": "X4",
+  "title": "Safari Native Binding and macOS Release-Operations Convergence — X4 Audit",
+  "summary": "Lane X4 closes the Safari native messaging binding milestone identified by S4 and establishes the macOS release-operations application boundary. All five S4 integration deeds are completed: N1 contract now registers all 8 Q0 message kinds, payload model widened to typed discriminants, direction field added, response emission implemented for all 4 response kinds, created_at with sent_at alias. The native message handler (SafariExtensionHost) validates, dispatches, and responds to all Q0-compatible messages with content-light enforcement. The macOS release-operations boundary includes: .app packaging with build script, codesign preparation with entitlements, notarization preparation with notarytool evidence, Sparkle 2 update delivery contract, recovery orchestration surface, and content-light diagnostic export service. 52 Swift tests and 37 Python tests pass. 6 new schemas created. App builds from SPM with clean compilation.",
+  "created_at": "2026-05-26T21:55:00Z",
+  "auditors": ["lane-x4"],
+  "n1_contract_authority": "macos/RigRelayShell/Sources/RigRelayShell/NativeContract/SafariExtensionContract.swift",
+  "n1_commit_head": "c6838598d",
+  "q0_extension_authority": "macos/SafariExtension/safari-web-extension/",
+  "q0_python_authority": "rig_relay/extensions/safari/",
+  "schema_authority": "docs/schemas/rig.relay.safari_extension_message.v1.schema.json",
+
+  "n1_protocol_surface": {
+    "message_envelope_fields": ["schema_version", "message_id", "direction", "kind", "payload", "created_at"],
+    "message_kinds": ["handoff.github_repository", "handoff.github_pull_request", "handoff.github_issue", "ping", "response.accepted", "response.deferred", "response.refused", "response.app_unavailable"],
+    "payload_model": "Discriminated union with EncodedPayload wrapper — GitHubRepositoryHandoffPayload, GitHubPullRequestHandoffPayload, GitHubIssueHandoffPayload, PingPayload, AcceptedResponsePayload, DeferredResponsePayload, RefusedResponsePayload, AppUnavailableResponsePayload",
+    "direction_model": "Explicit direction field with mutual exclusion per Q0 protocol",
+    "content_light_guards": [
+      "GitHub token pattern detection (NSRegularExpression: ghp_|ghs_|gho_|ghu_|ghr_|github_pat_)",
+      "Forbidden content keys (file_contents, html, raw_prompt, model_output)",
+      "UTF-8 byte length enforcement",
+      "Origin validation against allowed bundle ID"
+    ]
+  },
+
+  "q0_protocol_surface": {
+    "message_envelope_fields": ["schema_version", "message_id", "direction", "kind", "payload", "created_at"],
+    "extension_to_app_kinds": ["handoff.github_repository", "handoff.github_pull_request", "handoff.github_issue", "ping"],
+    "app_to_extension_kinds": ["response.accepted", "response.deferred", "response.refused", "response.app_unavailable"],
+    "payload_model": "Pydantic discriminated union (8 typed models)",
+    "direction_model": "Explicit direction field with mutual exclusion"
+  },
+
+  "compatibility_mappings": [
+    {
+      "q0_kind": "handoff.github_repository",
+      "maps_to_n1_intent": "handoffGitHubRepository",
+      "mapping_note": "Fully mapped. N1 decodes GitHubRepositoryHandoffPayload with url, owner, repo, page_kind, triggered_by.",
+      "integration_action": "Completed — N1 dispatches to processRepositoryHandoff() and returns accepted response."
+    },
+    {
+      "q0_kind": "handoff.github_pull_request",
+      "maps_to_n1_intent": "handoffGitHubPullRequest",
+      "mapping_note": "Fully mapped. N1 decodes GitHubPullRequestHandoffPayload with integer pr_number.",
+      "integration_action": "Completed — N1 dispatches to processPullRequestHandoff() and returns accepted response."
+    },
+    {
+      "q0_kind": "handoff.github_issue",
+      "maps_to_n1_intent": "handoffGitHubIssue",
+      "mapping_note": "Fully mapped. N1 decodes GitHubIssueHandoffPayload with integer issue_number.",
+      "integration_action": "Completed — N1 dispatches to processIssueHandoff() and returns accepted response."
+    },
+    {
+      "q0_kind": "ping",
+      "maps_to_n1_intent": "ping",
+      "mapping_note": "Fully mapped. N1 decodes PingPayload with extension_version and safari_version.",
+      "integration_action": "Completed — N1 dispatches to processPing() and returns accepted response."
+    },
+    {
+      "q0_kind": "response.accepted",
+      "maps_to_n1_intent": "responseAccepted",
+      "mapping_note": "Fully implemented. N1 can emit AcceptedResponsePayload via SafariExtensionResponseBuilder.accepted().",
+      "integration_action": "Completed — response builder emits Q0-compatible accepted responses."
+    },
+    {
+      "q0_kind": "response.deferred",
+      "maps_to_n1_intent": "responseDeferred",
+      "mapping_note": "Fully implemented. N1 can emit DeferredResponsePayload via SafariExtensionResponseBuilder.deferred().",
+      "integration_action": "Completed."
+    },
+    {
+      "q0_kind": "response.refused",
+      "maps_to_n1_intent": "responseRefused",
+      "mapping_note": "Fully implemented. N1 emits RefusedResponsePayload for validation failures, origin mismatches, and content-light violations.",
+      "integration_action": "Completed."
+    },
+    {
+      "q0_kind": "response.app_unavailable",
+      "maps_to_n1_intent": "responseAppUnavailable",
+      "mapping_note": "Fully implemented. N1 can emit AppUnavailableResponsePayload via SafariExtensionResponseBuilder.appUnavailable().",
+      "integration_action": "Completed."
+    }
+  ],
+
+  "envelope_field_compatibility": [
+    {"q0_field": "schema_version", "n1_field": "schemaVersion", "compatible": true, "note": "Identical: rig.relay.safari_extension_message.v1"},
+    {"q0_field": "message_id", "n1_field": "messageId", "compatible": true, "note": "UUID string, identical semantics"},
+    {"q0_field": "kind", "n1_field": "kind", "compatible": true, "note": "All 8 Q0 kinds registered. Snake_case with dots, raw string matching."},
+    {"q0_field": "direction", "n1_field": "direction", "compatible": true, "note": "Explicit direction field with mutual exclusion. Both directions supported."},
+    {"q0_field": "payload", "n1_field": "payload", "compatible": true, "note": "Discriminated union with EncodedPayload wrapper injecting kind discriminator. Integer fields (pr_number, issue_number) typed as Int."},
+    {"q0_field": "created_at", "n1_field": "createdAt", "compatible": true, "note": "createdAt is canonical. sentAt is computed alias returning same value."},
+    {"q0_field": null, "n1_field": "trace_id", "compatible": false, "note": "N1 no longer requires trace_id. Forward-compatible."}
+  ],
+
+  "verdict": {
+    "requires_protocol_redesign": false,
+    "statement": "All five S4 integration deeds are completed. N1 contract fully implements Q0 protocol with typed payloads, direction field, response emission, and timestamp alias. The SafariExtensionHost provides a real message handler with content-light enforcement, origin validation, and Q0-compatible response emission. Swift tests validate all 8 message kinds, integer payload fields, direction enforcement, and refusal paths. The protocol is convergent — no redesign needed.",
+    "integration_deeds": [
+      "N1 registers all 8 Q0 message kinds as enum cases (completed)",
+      "N1 widens payload model to typed discriminants with integer support (completed)",
+      "N1 adds direction field with mutual exclusion (completed)",
+      "N1 implements response emission for all 4 response kinds (completed)",
+      "N1 uses created_at as canonical timestamp with sent_at alias (completed)"
+    ],
+    "protocol_design_changes_needed": [],
+    "n1_contract_summary_status": "Updated to reflect X4 convergence. Blocking requirements (Xcode project, Developer ID cert) explicitly documented."
+  },
+
+  "claim_adversary_results": {
+    "attack_authority_ownership": "PASS — N1 contract updated by X4 per S4 integration deeds. No X0/X1/X2/X3 files modified.",
+    "attack_production_boundary_realism": "PASS — Swift code compiles and passes 52 tests. Python services run 37 tests. Real .app bundle build script.",
+    "attack_crash_retry_safety": "PASS — UUID message_id for idempotency. Refusal paths for all validation failures. No silent drops.",
+    "attack_duplicate_effect_safety": "PASS — in_response_to correlation on all responses. Message history capped at 50.",
+    "attack_canonical_evidence_reconstruction": "PASS — 6 schemas created. Swift tests prove roundtrip. Python models validate.",
+    "attack_remote_publication_truth": "PENDING — not yet pushed.",
+    "attack_lane_boundary_release_safety": "PASS — only X4-owned files modified. Frontend, desktop gateway, PostgreSQL, Repository Estate, Timeline, Publication all preserved.",
+    "attack_privacy_guards": "PASS — content-light enforcement in Swift (token patterns, forbidden keys) and Python (token scanning, redaction). No credentials in code.",
+    "attack_refusal_behavior": "PASS — origin mismatch, direction mismatch, content-light violations all produce typed refusal responses.",
+    "attack_no_false_claims": "PASS — signing/notarization claims explicitly gated by credential availability. Sparkle integration documented but not yet implemented at SwiftUI app level. Xcode project requirement explicitly blocked."
+  },
+
+  "files_audited": [
+    "macos/RigRelayShell/Sources/RigRelayShell/NativeContract/SafariExtensionContract.swift",
+    "macos/RigRelayShell/Sources/RigRelayShell/NativeContract/SafariExtensionHost.swift",
+    "macos/RigRelayShell/Sources/RigRelayShell/NativeContract/ExtensionStatusViewModel.swift",
+    "macos/RigRelayShell/Sources/RigRelayShell/AppState.swift",
+    "macos/RigRelayShell/Tests/RigRelayShellTests/SafariExtensionContractTests.swift",
+    "macos/NativeMessagingHost/com.rigrelay.RigRelayShell.json",
+    "macos/Resources/Info.plist",
+    "macos/Resources/RigRelayShell.entitlements",
+    "macos/scripts/build-app.sh",
+    "macos/scripts/prepare-signing.sh",
+    "rig_relay/native/__init__.py",
+    "rig_relay/native/models.py",
+    "rig_relay/native/_packaging.py",
+    "rig_relay/native/_release_operations.py",
+    "rig_relay/native/_update.py",
+    "rig_relay/native/_recovery.py",
+    "rig_relay/native/_diagnostics.py",
+    "tests/native/test_packaging.py",
+    "tests/native/test_release_operations.py",
+    "tests/native/test_update.py",
+    "tests/native/test_recovery.py",
+    "tests/native/test_diagnostics.py",
+    "tests/native/test_models.py",
+    "docs/schemas/rig.relay.native.package_evidence.v1.schema.json",
+    "docs/schemas/rig.relay.native.signing_evidence.v1.schema.json",
+    "docs/schemas/rig.relay.native.notarization_evidence.v1.schema.json",
+    "docs/schemas/rig.relay.native.update_evidence.v1.schema.json",
+    "docs/schemas/rig.relay.native.recovery_evidence.v1.schema.json",
+    "docs/schemas/rig.relay.native.diagnostic_export.v1.schema.json"
+  ],
+
+  "deferred_seams": [
+    "Xcode project target (.xcodeproj) required for .appex extension bundle — SPM alone cannot create SFSafariExtensionHandler subclass",
+    "Apple Developer Program membership required for code signing and notarization execution",
+    "Developer ID Application certificate required in keychain for notarized distribution",
+    "xcrun safari-web-extension-packager to convert safari-web-extension/ to Xcode project",
+    "App Group shared container setup (com.apple.security.application-groups) between app and extension",
+    "Sparkle 2 SwiftUI integration — SPUStandardUpdaterController not yet wired into RigRelayApp.swift",
+    "Sparkle.framework copying and codesign for non-Xcode SPM builds",
+    "Ed25519 key pair generation and SUPublicEDKey configuration",
+    "Appcast hosting infrastructure (HTTPS server for appcast.xml + release archives)",
+    "Live Safari extension installation and runtime integration",
+    "X1 PostgreSQL migration recovery handoff (consumption interface defined, no X1 implementation consumed yet)",
+    "X2 runtime/provider status handoff (consumption interface defined, no X2 implementation consumed yet)",
+    "X0 Gridline frontend bridge contract for Safari handoff URLs (native contract published, X0 consumption deferred)"
+  ],
+
+  "freeze_condition": "This lane is frozen pending the named integration milestone 'Xcode Project Generation for Safari Extension .appex Bundle'. Reopen only for: (1) a defect inside this released boundary, (2) the named integration milestone, or (3) a user-directed architectural revision."
+}

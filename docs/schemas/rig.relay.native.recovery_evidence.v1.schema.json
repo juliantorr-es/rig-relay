@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "rig.relay.native.recovery_evidence.v1",
+  "title": "Native Recovery Evidence",
+  "description": "Content-light recovery state and action evidence. Does not contain database internals or raw logs.",
+  "type": "object",
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.relay.native.recovery_evidence.v1" },
+    "state": {
+      "type": "string",
+      "enum": ["healthy", "degraded", "needs_repair", "repairing", "repaired", "unrecoverable"]
+    },
+    "affected_components": { "type": "array", "items": { "type": "string" } },
+    "recovery_actions_taken": { "type": "array", "items": { "type": "string" } },
+    "recovery_successful": { "type": "boolean" },
+    "requires_manual_intervention": { "type": "boolean" },
+    "db_migration_status": { "type": ["string", "null"] },
+    "frontend_bundle_status": { "type": ["string", "null"] },
+    "extension_binding_status": { "type": ["string", "null"] },
+    "bridge_connection_status": { "type": ["string", "null"] },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  },
+  "required": ["schema_version", "state"],
+  "additionalProperties": false
+}

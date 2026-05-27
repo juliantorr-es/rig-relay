@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "rig.relay.native.notarization_evidence.v1",
+  "title": "Native Notarization Evidence",
+  "description": "Content-light notarization submission and status evidence. No raw certificates or binaries.",
+  "type": "object",
+  "properties": {
+    "schema_version": { "type": "string", "const": "rig.relay.native.notarization_evidence.v1" },
+    "submission_id": { "type": ["string", "null"] },
+    "status": {
+      "type": "string",
+      "enum": ["not_submitted", "in_progress", "accepted", "rejected", "stapled", "failed"]
+    },
+    "bundle_sha256": { "type": "string" },
+    "submitted_at": { "type": ["string", "null"], "format": "date-time" },
+    "completed_at": { "type": ["string", "null"], "format": "date-time" },
+    "ticket_stapled": { "type": "boolean" },
+    "log_url": { "type": ["string", "null"] },
+    "issues": { "type": "array", "items": { "type": "string" } },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  },
+  "required": ["schema_version", "status", "bundle_sha256", "ticket_stapled"],
+  "additionalProperties": false
+}
