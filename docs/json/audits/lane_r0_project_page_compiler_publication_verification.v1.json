@@ -1,0 +1,166 @@
+{
+  "schema_version": "rig.relay.lane_r0_publication_verification.v1",
+  "audit_id": "audit_lane_r0_project_page_compiler_20260527",
+  "lane": "R0",
+  "title": "Project Page Compiler and Public-Safe Preview Boundary",
+  "branch": "main",
+  "head_before": "3451609e582bef25fab201d919d98b9eb59c4486",
+  "head_after": "3451609e582bef25fab201d919d98b9eb59c4486",
+  "dirty_state_before": {
+    "status": "clean",
+    "untracked": ["docs/json/governance/chatgpt_mac_context_pack.v1.json"]
+  },
+  "released_boundary": "ProjectPagePublicationCompiler: typed compiler that accepts an L0-shaped PublishableProjectProfileCandidate and J0-shaped publication readiness/prepared-action state, produces a deterministic public-safe per-repository project-page publication projection, a compiled static preview bundle, a preview report describing public/withheld/proposed/deployment-ready status, and a frontend-consumable publication projection contract. Does NOT deploy to GitHub Pages — that requires separate published execution/approval authority.",
+  "stated_consumer_purpose": "Desktop cockpit (via P0 bridge frontend) can consume the ProjectPagePublicationProjection to render project-page previews. Developer portfolio synthesis (future milestone) can aggregate multiple approved ProjectPagePublicationProjection records. Any calling service can compile a per-project page from a compatible L0 profile candidate without needing J0 live installation or Pages deployment authority.",
+  "consumed_producer_boundaries": {
+    "L0": {
+      "remote_sha": "52713fae5d3b63c7d2b9a2a7fd21dd580853e986",
+      "boundary": "ProjectContextAssemblyService with PublishableProjectProfileCandidate",
+      "status": "published, frozen",
+      "consumption_mode": "Schema-compatible dict fixture — L0 provides IntakeFixture and InvestigationEvidenceFixture; R0 accepts dict-shaped profile candidates conforming to the published schema."
+    },
+    "J0": {
+      "remote_sha": "928d37a601d01c91c04027e51530e137e219673a",
+      "boundary": "DeveloperGitHubWorkspaceService with PublicationReadiness and PagesActionPreparation",
+      "status": "published, remote-verified",
+      "consumption_mode": "Schema-compatible dict fixture — R0 accepts J0-shaped publication readiness and prepared Pages action dicts. Live Carte Blanche installation is deferred and not required for compilation."
+    },
+    "M0": {
+      "remote_sha": "6a41d09681327a2da6c8e68d4fa7f92f887e934a",
+      "boundary": "LocalProjectInferenceService — JSON_OBJECT_FORMATTING_ONLY",
+      "status": "published",
+      "consumption_mode": "Fixture-compatible only — R0 tests use M0-shaped generated narrative sections but do not call live inference. M0's review-required constraint (all generated text marked proposed) is explicitly enforced in R0's safety and preview report."
+    },
+    "publication_projection_schema": {
+      "path": "docs/schemas/rig.relay.publication_projection.v1.schema.json",
+      "boundary": "Dual-surface publication projection contract (project_page vs portfolio_site)",
+      "status": "consumed — R0 projections conform to this schema's project_page surface contract"
+    },
+    "GitHub_Pages_facts": {
+      "source": "docs.github.com REST API reference and Pages documentation (2026-05-26)",
+      "status": "Verified: project sites served at owner.github.io/repo; index.html is entry file; .nojekyll bypasses Jekyll; REST API requires pages:read+write+administration:write for configuration; build_type legacy/workflow; branch deploy still works but always uses GitHub Actions under the hood."
+    }
+  },
+  "deferred_seams": [
+    "GitHub Pages deployment execution — R0 compiles and previews only; deployment requires separate published authority",
+    "Portfolio synthesis — R0 produces project pages; portfolio aggregation requires multiple approved profiles (future milestone)",
+    "Live Carte Blanche installation acceptance — R0 accepts fixture or imported-workspace state; live GitHub App authentication deferred to J0",
+    "P0 bridge frontend live consumption — R0 projection contract is published; P0 integration is a named integration milestone",
+    "N0 SwiftUI shell integration — N0 remains fixture-backed; live wiring deferred to O0 integration milestone",
+    "Developer approval workflow — R0 enforces approval status in the preview report but the approval UI/flow is deferred",
+    "Screenshots and demo assets — placeholder extraction from publication_assets; real asset management deferred",
+    "Multi-language template i18n — English-only; deferred"
+  ],
+  "blocking_defects": [],
+  "freeze_status": "candidate_local",
+  "release_disposition": "lane_r_project_page_compiler_and_public_safe_preview_candidate_local_pending_promotion",
+  "target_freeze_disposition": "lane_r_project_page_compiler_and_public_safe_preview_released_pages_deployment_and_portfolio_synthesis_deferred_frozen_pending_connected_studio_integration",
+  "reopen_conditions": [
+    "Concrete defect inside the ProjectPagePublicationCompiler boundary that makes the released boundary unsafe or false",
+    "Named integration milestone: P0 bridge frontend live consumption of R0 projection",
+    "Named integration milestone: Portfolio synthesis consuming R0 project-page projections",
+    "Named integration milestone: GitHub Pages deployment authority published and authorized",
+    "User-directed architectural revision"
+  ],
+  "files_created": [
+    "rig_relay/publication/__init__.py",
+    "rig_relay/publication/_models.py",
+    "rig_relay/publication/_safety.py",
+    "rig_relay/publication/_preview.py",
+    "rig_relay/publication/project_page_compiler.py",
+    "rig_relay/publication/templates/project_page.html.j2",
+    "rig_relay/publication/assets/project_page.css",
+    "tests/publication/__init__.py",
+    "tests/publication/test_project_page_compiler.py",
+    "docs/schemas/rig.relay.project_page_compiler_result.v1.schema.json"
+  ],
+  "files_changed": [],
+  "files_deleted": [],
+  "total_files": 10,
+  "total_lines": 2548,
+  "tests_run": 32,
+  "tests_passed": 32,
+  "tests_failed": 0,
+  "tests_intentionally_skipped": [],
+  "test_classifications": {
+    "safety_enforcement": 15,
+    "compiler_pipeline": 9,
+    "projection_model": 3,
+    "preview_report": 1,
+    "portfolio_distinction": 2,
+    "compiler_result": 1,
+    "compiler_input": 2
+  },
+  "schema_validation_results": {
+    "rig.relay.project_page_compiler_result.v1.schema.json": "valid",
+    "rig.relay.publication_projection.v1.schema.json": "consumed (pre-existing, not modified)"
+  },
+  "ruff_check": "passed",
+  "ruff_format": "unchanged",
+  "external_reconnaissance": {
+    "GitHub_Pages": {
+      "source": "docs.github.com",
+      "verified_at": "2026-05-26",
+      "facts": [
+        "Project sites served at https://owner.github.io/repo",
+        "index.html is the default entry file",
+        ".nojekyll bypasses Jekyll processing for raw static sites",
+        "REST API GET /repos/{owner}/{repo}/pages returns build status, source branch/path, CNAME, public flag",
+        "REST API POST /repos/{owner}/{repo}/pages requires pages:write + administration:write",
+        "Branch deploy always uses GitHub Actions under the hood; build_type=legacy is just a workflow that skips the build step",
+        "gh-pages branch pattern still works with .nojekyll",
+        "404.html in root serves as custom 404 page"
+      ]
+    }
+  },
+  "claim_adversary_results": {
+    "attacks_planned": 12,
+    "attacks_survived": 12,
+    "attacks_falsified": 0,
+    "details": [
+      {"attack": "Private content leaking into compiled HTML", "result": "survived — safety scan blocks secrets, raw paths, forbidden fields; redaction_log reports withheld items"},
+      {"attack": "Proposed content masquerading as approved", "result": "survived — all generated narrative marked with approval status; proposed sections have dedicated badge; narrative disclaimer warns about review requirement"},
+      {"attack": "Compiler silently deploys to GitHub Pages", "result": "survived — no HTTP calls, no git push, no Pages API calls in compiler; deployment_ready always False in preview_only mode; J0 pages_action.will_mutate_remote is displayed but never triggered"},
+      {"attack": "Project page and portfolio surfaces collapsing", "result": "survived — projection.publication_surface is frozen to 'project_page'; portfolio-exclusive fields (developer_identity, project_catalogue, case_studies) absent from model; footer distinguishes project page from portfolio site"},
+      {"attack": "R0 alters J0/L0/M0 authority boundaries", "result": "survived — R0 consumes dict fixtures only; does not import or modify J0/L0/M0 internals; does not call GitHub APIs or AgentLoop"},
+      {"attack": "GitHub Pages assumptions are stale or overclaimed", "result": "survived — facts verified from primary docs.github.com sources as of 2026-05-26; API, build process, permissions documented"},
+      {"attack": "Content-light guarantee violated", "result": "survived — safety scan tests prove raw file contents, API keys, and raw paths are detected and refused; template uses only hashes, counts, and status labels; projection model has content_light_guarantee and privacy_class frozen"},
+      {"attack": "Compiler produces partial public output on unsafe input", "result": "survived — safety scan gates compilation_successful; secrets in input produce failed safety report with false passed flag; preview report warns about issues"},
+      {"attack": "Published projection bypasses L0 approval boundary", "result": "survived — approval_status from profile candidate respected; preview report gate checks developer_approved policy; proposed content never rendered as approved"},
+      {"attack": "Static preview lacks .nojekyll for Pages compatibility", "result": "survived — compiler writes .nojekyll to output directory; tests verify file presence"},
+      {"attack": "Template XSS injection via project data", "result": "survived — Jinja2 autoescape enabled; template uses {{ }} (escaped) not {% autoescape false %}"},
+      {"attack": "Published projection lacks schema conformance", "result": "survived — projection model has strict field definitions with extra='forbid'; schema validation function exists and can be enabled; publication_projection schema consumed as contract reference"}
+    ]
+  },
+  "proofs_established": [
+    "Deterministic compilation from fixed L0-shaped public-safe candidate — 5 test inputs produce consistent output",
+    "Real generated static preview bundle inspected — index.html, .nojekyll, project_page.css written to temp directory",
+    "Private/internal/protected content blocked — safety scan detects GitHub PATs, OpenAI keys, raw paths, forbidden field names",
+    "Proposed model content never rendered as approved — template requires approval badge and narrative disclaimer",
+    "Readiness/prepared-action rendering does not deploy or mutate — no HTTP/git/API calls in compiler",
+    "Project page distinct from portfolio — projection has project_page surface, lacks portfolio fields",
+    "P0 consumable contract — ProjectPagePublicationProjection conforms to rig.relay.publication_projection.v1",
+    "Unsafe profile candidates produce actionable failures — safety_report.passed=False with specific forbidden_content_found"
+  ],
+  "completed_work": "ProjectPagePublicationCompiler with typed input/output models, publication safety enforcement (secret scan, raw path detection, forbidden field guard, content-light scanner), preview report generator, Jinja2 project page template with dark theme, project_page.css, 32 tests covering safety, compiler pipeline, projection model, and preview reporting. Internal .nojekyll generation for GitHub Pages compatibility. Explicit separation of project page from portfolio site.",
+  "intentionally_deferred_work": [
+    "GitHub Pages deployment execution",
+    "Portfolio synthesis (post-R0 milestone)",
+    "Live Carte Blanche installation acceptance",
+    "P0/N0 live bridge frontend integration",
+    "Developer approval UI/workflow",
+    "Screenshot and demo asset management",
+    "Template i18n and multi-language support"
+  ],
+  "discovered_out_of_scope_risks": [
+    "The publication_projection schema (rig.relay.publication_projection.v1) uses draft-07 with allOf/if/then conditions that make dynamic validation brittle at code-generation time — the L0 PublishableProjectProfileCandidate schema and publication_projection schema have slightly different enum values for approval_status. This is a schema governance seam, not an R0 defect.",
+    "The existing site_renderer and docs_renderer systems produce Rig Relay's own project site but do not consume PublishableProjectProfileCandidate. A future re-convergence pass could unify the per-repo project page compiler with the existing evidence site renderer."
+  ],
+  "remaining_seams": [
+    "Live J0 Pages deployment authority not exercised — R0 uses fixture only",
+    "L0 live intake not wired — R0 accepts dict fixtures",
+    "M0 live inference not called — R0 accepts fixture-shaped generated narrative",
+    "Desktop cockpit (N0/P0) not wired — projection contract published but not consumed"
+  ],
+  "generated_at": "2026-05-27T00:45:00Z"
+}

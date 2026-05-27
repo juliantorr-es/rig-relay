@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="{% if is_preview %}noindex, nofollow{% else %}index, follow{% endif %}">
+<title>{{ projection.project_identity.project_name }} — Project Page</title>
+<link rel="stylesheet" href="project_page.css">
+</head>
+<body class="project-page{% if is_preview %} preview-mode{% endif %}">
+
+{% if is_preview %}
+<div class="preview-banner">
+  <span class="preview-badge">PREVIEW ONLY</span>
+  <span>This is a local preview. Not deployed to GitHub Pages.</span>
+</div>
+{% endif %}
+
+<header class="page-header">
+  <div class="header-content">
+    <h1 class="project-name">{{ projection.project_identity.project_name }}</h1>
+    {% if projection.project_identity.tagline %}
+    <p class="project-tagline">{{ projection.project_identity.tagline }}</p>
+    {% endif %}
+    {% if projection.project_identity.current_milestone %}
+    <span class="milestone-badge">{{ projection.project_identity.current_milestone }}</span>
+    {% endif %}
+  </div>
+</header>
+
+<main class="page-main">
+
+  {% if projection.project_identity.product_identity_blurb %}
+  <section class="section" id="identity-blurb">
+    <h2 class="section-title">About This Project</h2>
+    <div class="blurb-content">
+      {{ projection.project_identity.product_identity_blurb }}
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="section" id="status-overview">
+    <h2 class="section-title">Status Overview</h2>
+    <div class="status-grid">
+      <div class="status-card">
+        <span class="status-label">Status</span>
+        <span class="status-value status-{{ projection.status_overview.overall_status | lower }}">{{ projection.status_overview.overall_status }}</span>
+      </div>
+      <div class="status-card">
+        <span class="status-label">Implemented</span>
+        <span class="status-value">{{ projection.status_overview.implemented_count }}</span>
+      </div>
+      <div class="status-card">
+        <span class="status-label">Planned</span>
+        <span class="status-value">{{ projection.status_overview.planned_count }}</span>
+      </div>
+      <div class="status-card">
+        <span class="status-label">Evidence Backed</span>
+        <span class="status-value">{% if projection.status_overview.evidence_backed %}✓{% else %}—{% endif %}</span>
+      </div>
+    </div>
+  </section>
+
+  {% if projection.structural_facts_public %}
+  <section class="section" id="technology-capabilities">
+    <h2 class="section-title">Technology Capabilities</h2>
+    <div class="facts-list">
+      {% for fact in projection.structural_facts_public %}
+        {% if fact.category and fact.value %}
+        <div class="fact-item">
+          <span class="fact-category">{{ fact.category }}</span>
+          <span class="fact-value">{{ fact.value }}</span>
+          {% if fact.confidence %}
+          <span class="fact-confidence confidence-{{ fact.confidence | lower }}">{{ fact.confidence }}</span>
+          {% endif %}
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if projection.accomplishments and projection.accomplishments.get_item_list %}
+  <section class="section" id="accomplishments">
+    <h2 class="section-title">Accomplishments</h2>
+    <div class="accomplishments-list">
+      {% for item in projection.accomplishments.get_item_list %}
+      <div class="accomplishment-item">
+        <span class="accomplishment-title">{{ item.title }}</span>
+        {% if item.receipt_ref %}
+        <span class="receipt-ref" title="Evidence receipt">{{ item.receipt_ref[:16] }}…</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% if projection.accomplishments.get_total_receipts > 0 %}
+    <p class="receipts-count">{{ projection.accomplishments.get_total_receipts }} evidence receipts referenced</p>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  {% if projection.released_boundaries and projection.released_boundaries.get_boundary_list %}
+  <section class="section" id="released-boundaries">
+    <h2 class="section-title">Released Boundaries</h2>
+    <div class="boundaries-list">
+      {% for boundary in projection.released_boundaries.get_boundary_list %}
+      <div class="boundary-item">
+        <span class="boundary-name">{{ boundary.boundary_name }}</span>
+        <span class="boundary-status status-{{ boundary.release_status | lower }}">{{ boundary.release_status }}</span>
+        {% if boundary.consuming_surfaces %}
+        <span class="boundary-consumers">
+          {% for surface in boundary.consuming_surfaces %}
+          <span class="consumer-tag">{{ surface }}</span>
+          {% endfor %}
+        </span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if projection.mission_timeline and projection.mission_timeline.get_entry_list %}
+  <section class="section" id="mission-timeline">
+    <h2 class="section-title">Mission Timeline</h2>
+    <div class="timeline">
+      {% for entry in projection.mission_timeline.get_entry_list %}
+      <div class="timeline-entry">
+        <span class="timeline-mission-id">{{ entry.mission_id }}</span>
+        <span class="timeline-title">{{ entry.title }}</span>
+        <span class="timeline-status status-{{ entry.status | lower }}">{{ entry.status }}</span>
+        {% if entry.completed_at %}
+        <span class="timeline-date">{{ entry.completed_at[:10] }}</span>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if projection.architecture_overview %}
+  <section class="section" id="architecture-overview">
+    <h2 class="section-title">Architecture</h2>
+    <div class="architecture-entries">
+      {% for key, value in projection.architecture_overview.items() %}
+      <div class="arch-entry">
+        <span class="arch-key">{{ key }}</span>
+        <span class="arch-value">{{ value }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if projection.generated_narrative_sections %}
+  <section class="section" id="generated-narrative">
+    <h2 class="section-title">Project Narrative</h2>
+    <div class="narrative-disclaimer">
+      <span class="disclaimer-icon">⚠</span>
+      <span>The following sections are model-generated and require developer review before publication.</span>
+    </div>
+    {% for section_key, section_data in projection.generated_narrative_sections.items() %}
+      {% if section_data.narrative %}
+      <div class="narrative-section">
+        <h3 class="narrative-section-title">{{ section_key | replace('_', ' ') | title }}</h3>
+        <span class="approval-badge approval-{{ section_data.approval_status | lower }}">
+          {{ section_data.approval_status }}
+        </span>
+        {% if section_data.basis_fact_ids %}
+        <div class="basis-facts">
+          <span class="basis-label">Grounded in facts:</span>
+          {% for fid in section_data.basis_fact_ids %}
+          <span class="basis-fact-id">{{ fid }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+        <div class="narrative-content">
+          {{ section_data.narrative }}
+        </div>
+      </div>
+      {% endif %}
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  <section class="section" id="publication-readiness">
+    <h2 class="section-title">Publication Readiness</h2>
+    <div class="readiness-grid">
+      <div class="readiness-card">
+        <span class="readiness-label">GitHub Pages</span>
+        <span class="readiness-value">{% if publication_readiness.has_pages %}Configured{% else %}Not configured{% endif %}</span>
+      </div>
+      <div class="readiness-card">
+        <span class="readiness-label">Eligible</span>
+        <span class="readiness-value">{% if publication_readiness.publication_eligible %}Yes{% else %}No{% endif %}</span>
+      </div>
+      <div class="readiness-card">
+        <span class="readiness-label">State</span>
+        <span class="readiness-value readiness-state-{{ publication_readiness.readiness_state | lower }}">{{ publication_readiness.readiness_state }}</span>
+      </div>
+      <div class="readiness-card">
+        <span class="readiness-label">Action</span>
+        <span class="readiness-value">{% if publication_readiness.pages_action_will_mutate_remote %}{{ publication_readiness.pages_action_state }}{% else %}Read-only{% endif %}</span>
+      </div>
+    </div>
+    {% if publication_readiness.blockers %}
+    <div class="readiness-blockers">
+      <h3>Blockers</h3>
+      <ul>
+        {% for blocker in publication_readiness.blockers %}
+        <li>{{ blocker }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    {% if publication_readiness.suggested_next_action %}
+    <p class="next-action">{{ publication_readiness.suggested_next_action }}</p>
+    {% endif %}
+  </section>
+
+  {% if preview_report.withheld and preview_report.withheld.total_items_withheld > 0 %}
+  <section class="section" id="withheld-summary">
+    <h2 class="section-title">Withheld from Public View</h2>
+    <div class="withheld-grid">
+      <div class="withheld-card">
+        <span class="withheld-label">Items withheld</span>
+        <span class="withheld-value">{{ preview_report.withheld.total_items_withheld }}</span>
+      </div>
+      <div class="withheld-card">
+        <span class="withheld-label">Items redacted</span>
+        <span class="withheld-value">{{ preview_report.withheld.total_items_redacted }}</span>
+      </div>
+    </div>
+    {% if preview_report.withheld.reasons %}
+    <div class="withheld-reasons">
+      <h3>Reasons</h3>
+      <ul>
+        {% for reason in preview_report.withheld.reasons %}
+        <li>{{ reason }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  {% if preview_report.proposed_content and preview_report.proposed_content.total_sections > 0 %}
+  <section class="section" id="proposed-content-summary">
+    <h2 class="section-title">Review Required</h2>
+    <div class="review-grid">
+      <div class="review-card">
+        <span class="review-label">Sections needing review</span>
+        <span class="review-value">{{ preview_report.proposed_content.sections_proposed }}</span>
+      </div>
+      <div class="review-card">
+        <span class="review-label">Sections approved</span>
+        <span class="review-value">{{ preview_report.proposed_content.sections_approved }}</span>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if preview_report.recommendations %}
+  <section class="section" id="recommendations">
+    <h2 class="section-title">Recommendations</h2>
+    <ul class="recommendations-list">
+      {% for rec in preview_report.recommendations %}
+      <li>{{ rec }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+</main>
+
+<footer class="page-footer">
+  <div class="footer-content">
+    <p class="footer-surface-label">Project Page — per-repository publication surface</p>
+    <p class="footer-disclaimer">
+      {% if is_preview %}
+      Preview generated {{ projection.generated_at[:19] }}. Not deployed.
+      {% else %}
+      Generated {{ projection.generated_at[:19] }}. Public-safe.
+      {% endif %}
+    </p>
+    <p class="footer-distinction">This is a project page, not a developer portfolio. Portfolio synthesis requires multiple approved project profiles.</p>
+  </div>
+</footer>
+
+</body>
+</html>

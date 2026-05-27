@@ -1,0 +1,71 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.relay.project_page_compiler_result.v1.schema.json",
+  "title": "Rig Relay Project Page Compiler Result v1",
+  "description": "Content-light compiler output for a per-repository project page. Includes the publication projection (conforming to rig.relay.publication_projection.v1, project_page surface), optional static bundle path, preview report, and safety report. Does not represent deployment — that requires separate authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "result_id",
+    "compiler_digest",
+    "generated_at",
+    "projection",
+    "preview_report",
+    "safety_report",
+    "compilation_successful"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.project_page_compiler_result.v1"
+    },
+    "result_id": {
+      "type": "string",
+      "description": "Unique identifier for this compiler run"
+    },
+    "compiler_digest": {
+      "type": "string",
+      "description": "Deterministic SHA256 digest of the compiler output"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp when compilation completed"
+    },
+    "projection": {
+      "type": "object",
+      "description": "ProjectPagePublicationProjection conforming to rig.relay.publication_projection.v1, project_page surface"
+    },
+    "static_bundle_path": {
+      "type": ["string", "null"],
+      "description": "Filesystem path to the compiled static preview bundle, or null if no static output was rendered"
+    },
+    "static_bundle_digest": {
+      "type": ["string", "null"],
+      "description": "SHA256 digest of the compiled HTML content, or null if no static output"
+    },
+    "preview_report": {
+      "type": "object",
+      "description": "ProjectPagePreviewReport — what is public, withheld, proposed, and what actions remain"
+    },
+    "safety_report": {
+      "type": "object",
+      "description": "PublicationSafetyReport — safety scan results for the compiled output"
+    },
+    "compilation_successful": {
+      "type": "boolean",
+      "description": "Whether compilation completed without safety or schema failures"
+    },
+    "deployment_ready": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the output is ready for GitHub Pages deployment. Always false in preview_only mode."
+    },
+    "warnings": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Non-blocking warnings from the compilation process"
+    }
+  }
+}
