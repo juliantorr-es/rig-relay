@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.postgres_migration_record.v1.schema.json",
+  "title": "PostgreSQL Migration Record",
+  "description": "A single schema migration record. Migrations are ordered by index, idempotent where appropriate, transactional, and evidence-emitting.",
+  "type": "object",
+  "properties": {
+    "migration_index": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Ordered migration index."
+    },
+    "migration_id": {
+      "type": "string",
+      "description": "Unique migration identifier (e.g., '001_initial_schema')."
+    },
+    "description": {
+      "type": "string",
+      "default": "",
+      "description": "Human-readable migration description."
+    },
+    "applied_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC timestamp when migration was applied."
+    },
+    "sql_hash": {
+      "type": "string",
+      "description": "SHA256 digest of the migration SQL."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["applied", "failed", "rolled_back"],
+      "default": "applied",
+      "description": "Migration status."
+    },
+    "error_message": {
+      "type": ["string", "null"],
+      "description": "Error message if migration failed."
+    }
+  },
+  "required": ["migration_index", "migration_id", "sql_hash", "status"],
+  "additionalProperties": false
+}

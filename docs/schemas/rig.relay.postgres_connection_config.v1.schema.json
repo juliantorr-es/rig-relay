@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.postgres_connection_config.v1.schema.json",
+  "title": "PostgreSQL Connection Configuration",
+  "description": "Typed configuration for the PostgreSQL operational projection substrate. Secrets (password, DSN) are masked in logs via SecretStr.",
+  "type": "object",
+  "properties": {
+    "host": {
+      "type": "string",
+      "description": "PostgreSQL host. Empty string uses libpq default (local socket).",
+      "default": "127.0.0.1"
+    },
+    "port": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535,
+      "default": 5432
+    },
+    "dbname": {
+      "type": "string",
+      "description": "Database name.",
+      "default": "rig_relay"
+    },
+    "user": {
+      "type": "string",
+      "description": "Database user. Empty uses libpq default (OS user)."
+    },
+    "schema_name": {
+      "type": "string",
+      "description": "PostgreSQL schema for operational projections.",
+      "default": "operational"
+    },
+    "connect_timeout": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 60,
+      "default": 10,
+      "description": "Connection timeout in seconds."
+    },
+    "autocommit": {
+      "type": "boolean",
+      "default": true,
+      "description": "Use autocommit mode to prevent idle-in-transaction states."
+    },
+    "application_name": {
+      "type": "string",
+      "default": "rig-relay-data-plane",
+      "description": "Application name for pg_stat_activity."
+    }
+  },
+  "required": [],
+  "additionalProperties": false
+}

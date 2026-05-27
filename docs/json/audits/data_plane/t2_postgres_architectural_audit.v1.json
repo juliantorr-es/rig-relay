@@ -1,0 +1,116 @@
+{
+  "schema_version": "rig.relay.architectural_audit.v1",
+  "audit_id": "t2_postgres_architectural_audit_v1",
+  "title": "Lane T2 — PostgreSQL Operational Data Plane Architectural Audit",
+  "created_at": "2026-05-26T00:00:00Z",
+  "branch": "main",
+  "head_before": "ab752826",
+  "artifacts_audited": [
+    "rig_relay/data_plane/",
+    "rig_relay/data_plane/postgres/",
+    "tests/data_plane/postgres/",
+    "docs/schemas/rig.relay.postgres_connection_config.v1.schema.json",
+    "docs/schemas/rig.relay.postgres_migration_record.v1.schema.json",
+    "docs/schemas/rig.relay.postgres_evidence_source.v1.schema.json",
+    "pyproject.toml"
+  ],
+  "external_sources_consulted": [
+    {
+      "url": "https://www.postgresql.org/docs/current/datatype-json.html",
+      "title": "PostgreSQL JSON/JSONB Design and Indexing",
+      "key_findings": "jsonb_path_ops GIN indexes preferred for containment-heavy queries. Targeted expression indexes for narrow access paths. Avoid blanket GIN indexes on high-write tables. jsonb over json for all operational storage."
+    },
+    {
+      "url": "https://www.postgresql.org/docs/current/sql-listen.html",
+      "title": "PostgreSQL LISTEN",
+      "key_findings": "LISTEN registers per-connection, takes effect at COMMIT. Two-phase setup pattern required: commit LISTEN then inspect baseline state. Notifications lost on disconnect."
+    },
+    {
+      "url": "https://www.postgresql.org/docs/current/sql-notify.html",
+      "title": "PostgreSQL NOTIFY",
+      "key_findings": "NOTIFY delivers on COMMIT only. Payload limited to 8000 bytes string. Identical channel+payload deduplicated within transaction. Use for lightweight refresh signalling, not event authority."
+    },
+    {
+      "url": "https://www.postgresql.org/docs/current/rules-materializedviews.html",
+      "title": "PostgreSQL Materialized Views",
+      "key_findings": "CONCURRENTLY refresh requires UNIQUE index covering all rows. Non-concurrent refresh takes ACCESS EXCLUSIVE lock. WITH NO DATA + REFRESH pattern for deferred population."
+    },
+    {
+      "url": "https://www.psycopg.org/psycopg3/docs/basic/transactions.html",
+      "title": "Psycopg 3 Transaction Management",
+      "key_findings": "autocommit=True recommended to prevent idle-in-transaction. Transaction blocks via conn.transaction() context manager. SAEPOINT-based nested transactions. Handle InFailedSqlTransaction by issuing rollback()."
+    }
+  ],
+  "architectural_decisions": [
+    {
+      "decision_id": "D1",
+      "decision": "Use psycopg 3 as the sole PostgreSQL driver; no SQLAlchemy, Alembic, asyncpg, or pgvector.",
+      "rationale": "Mission explicitly forbids SQLite, SQLAlchemy, Alembic, and pgvector. Psycopg 3 is the Python 3.12+ standard PostgreSQL driver. No competing ORM or migration framework introduced.",
+      "evidence": "pyproject.toml dependency: psycopg>=3.2.0. Zero imports of sqlalchemy, alembic, asyncpg, pgvector anywhere in data_plane/."
+    },
+    {
+      "decision_id": "D2",
+      "decision": "Canonical evidence remains authority; PostgreSQL stores digest/reference metadata and derived operational projections only.",
+      "rationale": "Schema-validated evidence artifacts and append-only ledgers remain authoritative for governed transitions. PostgreSQL rows are rebuildable from canonical evidence.",
+      "evidence": "EvidenceSource model stores only evidence_id (content-hash-derived), evidence_kind, evidence_sha256, source_ledger_path_hash, source_schema_version, provenance (content-light). No raw content."
+    },
+    {
+      "decision_id": "D3",
+      "decision": "DuckDB remains the disposable read-side analytics engine; PostgreSQL is the operational projection substrate.",
+      "rationale": "DuckDB is in-memory, disposable, analytics-only. PostgreSQL provides durable, queryable operational projections. The two databases do not compete.",
+      "evidence": "DuckDB code in analytics/, events/ unchanged. No cross-contamination between DuckDB and PostgreSQL authority."
+    },
+    {
+      "decision_id": "D4",
+      "decision": "Use autocommit=True as default connection mode with explicit transaction blocks for atomic operations.",
+      "rationale": "Per psycopg3 best practices: autocommit prevents idle-in-transaction, ensures timely NOTIFY delivery. conn.transaction() contexts for atomic work.",
+      "evidence": "PostgresConnectionConfig defaults autocommit=True. transactional_cursor context manager wraps conn.transaction()."
+    },
+    {
+      "decision_id": "D5",
+      "decision": "Migration system is file-based with ordered, idempotent SQL migrations tracked in _migrations table.",
+      "rationale": "Simplicity. No Alembic dependency. Migrations are just SQL files in migrations/ directory. Each records success/failure in _migrations. Schema version in _schema_version.",
+      "evidence": "_migrations.py discovers SQL files, applies in order, records results. 001_initial_schema.sql creates all foundation tables."
+    },
+    {
+      "decision_id": "D6",
+      "decision": "NOTIFY used for lightweight refresh signalling only; never carries authoritative data. Payload is projection name string.",
+      "rationale": "Per PostgreSQL docs: NOTIFY on COMMIT only, payload limited to 8000 bytes. Use as signalling seam, not event authority.",
+      "evidence": "notify_projection_refresh sends NOTIFY with projection name payload. Channel registry table for listener tracking."
+    },
+    {
+      "decision_id": "D7",
+      "decision": "Tests run against a real disposable PostgreSQL database. No SQLite, no in-memory substitute, no test doubles.",
+      "rationale": "Mission requires real PostgreSQL proofs. Test fixtures create/drop disposable databases. All 42 tests execute against real PostgreSQL 17.",
+      "evidence": "conftest.py creates random-named database per session, drops on teardown. test_no_sqlite_imports verifies zero sqlite/alchemy imports."
+    }
+  ],
+  "content_light_verification": {
+    "no_raw_file_contents": true,
+    "no_raw_prompts": true,
+    "no_model_outputs": true,
+    "no_secrets_in_storage": true,
+    "no_sqlite_imports": true,
+    "no_sqlalchemy_imports": true,
+    "no_alembic_imports": true,
+    "no_pgvector_imports": true,
+    "password_masked_in_logs": true,
+    "path_hashing_used": true,
+    "tests_verify_forbidden_fields": true
+  },
+  "test_evidence": {
+    "total_tests": 42,
+    "passed": 42,
+    "failed": 0,
+    "postgres_version": "PostgreSQL 17.10 (Homebrew) on aarch64-apple-darwin25.4.0",
+    "psycopg_version": "3.3.4",
+    "test_categories": {
+      "config": 7,
+      "connection": 7,
+      "content_light": 7,
+      "ingestion": 11,
+      "migrations": 7,
+      "rebuild": 3
+    }
+  }
+}

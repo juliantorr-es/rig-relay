@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.vibe.dev/schemas/rig.relay.postgres_evidence_source.v1.schema.json",
+  "title": "PostgreSQL Evidence Source Record",
+  "description": "A content-light reference to a canonical evidence record stored in PostgreSQL. Digest-based identity only; canonical evidence ledgers remain the authority.",
+  "type": "object",
+  "properties": {
+    "evidence_id": {
+      "type": "string",
+      "description": "Unique identifier derived from canonical evidence content hash."
+    },
+    "evidence_kind": {
+      "type": "string",
+      "enum": [
+        "coordination_event",
+        "session_observability",
+        "governance_decision",
+        "tool_call",
+        "checkpoint",
+        "artifact",
+        "finding",
+        "projection",
+        "unknown"
+      ],
+      "description": "Kind of evidence source."
+    },
+    "evidence_sha256": {
+      "type": "string",
+      "description": "SHA256 digest of the canonical evidence payload."
+    },
+    "source_ledger_path_hash": {
+      "type": "string",
+      "default": "",
+      "description": "Salted SHA256 hash of the source ledger path (content-light)."
+    },
+    "source_schema_version": {
+      "type": "string",
+      "default": "",
+      "description": "Schema version of the canonical evidence artifact."
+    },
+    "ingested_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC timestamp of ingestion."
+    },
+    "provenance": {
+      "type": "object",
+      "description": "Content-light provenance metadata (session_id, task_id, etc.). Must not contain raw file contents, prompts, model outputs, secrets, or paths."
+    }
+  },
+  "required": ["evidence_id", "evidence_kind", "evidence_sha256"],
+  "additionalProperties": false
+}
