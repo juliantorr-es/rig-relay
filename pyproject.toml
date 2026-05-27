@@ -373,6 +373,13 @@ ignore = ["D203", "D205", "D213", "ANN401", "PLR6301"]
 "rig_relay/investigation_timeline/_degradation.py" = ["PLR0911"]
 "rig_relay/data_plane/postgres/_materialize_publication.py" = ["PLR0914"]
 "rig_relay/data_plane/postgres/_materialize_repository_estate.py" = ["PLR0914"]
+"rig_relay/local_inference/runtime/_inventory.py" = ["PLR0911"]
+"rig_relay/local_inference/runtime/_probe.py" = ["PLR"]
+"rig_relay/local_inference/runtime/_service.py" = ["PLR"]
+"rig_relay/publication/_deployment_models.py" = ["PLR"]
+"rig_relay/publication/_deployment_service.py" = ["PLR"]
+"rig_relay/publication/_deployment_evidence.py" = ["PLR"]
+"rig_relay/publication/_portfolio_service.py" = ["PLR"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"

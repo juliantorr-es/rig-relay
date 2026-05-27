@@ -15,6 +15,8 @@ class LocalRuntimeKind(StrEnum):
     VLLM = "vllm"
     LLAMA_CPP = "llama_cpp"
     MLX_LM = "mlx_lm"
+    OMLX = "omlx"
+    RIGGED_MLX = "rigged_mlx"
     UNKNOWN = "unknown"
 
 

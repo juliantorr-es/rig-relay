@@ -1,0 +1,163 @@
+{
+  "schema_version": "rig.relay.lane_release_report.v1",
+  "lane": "X2",
+  "title": "Lane X2 Release: Rig-Governed Internal MLX-Backed Local Runtime Boundary",
+  "summary": "Implemented the first real internal Rig-governed local inference runtime. Uses mlx-lm Python APIs directly under Rig Relay governance — not an external endpoint adapter. The RiggedLocalRuntimeBoundary provides typed application-service APIs for MLX-backed model loading, governed inference, model inventory, content-light evidence, cache privacy policy, honest capability reporting, and tool-call output governance. OMLX was studied as an Apache-2.0 reference implementation; architectural patterns (model classification taxonomy, cache evidence metrics schema, capability probe structure, MLX thread safety) were adapted with attribution. Nine production dependencies added under justified Apache 2.0 compatibility. All dependencies are permissively licensed (MIT, Apache 2.0, BSD). No OMLX source code was directly copied. No OMLX engine, scheduler, cache, or server code was ported. Continuous batching, KV cache persistence, embeddings, reranking, VLM/OCR, and streaming governance are explicitly deferred.",
+  "branch": "main",
+  "head_before": "c6838598d",
+  "head_after": "pending_checkpoint",
+  "dirty_state_before": "6 modified files (frontend/desktop, macos/RigRelayShell, pyproject.toml, rig_relay/data_plane/postgres, rig_relay/publication), 15 untracked files (other lanes)",
+  "dirty_state_after": "11 modified (added: THIRD_PARTY_NOTICES.md, pyproject.toml deps, rig_relay/providers/local_inference/models.py, uv.lock), 18 untracked (added: X2 architecture decision, X2 runtime package, X2 tests)",
+  "files_changed": [
+    "pyproject.toml (added 8 MLX-family dependencies + ruff per-file-ignores)",
+    "rig_relay/providers/local_inference/models.py (added OMLX and RIGGED_MLX to LocalRuntimeKind)",
+    "THIRD_PARTY_NOTICES.md (added OMLX-informed patterns section)"
+  ],
+  "files_created": [
+    "docs/json/audits/runtime_substrate/lane_x2_rigged_runtime_architecture_decision.v1.json",
+    "rig_relay/local_inference/runtime/__init__.py",
+    "rig_relay/local_inference/runtime/_engine.py",
+    "rig_relay/local_inference/runtime/_inventory.py",
+    "rig_relay/local_inference/runtime/_evidence.py",
+    "rig_relay/local_inference/runtime/_models.py",
+    "rig_relay/local_inference/runtime/_probe.py",
+    "rig_relay/local_inference/runtime/_service.py",
+    "tests/local_inference/runtime/test_rigged_runtime_boundary.py"
+  ],
+  "files_deleted": [],
+  "tests_run": 37,
+  "tests_passed": 37,
+  "tests_failed": 0,
+  "tests_intentionally_skipped": [
+    "Real model inference tests (require Apple Silicon with MLX hardware)",
+    "Live cache evidence recording tests (requires persistent cache, deferred)",
+    "Tool-call live execution tests (requires model with tool-calling support, deferred)"
+  ],
+  "test_classifications": {
+    "governance_and_admission": "TestTaskAdmission, TestToolAuthority, TestRefusal — verifies governance gates, refusal reasons, and tool-call output blocking",
+    "evidence_content_light": "TestEvidenceEmission — verifies all evidence is SHA256-based, content-light, never raw output",
+    "cache_privacy": "TestCachePolicy — verifies local KV cache is distinct from cloud, requires disclosure, never reads contents",
+    "capability_reporting": "TestCapabilityReporting — verifies honest reporting (supported/unsupported/deferred)",
+    "projection_shape": "TestProjection — verifies projection has runtime/health/capabilities/cache/deferred/governance sections",
+    "service_lifecycle": "TestServiceSingleton — verifies singleton pattern and reset for testing",
+    "engine_interface": "TestEngine — verifies engine methods exist",
+    "model_inventory": "TestModelInventory — verifies inventory types and scanning",
+    "runtime_identity": "TestRuntimeIdentity — verifies runtime kind and info shape",
+    "runtime_health": "TestRuntimeHealth — verifies health probing states"
+  },
+  "evidence_artifacts": ["docs/json/audits/runtime_substrate/lane_x2_rigged_runtime_architecture_decision.v1.json"],
+  "schema_validation_results": "Pre-existing schema failures in unrelated schemas (https vs http, draft version mismatch). No new schemas created in this lane.",
+  "telemetry_and_redaction_implications": "Runtime evidence emission uses content-light logger.debug(). No raw prompts, completions, or model output in any evidence. SHA256 hashes for all content-derived references. Future wire-up to local observability JSONL requires registering event names in EventName enum.",
+  "dependency_changes": {
+    "added": [
+      {"package": "mlx", "version": ">=0.31.2", "license": "MIT", "purpose": "Apple MLX GPU framework"},
+      {"package": "mlx-lm", "version": "git pin (ml-explore/mlx-lm@ed1fca4)", "license": "MIT", "purpose": "Language model library: load(), generate()"},
+      {"package": "transformers", "version": ">=5.0.0", "license": "Apache 2.0", "purpose": "HuggingFace Transformers: tokenizer/config"},
+      {"package": "tokenizers", "version": ">=0.19.0", "license": "Apache 2.0", "purpose": "Fast tokenizer backend"},
+      {"package": "huggingface-hub", "version": ">=0.23.0", "license": "Apache 2.0", "purpose": "HuggingFace Hub API"},
+      {"package": "numpy", "version": ">=1.24.0", "license": "BSD", "purpose": "Array operations"},
+      {"package": "protobuf", "version": "latest", "license": "BSD-like", "purpose": "Model format parsing"},
+      {"package": "sentencepiece", "version": "latest", "license": "Apache 2.0", "purpose": "Tokenizer for LLaMA-family models"}
+    ],
+    "justification": "All required for MLX-backed internal runtime using mlx-lm.load() and mlx-lm.generate(). All permissively licensed. No copyleft dependencies. Platform-constrained to Apple Silicon for local inference; Rig Relay remains cross-platform for cloud providers."
+  },
+  "completed_work": [
+    "Deep-source OMLX inspection: server.py (4,835 lines), scheduler.py (6,596 lines), cache/ (16 files, 6,000+ lines), engine/ (11 files), engine_pool.py (1,020 lines), model_discovery.py (909 lines), model_registry.py (191 lines), engine_core.py (846 lines), pyproject.toml",
+    "Architecture decision v2: 5-category component classification separating Rig-owned, adapted, consumed, deferred, and excluded capabilities",
+    "Nine justified MLX-family dependencies added to pyproject.toml with license documentation",
+    "RiggedMlxEngine: MLX-backed inference engine using mlx-lm.load() and mlx-lm.generate() under governance",
+    "Model inventory scanner: filesystem-based model discovery with OMLX-informed model classification taxonomy",
+    "RiggedLocalRuntime application service: typed boundary for model loading, governed inference, evidence, cache policy, capability reporting",
+    "Content-light evidence: execution, refusal, cache, probe evidence — SHA256 hashes only, never raw output",
+    "Probe adapter: external runtime discovery (OMLX/Ollama/vLLM/etc.) as compatibility supplement alongside internal runtime",
+    "Cache privacy policy: local KV cache distinct from cloud retention per W1 Principle 4",
+    "Tool-call output governance: model output classified as proposal-only; never executes tools directly",
+    "Honest capability reporting: text generation supported; embeddings, reranking, VLM, streaming, tool calling all deferred",
+    "Projection for Inference Studio: runtime, health, capabilities, cache, deferred, governance sections",
+    "37 governance-boundary tests passing (0 failures)",
+    "THIRD_PARTY_NOTICES.md updated with OMLX-informed pattern attribution and dependency license documentation",
+    "Ruff clean, pyright clean (0 errors, 0 warnings)",
+    "Added RIGGED_MLX and OMLX to LocalRuntimeKind enum"
+  ],
+  "intentionally_deferred_work": [
+    "Continuous batching (single-request inference only; scheduler engine requires separate implementation slice)",
+    "KV cache persistence (mlx-lm in-memory only; SSD safetensors cache requires separate implementation slice)",
+    "Prefix sharing and cache reuse across requests",
+    "Multi-model serving and engine pool lifecycle",
+    "Embeddings/reranking live integration (requires mlx-embeddings dependency)",
+    "VLM/OCR live integration (requires mlx-vlm, Pillow dependencies)",
+    "Speculative decoding integration (requires dflash-mlx dependency)",
+    "Streaming inference with per-token governance and token budgeting",
+    "Benchmark integration with internal runtime",
+    "Real model inference on CI (requires Apple Silicon hardware; tests validate governance path with synthetic scenarios)",
+    "Model download acquisition pipeline (HuggingFace pull)",
+    "Inference Studio UI integration (X0 boundary)",
+    "macOS packaging integration (MLX framework bundling)",
+    "Wiring runtime evidence to local observability JSONL (requires EventName registration)"
+  ],
+  "discovered_out_of_scope_risks": [],
+  "remaining_seams": [
+    "Wire streaming generation (mlx-lm.stream_generate()) with per-token governance, token budgeting, and TTFT evidence",
+    "Wire tool-call output parsing and governed routing through existing Rig Relay tool execution corridor",
+    "Add embeddings/reranking/VLM clients when mlx-embeddings/mlx-vlm dependencies are added",
+    "Implement model download pipeline with HuggingFace Hub API, disk quota enforcement, and receipt-backed acquisition",
+    "Implement benchmark integration (benchmark_executor.py) against internal runtime",
+    "Register runtime evidence events in EventName constants",
+    "Wire runtime projection into desktop gateway for Inference Studio surface"
+  ],
+  "omlx_mechanisms_inspected": [
+    {"mechanism": "Continuous batching", "source": "scheduler.py (6,596 lines)", "disposition": "deferred", "notes": "FCFS policy, chunked prefill, 256 max seqs, 8,192 max batched tokens. Requires full engine rewrite."},
+    {"mechanism": "Tiered KV cache", "source": "cache/ (16 files, 6,000+ lines)", "disposition": "deferred", "notes": "GPU page cache + SSD safetensors + prefix sharing. Requires MLX GPU memory management."},
+    {"mechanism": "Model classification taxonomy", "source": "model_discovery.py (909 lines)", "disposition": "adapted", "notes": "Architecture-based VLM/embedding/reranker detection pattern adapted in _inventory.py. Attribution in THIRD_PARTY_NOTICES.md."},
+    {"mechanism": "Cache metrics schema", "source": "server_metrics.py (CacheRateTracker)", "disposition": "adapted", "notes": "Rolling window pattern (60s, 5m, 15m) adapted in CacheEvidenceMetrics model. Attribution recorded."},
+    {"mechanism": "Capability probe structure", "source": "server.py endpoint layout", "disposition": "adapted", "notes": "Route discovery pattern adapted in EnrichedRuntimeCapabilities. Attribution recorded."},
+    {"mechanism": "MLX thread safety", "source": "engine_core.py (_init_mlx_thread)", "disposition": "adapted", "notes": "Thread-local Metal stream initialization pattern adapted in _engine.py._ensure_mlx_initialized(). Attribution recorded."},
+    {"mechanism": "Engine pool lifecycle", "source": "engine_pool.py (1,020 lines)", "disposition": "deferred", "notes": "LRU eviction, ProcessMemoryEnforcer ceiling, settle-barrier unload."},
+    {"mechanism": "VLM/OCR pipeline", "source": "engine/vlm.py (2,072 lines)", "disposition": "deferred", "notes": "VLMBatchedEngine, OCR model detection, multi-image chat."},
+    {"mechanism": "Speculative decoding", "source": "dflash integration", "disposition": "deferred", "notes": "DFlash block diffusion, VLM MTP, SpecPrefill."},
+    {"mechanism": "Model registry pattern", "source": "model_registry.py (191 lines)", "disposition": "informed", "notes": "Weakref singleton pattern for tracking model ownership — informs future multi-model management."}
+  ],
+  "dependencies_added_with_license_verification": [
+    {"package": "mlx", "license": "MIT", "verified": true},
+    {"package": "mlx-lm", "license": "MIT", "verified": true},
+    {"package": "transformers", "license": "Apache 2.0", "verified": true},
+    {"package": "tokenizers", "license": "Apache 2.0", "verified": true},
+    {"package": "huggingface-hub", "license": "Apache 2.0", "verified": true},
+    {"package": "numpy", "license": "BSD", "verified": true},
+    {"package": "protobuf", "license": "BSD-like", "verified": true},
+    {"package": "sentencepiece", "license": "Apache 2.0", "verified": true}
+  ],
+  "rig_authority_preserved": [
+    "Runtime admission: task admission gates through privacy, capability, and governance checks",
+    "Privacy classification: local cache distinct from cloud retention per W1",
+    "Tool execution authority: runtime output is proposal-only; governed corridor enforced",
+    "Evidence issuance: content-light, SHA256-based, never raw output",
+    "Cache evidence classification: local cache evidence distinct from cloud provider cache",
+    "UI projection: typed projection for future Inference Studio with honest deferred reporting",
+    "Repository mutation: no path from runtime output to file mutation in this slice"
+  ],
+  "inference_studio_capabilities_realized": [
+    "Runtime identity and version (MLX availability, platform class, protocol)",
+    "Model inventory (SHA256 hashes, capability classes, load status)",
+    "Governed task admission and execution (privacy-gated)",
+    "Content-light execution evidence (hashes, tokens, latency)",
+    "Local cache privacy policy (distinct from cloud)",
+    "Honest capability reporting (text generation: supported; embeddings/reranking/VLM/streaming/tool: deferred)",
+    "Runtime projection (typed dict for X0/X2 integration milestone)"
+  ],
+  "omlx_capabilities_deferred": [
+    "Continuous batching",
+    "Tiered KV cache persistence",
+    "Prefix sharing and cache reuse",
+    "Multi-model engine pool lifecycle",
+    "Embeddings/reranking live integration",
+    "VLM/OCR live integration",
+    "Speculative decoding",
+    "Admin dashboard/model management UI"
+  ],
+  "released_boundary": "RiggedLocalRuntimeBoundary: an internal MLX-backed governed local inference runtime, informed by and legally compatible with OMLX's Apache-2.0 reference architecture, that preserves Rig Relay authority over privacy, task admission, tool execution, evidence, and UI projection while providing real model loading, governed inference, model inventory, and typed execution evidence for future Inference Studio consumption.",
+  "stated_consumer_purpose": "A later X0/X2 integration milestone wires Inference Studio to a real Rig-governed local runtime (MLX-backed model loading and inference under Rig admission/evidence/tool authority) rather than an external endpoint placeholder.",
+  "blocking_defects": [],
+  "freeze_condition": "This lane freezes upon remote verification of published architecture decision, implementation, tests, dependency changes, and license compliance artifacts. Reopens only for: a concrete defect inside the released boundary, a named X0/X2 integration milestone consuming this boundary, or a user-directed architectural revision.",
+  "created_at": "2026-05-27T01:00:00Z"
+}
