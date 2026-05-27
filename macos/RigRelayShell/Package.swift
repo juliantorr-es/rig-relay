@@ -10,7 +10,13 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "RigRelayShell",
-            path: "Sources/RigRelayShell"
+            path: "Sources/RigRelayShell",
+            resources: [.copy("Resources/GridlineFrontend")]
+        ),
+        .testTarget(
+            name: "RigRelayShellTests",
+            dependencies: ["RigRelayShell"],
+            path: "Tests/RigRelayShellTests"
         ),
     ]
 )

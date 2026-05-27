@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - Host Status View (loading, failed, disconnected, extension-status)
+// ── Host Status View (S0: truthful resource-load and bridge states) ──
 
 struct HostStatusView: View {
     @ObservedObject var appState: AppState
@@ -29,11 +29,21 @@ struct HostStatusView: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
+                .keyboardShortcut(.defaultAction)
             }
 
             if case .loadingFrontend = appState.hostState {
                 ProgressView()
                     .scaleEffect(0.8)
+                    .padding(.top, 4)
+            } else if case .resolvingResources = appState.hostState {
+                ProgressView()
+                    .scaleEffect(0.8)
+                    .padding(.top, 4)
+            } else if case .booting = appState.hostState {
+                ProgressView()
+                    .scaleEffect(0.8)
+                    .padding(.top, 4)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -46,16 +56,22 @@ struct HostStatusView: View {
             "Initializing Rig Relay native host..."
         case .booting:
             "Starting application services..."
+        case .resolvingResources:
+            "Locating bundled Gridline frontend resources..."
+        case .resourceNotFound(let detail):
+            "The bundled Gridline frontend could not be found.\n\n\(detail)\n\nEnsure the application bundle includes Resources/GridlineFrontend/index.html."
+        case .resourceMalformed(let detail):
+            "The bundled Gridline frontend is corrupt or unreadable.\n\n\(detail)\n\nReinstall the application to restore frontend resources."
         case .loadingFrontend:
-            "Connecting to the Rig Relay bridge server. Ensure the bridge is running."
+            "Loading bundled Gridline frontend..."
         case .frontendReady:
             nil
         case .frontendLoadFailed(let error):
-            "The frontend could not be loaded: \(error)\n\nCheck that the Rig Relay bridge server is running and accessible at the configured URL."
+            "The frontend could not be loaded: \(error)"
         case .bridgeUnavailable:
-            "The Rig Relay bridge server is not responding. Verify the server is running and try again."
+            "The native-to-frontend message bridge is not available. Restart the application."
         case .unsupportedOrigin(let url):
-            "Navigation to an untrusted origin was blocked: \(url)\n\nRig Relay only loads the trusted bridge frontend from the configured local server."
+            "Navigation to an untrusted location was blocked: \(url)\n\nRig Relay only loads its bundled Gridline frontend. External navigation is refused."
         case .error(let msg):
             "An unexpected error occurred: \(msg)"
         case .extensionStatusUnknown:
@@ -66,14 +82,15 @@ struct HostStatusView: View {
     private var statusColor: Color {
         switch appState.hostState {
         case .frontendReady: RowHostDesign.statusOk
-        case .loadingFrontend, .booting, .uninitialized: RowHostDesign.statusInfo
+        case .loadingFrontend, .booting, .uninitialized, .resolvingResources: RowHostDesign.statusInfo
         case .frontendLoadFailed, .bridgeUnavailable, .unsupportedOrigin, .error: RowHostDesign.statusError
+        case .resourceNotFound, .resourceMalformed: RowHostDesign.statusError
         case .extensionStatusUnknown: RowHostDesign.statusWarn
         }
     }
 }
 
-// MARK: - RowHost Design Tokens (minimal host-only tokens)
+// ── RowHost Design Tokens ──────────────────────────────────
 
 enum RowHostDesign {
     static let textPrimary = Color.primary

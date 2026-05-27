@@ -1,14 +1,14 @@
 import WebKit
 import SwiftUI
 
-// MARK: - WebKit WebView (NSViewRepresentable for SwiftUI)
+// ── WebKit WebView (S0: Bundled Gridline Frontend Host) ─────
 
 struct WebKitWebView: NSViewRepresentable {
-    let url: URL
+    let fileURL: URL
+    let readAccessURL: URL
     let messageBridge: NativeMessageBridge
     let onLoadStateChange: (HostState) -> Void
-    let trustedHost: String
-    let trustedPort: Int
+    let allowedBaseURL: URL
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
@@ -17,10 +17,10 @@ struct WebKitWebView: NSViewRepresentable {
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
 
-        // Non-persistent data store — no cookie/credential persistence between sessions
+        // Non-persistent data store
         config.websiteDataStore = .nonPersistent()
 
-        // Default webpage preferences
+        // Desktop-rendering preferences
         let prefs = WKWebpagePreferences()
         prefs.allowsContentJavaScript = true
         prefs.preferredContentMode = .desktop
@@ -31,7 +31,6 @@ struct WebKitWebView: NSViewRepresentable {
         webView.allowsBackForwardNavigationGestures = false
         webView.allowsMagnification = false
 
-        // Enable Safari Web Inspector in development
         #if DEBUG
         webView.isInspectable = true
         #endif
@@ -43,18 +42,31 @@ struct WebKitWebView: NSViewRepresentable {
     }
 
     func updateNSView(_ webView: WKWebView, context: Context) {
-        // Only load if not already loading
         if context.coordinator.loadState == .uninitialized {
-            let request = URLRequest(
-                url: url,
-                cachePolicy: .reloadIgnoringLocalAndRemoteCacheData,
-                timeoutInterval: 30
-            )
-            webView.load(request)
+            // Verify local file exists before attempting load
+            guard FileManager.default.fileExists(atPath: fileURL.path) else {
+                onLoadStateChange(.resourceNotFound(
+                    "Frontend index.html missing at \(fileURL.path)"
+                ))
+                return
+            }
+
+            // Verify index.html is a regular, readable file
+            guard let attrs = try? FileManager.default.attributesOfItem(atPath: fileURL.path),
+                  let fileType = attrs[.type] as? FileAttributeType,
+                  fileType == .typeRegular else {
+                onLoadStateChange(.resourceMalformed(
+                    "Frontend resource is not a regular file: \(fileURL.lastPathComponent)"
+                ))
+                return
+            }
+
+            // Load bundled file with read access restricted to the frontend root
+            webView.loadFileURL(fileURL, allowingReadAccessTo: readAccessURL)
         }
     }
 
-    // MARK: - Coordinator (WKNavigationDelegate)
+    // ── Coordinator (WKNavigationDelegate) ──────────────────
 
     final class Coordinator: NSObject, WKNavigationDelegate {
         let parent: WebKitWebView
@@ -64,32 +76,42 @@ struct WebKitWebView: NSViewRepresentable {
             self.parent = parent
         }
 
-        // MARK: — Navigation Policy
+        // ── Navigation Policy ──────────────────────────────
 
         func webView(
             _ webView: WKWebView,
             decidePolicyFor navigationAction: WKNavigationAction,
-            decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+            decisionHandler: @escaping @MainActor @Sendable (WKNavigationActionPolicy) -> Void
         ) {
-            guard let url = navigationAction.request.url,
-                  let host = url.host else {
+            guard let url = navigationAction.request.url else {
                 decisionHandler(.cancel)
-                parent.onLoadStateChange(.unsupportedOrigin("No host in URL"))
+                parent.onLoadStateChange(.unsupportedOrigin("No URL in request"))
                 return
             }
 
-            // Only allow navigation to the trusted host and port
-            if host == parent.trustedHost && url.port == parent.trustedPort {
+            // Allow initial local file load
+            if navigationAction.navigationType == .other && url.isFileURL {
                 decisionHandler(.allow)
-            } else {
-                decisionHandler(.cancel)
-                parent.onLoadStateChange(
-                    .unsupportedOrigin("Blocked: \(url.absoluteString.prefix(100))")
-                )
+                return
             }
+
+            // Allow same-file reloads and subresource requests within allowed directory
+            if url.isFileURL {
+                let allowedPath = parent.allowedBaseURL.path
+                if url.path.hasPrefix(allowedPath) {
+                    decisionHandler(.allow)
+                    return
+                }
+            }
+
+            // Block everything else — no external navigation
+            decisionHandler(.cancel)
+            parent.onLoadStateChange(
+                .unsupportedOrigin("Blocked: \(url.absoluteString.prefix(100))")
+            )
         }
 
-        // MARK: — Load Lifecycle
+        // ── Load Lifecycle ────────────────────────────────
 
         func webView(
             _ webView: WKWebView,
@@ -105,6 +127,9 @@ struct WebKitWebView: NSViewRepresentable {
         ) {
             loadState = .frontendReady
             parent.onLoadStateChange(.frontendReady)
+
+            // Send bootstrap message to frontend once loaded
+            // (dispatched in ContentView via onLoadStateChange → appState)
         }
 
         func webView(
@@ -113,7 +138,6 @@ struct WebKitWebView: NSViewRepresentable {
             withError error: Error
         ) {
             let nsError = error as NSError
-            // NSURLErrorCancelled (-999) is expected during navigation policy rejections
             if nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled {
                 return
             }
@@ -130,9 +154,13 @@ struct WebKitWebView: NSViewRepresentable {
             if nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled {
                 return
             }
-            // Provisional navigation failures indicate the bridge server is down
-            loadState = .bridgeUnavailable
-            parent.onLoadStateChange(.bridgeUnavailable)
+            // Provisional failure for local files means resource is corrupt or unreadable
+            loadState = .resourceMalformed(
+                "Failed to load frontend: \(error.localizedDescription)"
+            )
+            parent.onLoadStateChange(
+                .resourceMalformed("Failed to load frontend: \(error.localizedDescription)")
+            )
         }
 
         func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {

@@ -1,11 +1,14 @@
 import SwiftUI
 import WebKit
 
-// MARK: - Host State
+// ── Host State ──────────────────────────────────────────────
 
 enum HostState: Sendable, Equatable {
     case uninitialized
     case booting
+    case resolvingResources
+    case resourceNotFound(String)
+    case resourceMalformed(String)
     case loadingFrontend
     case frontendReady
     case frontendLoadFailed(String)
@@ -18,6 +21,9 @@ enum HostState: Sendable, Equatable {
         switch self {
         case .uninitialized: "Starting..."
         case .booting: "Booting..."
+        case .resolvingResources: "Resolving Resources..."
+        case .resourceNotFound: "Resources Not Found"
+        case .resourceMalformed: "Resources Corrupt"
         case .loadingFrontend: "Loading Rig Relay..."
         case .frontendReady: "Ready"
         case .frontendLoadFailed: "Load Failed"
@@ -30,7 +36,8 @@ enum HostState: Sendable, Equatable {
 
     var iconName: String {
         switch self {
-        case .uninitialized, .booting: "arrow.triangle.2.circlepath"
+        case .uninitialized, .booting, .resolvingResources: "arrow.triangle.2.circlepath"
+        case .resourceNotFound, .resourceMalformed: "doc.questionmark"
         case .loadingFrontend: "globe"
         case .frontendReady: "checkmark.circle"
         case .frontendLoadFailed: "xmark.circle"
@@ -43,29 +50,111 @@ enum HostState: Sendable, Equatable {
 
     var isTerminal: Bool {
         switch self {
-        case .frontendLoadFailed, .bridgeUnavailable, .unsupportedOrigin, .error: true
+        case .resourceNotFound, .resourceMalformed, .frontendLoadFailed,
+             .bridgeUnavailable, .unsupportedOrigin, .error: true
         default: false
         }
     }
 }
 
-// MARK: - App State
+// ── App State ───────────────────────────────────────────────
 
 @MainActor
 final class AppState: ObservableObject {
     @Published var hostState: HostState = .uninitialized
-    @Published var bridgeURL: URL?
     @Published var showExtensionStatus = false
 
     private let sessionId = "webkit_host_\(UUID().uuidString.prefix(8))"
     let messageBridge = NativeMessageBridge()
 
+    var resourceLocator: ResourceLocator { ResourceLocator() }
+
     init() {
-        // Bridge URL — default to the production bridge server address
-        bridgeURL = URL(string: "https://127.0.0.1:9876/index.html")
+        // No default remote URL assumption — resources resolved from bundle
     }
 
-    // MARK: — Message Dispatch
+    // ── Frontend URL Resolution (bundled resources only) ──
+
+    func resolvedFrontendFileURL() -> URL? {
+        let loc = resourceLocator
+        hostState = .resolvingResources
+
+        guard let url = loc.gridlineFrontendIndexURL else {
+            hostState = .resourceNotFound("No bundled Gridline frontend found in Resources/GridlineFrontend/")
+            return nil
+        }
+
+        guard loc.gridlineFrontendResourceExists() else {
+            hostState = .resourceNotFound(
+                "GridlineFrontend/index.html not found at expected bundle path"
+            )
+            return nil
+        }
+
+        let missing = loc.gridlineFrontendMissingSubresources()
+        if !missing.isEmpty {
+            hostState = .resourceNotFound(
+                "Missing subdirectories: \(missing.joined(separator: ", "))"
+            )
+            return nil
+        }
+
+        return url
+    }
+
+    func frontendReadAccessURL() -> URL? {
+        resourceLocator.gridlineFrontendRootURL
+    }
+
+    // ── Bootstrap Message ───────────────────────────
+
+    func buildBootstrapMessage() -> BootstrapMessage? {
+        let loc = resourceLocator
+        let resourceResult: ResourceLoadResult
+        if loc.gridlineFrontendIndexURL != nil,
+           loc.gridlineFrontendResourceExists() {
+            resourceResult = ResourceLoadResult(
+                resolvedPathHash: loc.gridlineFrontendIndexContentsHash() ?? "sha256:unavailable",
+                indexHTMLFound: true,
+                subresourceCount: loc.gridlineFrontendAssetCount(),
+                missingSubresources: loc.gridlineFrontendMissingSubresources(),
+                loadError: nil
+            )
+        } else {
+            resourceResult = ResourceLoadResult(
+                resolvedPathHash: "sha256:unavailable",
+                indexHTMLFound: false,
+                subresourceCount: 0,
+                missingSubresources: loc.gridlineFrontendMissingSubresources(),
+                loadError: "Gridline frontend index.html not found in bundle"
+            )
+        }
+
+        let payload = BootstrapPayload(
+            resourceLoadResult: resourceResult,
+            bridgeAvailable: true,
+            supportedCapabilityKinds: [
+                "host_state_query",
+                "extension_status_query"
+            ],
+            refusalReasons: resourceResult.indexHTMLFound ? [] : ["frontend_resources_missing"],
+            appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
+            buildCommitSHA: nil,
+            transportStatus: "local_file"
+        )
+
+        return BootstrapMessage(
+            schemaVersion: BootstrapMessage.currentVersion,
+            messageId: "bootstrap_\(sessionId)",
+            kind: resourceResult.indexHTMLFound ? .hostReady : .hostResourceFailure,
+            sessionId: sessionId,
+            payload: payload,
+            traceId: nil,
+            sentAt: ISO8601DateFormatter().string(from: Date())
+        )
+    }
+
+    // ── Message Dispatch ─────────────────────────────
 
     func handleFrontendMessage(_ message: [String: Any]) {
         let kind = message["kind"] as? String ?? ""
@@ -80,8 +169,19 @@ final class AppState: ObservableObject {
                 "trace_id": traceId
             ])
 
+        case "get_bootstrap":
+            if let bootstrap = buildBootstrapMessage(),
+               let dict = bootstrap.asDictionary() {
+                sendToFrontend(dict)
+            } else {
+                sendToFrontend([
+                    "kind": "bootstrap_failure",
+                    "reason": "failed_to_encode_bootstrap_message",
+                    "trace_id": traceId
+                ])
+            }
+
         case "open_file_dialog":
-            // Native file dialog — future capability
             sendToFrontend([
                 "kind": "native_capability_refused",
                 "capability": "open_file_dialog",
@@ -110,18 +210,13 @@ final class AppState: ObservableObject {
         messageBridge.sendToFrontend(message)
     }
 
-    // MARK: — Frontend URL Resolution
-
-    func resolvedBridgeURL() -> URL {
-        if let url = bridgeURL {
-            return url
-        }
-        return URL(string: "https://127.0.0.1:9876/index.html")!
-    }
-
-    // MARK: — Retry
+    // ── Retry ────────────────────────────────────────
 
     func retryLoading() {
-        hostState = .loadingFrontend
+        // Reset to booting — never silently restore server assumption
+        hostState = .booting
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+            self?.hostState = .resolvingResources
+        }
     }
 }

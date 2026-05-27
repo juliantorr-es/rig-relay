@@ -1,0 +1,296 @@
+/* Rig Relay — Layout
+   Mode-driven CSS Grid system with animated transitions */
+
+/* ── Reset ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100vh;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-base);
+  color: var(--text-primary);
+  background: var(--bg-base);
+  display: grid;
+  grid-template-rows:
+    var(--header-height)
+    var(--surface-nav-height)
+    var(--mode-bar-height)
+    minmax(0, 1fr)
+    var(--footer-height);
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "header"
+    "surface-nav"
+    "mode"
+    "main"
+    "footer";
+  -webkit-font-smoothing: antialiased;
+}
+
+#top-header { grid-area: header; }
+#surface-nav { grid-area: surface-nav; }
+#mode-bar { grid-area: mode; }
+#footer-bar { grid-area: footer; }
+
+/* Surface containers — occupy main area, stacked behind active surface */
+.surface-container {
+  grid-area: main;
+  display: none;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.surface-container.active {
+  display: flex;
+}
+
+/* ── Main content area: mode-driven grid ── */
+#main-grid {
+  grid-area: main;
+  min-height: 0;
+  min-width: 0;
+  display: grid;
+  overflow: hidden;
+  transition: grid-template-columns var(--transition-layout),
+              grid-template-rows var(--transition-layout);
+}
+
+/* Mode: operator — chat dominant left, widgets right */
+#main-grid[data-mode="operator"] {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 0;
+}
+
+/* Mode: review — equal grid of 2 columns */
+#main-grid[data-mode="review"] {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: minmax(0, 1fr);
+  gap: var(--space-2);
+  padding: var(--space-2);
+}
+
+/* Mode: system — 2-column grid */
+#main-grid[data-mode="system"] {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: minmax(0, 1fr);
+  gap: var(--space-2);
+  padding: var(--space-2);
+}
+
+/* Mode: technical — dense 3-column grid */
+#main-grid[data-mode="technical"] {
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: minmax(0, 1fr);
+  gap: var(--space-1);
+  padding: var(--space-1);
+}
+
+/* ── Column areas ── */
+#chat-column {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-base);
+}
+
+#panel-column {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: var(--glass-bg-light);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-left: 1px solid var(--glass-border);
+}
+
+/* Review/System modes — flatter panel */
+#main-grid[data-mode="review"] #panel-column,
+#main-grid[data-mode="system"] #panel-column {
+  border-left: none;
+  background: transparent;
+  padding: 0;
+  gap: var(--space-2);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: min-content;
+  align-content: start;
+}
+
+#main-grid[data-mode="technical"] #panel-column {
+  border-left: none;
+  background: transparent;
+  padding: 0;
+  gap: var(--space-1);
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-auto-rows: min-content;
+  align-content: start;
+}
+
+/* ── Full-page expanded widget overlay ── */
+#expanded-overlay {
+  display: none;
+  position: fixed;
+  inset: var(--header-height) 0 var(--footer-height) 0;
+  background: var(--glass-bg-light);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 100;
+  overflow-y: auto;
+  padding: var(--space-6);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity var(--transition-slow), transform var(--transition-slow);
+}
+
+#expanded-overlay.active {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+#expanded-overlay .close-btn {
+  position: fixed;
+  top: calc(var(--header-height) + var(--space-3));
+  right: var(--space-6);
+  z-index: 101;
+}
+
+/* ── Mode bar ── */
+#mode-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 var(--space-3);
+  height: var(--mode-bar-height);
+  background: rgba(28, 32, 40, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--glass-border);
+  flex-shrink: 0;
+}
+
+.mode-option {
+  padding: 4px 14px;
+  font-size: var(--font-size-sm);
+  font-family: var(--font-sans);
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast),
+              border-color var(--transition-fast);
+  white-space: nowrap;
+  min-height: var(--target-min-size);
+  display: inline-flex;
+  align-items: center;
+}
+
+.mode-option:hover {
+  color: var(--text-primary);
+  background: var(--bg-card-hover);
+}
+
+.mode-option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.mode-option.active {
+  color: var(--accent);
+  background: var(--accent-subtle);
+  border-color: var(--accent);
+  font-weight: var(--font-weight-medium);
+}
+
+/* ── Footer ── */
+#footer-bar {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-4);
+  height: var(--footer-height);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  background: rgba(19, 22, 27, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--glass-border);
+  gap: var(--space-4);
+  flex-shrink: 0;
+}
+
+/* ── Scrollable areas ── */
+#chat-column > *:last-child {
+  flex: 1;
+  overflow: hidden;
+}
+
+#panel-column {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+#panel-column::-webkit-scrollbar {
+  width: 5px;
+}
+
+#panel-column::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#panel-column::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: var(--radius-pill);
+}
+
+/* ── Skip link ── */
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: var(--space-3);
+  z-index: 200;
+  padding: 8px 16px;
+  background: var(--accent);
+  color: #fff;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: top var(--transition-fast);
+}
+.skip-link:focus {
+  top: var(--space-2);
+}
+
+/* ── Responsive collapse ── */
+@media (max-width: 720px) {
+  #main-grid[data-mode="operator"] {
+    grid-template-columns: 1fr;
+  }
+  #panel-column { display: none; }
+}
+
+@media (max-width: 900px) {
+  #main-grid[data-mode="review"],
+  #main-grid[data-mode="system"] {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,23 +1,29 @@
 import SwiftUI
 
-// MARK: - Main Content Shell (N1: WebKit Host, not product tabs)
+// ── Main Content Shell (S0: Native WebKit Host Boot Boundary) ──
 
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
 
     var body: some View {
         ZStack {
-            // Primary: WebKit-hosted bridge frontend
-            WebKitWebView(
-                url: appState.resolvedBridgeURL(),
-                messageBridge: appState.messageBridge,
-                onLoadStateChange: { newState in
-                    appState.hostState = newState
-                },
-                trustedHost: hostName,
-                trustedPort: hostPort
-            )
-            .opacity(appState.hostState == .frontendReady ? 1 : 0)
+            // Primary: WebKit-hosted Gridline frontend (bundled, local file)
+            if let fileURL = appState.resolvedFrontendFileURL(),
+               let readAccessURL = appState.frontendReadAccessURL() {
+                WebKitWebView(
+                    fileURL: fileURL,
+                    readAccessURL: readAccessURL,
+                    messageBridge: appState.messageBridge,
+                    onLoadStateChange: { newState in
+                        appState.hostState = newState
+                    },
+                    allowedBaseURL: readAccessURL
+                )
+                .opacity(appState.hostState == .frontendReady ? 1 : 0)
+            } else {
+                // No viable frontend resource — show status overlay
+                Color.clear
+            }
 
             // Overlay: Host status during boot, loading, or failure
             if appState.hostState != .frontendReady {
@@ -30,13 +36,13 @@ struct ContentView: View {
             guard let body = notification.userInfo as? [String: Any] else { return }
             appState.handleFrontendMessage(body)
         }
-    }
-
-    private var hostName: String {
-        "127.0.0.1"
-    }
-
-    private var hostPort: Int {
-        9876
+        .onAppear {
+            if appState.hostState == .uninitialized {
+                appState.hostState = .booting
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak appState] in
+                    appState?.hostState = .resolvingResources
+                }
+            }
+        }
     }
 }

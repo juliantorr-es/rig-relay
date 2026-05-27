@@ -1,0 +1,134 @@
+{
+  "schema_version": "rig.relay.s0_audit.v1",
+  "audit_id": "s0_native_webkit_host_boot_boundary",
+  "generated_at": "2026-05-26T18:37:00Z",
+  "boundary": "NativeGridlineHostBootBoundary",
+  "consumer_purpose": "A later integration milestone can connect live O0 backend transport into a real native frontend host without rewriting the native boot architecture.",
+  "summary": "S0 closes the production seam between the published N1 macOS WebKit shell and the published P0 Gridline frontend assets. The macOS application now boots the actual bundled Gridline interface through WKWebView as its real application surface, resolving frontend resources deterministically from packaged SPM resources, refusing arbitrary navigation, and emitting typed content-light bootstrap/refusal messages.",
+  "apple_webkit_research": {
+    "sources_consulted": [
+      "Apple Developer Documentation: WKWebView (https://developer.apple.com/documentation/webkit/wkwebview)",
+      "Apple Developer Documentation: Loading Local Content (https://developer.apple.com/documentation/webkit/wkwebview/1414973-loadfileurl)",
+      "Apple Developer Documentation: WKNavigationDelegate (https://developer.apple.com/documentation/webkit/wknavigationdelegate)",
+      "Apple Developer Documentation: WKUserContentController (https://developer.apple.com/documentation/webkit/wkusercontentcontroller)",
+      "Apple Developer Documentation: WKScriptMessageHandler (https://developer.apple.com/documentation/webkit/wkscriptmessagehandler)",
+      "Swift Package Manager: Bundling Resources (https://developer.apple.com/documentation/xcode/bundling-resources-with-a-swift-package)",
+      "WebKit Security: Local File Access and Navigation Policy"
+    ],
+    "key_conclusions": [
+      "WKWebView.loadFileURL(_:allowingReadAccessTo:) is the canonical API for loading bundled HTML resources on macOS. It loads a local file and grants read access to a specified directory tree.",
+      "WKNavigationActionPolicy.allow/.cancel controls navigation per-request. For bundled applications, the policy must allow the initial local file load and subresource loads from the allowed directory, and cancel all external navigation.",
+      "WKUserContentController.add(_:name:) registers script message handlers. The handler name (rigHostBridge) becomes available as window.webkit.messageHandlers.rigHostBridge in JavaScript.",
+      "WKUserScript with .atDocumentStart injection time ensures the bridge script runs before any frontend JavaScript, enabling early message queue buffering.",
+      "WKNavigationDelegate's didFailProvisionalNavigation handles local file load failures (corrupt/missing files, permission errors) — critical for truthful failure states.",
+      "Swift Package Manager's .copy resource directive preserves directory structure, essential for web applications that reference subdirectory assets (css/, js/).",
+      ".process flattens directory structure — not suitable for web application bundles.",
+      "SPM resource bundles use Bundle.module for access. In test targets, Bundle.module refers to the test bundle, not the main module bundle — requiring explicit bundle resolution for tests.",
+      "WKWebView's isInspectable property (macOS 13.3+) enables Safari Web Inspector in DEBUG builds for frontend debugging."
+    ]
+  },
+  "architecture_decisions": [
+    {
+      "decision": "Bundled resource loading via WKWebView.loadFileURL instead of localhost server",
+      "rationale": "Removes dependency on external bridge server at boot time. Frontend resources are deterministically resolved from the application bundle. No network service required for initial UI load."
+    },
+    {
+      "decision": "SPM .copy resource directive for GridlineFrontend/",
+      "rationale": "Preserves directory structure (css/, js/ subdirectories) required by the frontend's relative-path references. .process would flatten all files to bundle root."
+    },
+    {
+      "decision": "Navigation policy restricted to file:// URLs within allowed directory",
+      "rationale": "Prevents XSS/CSRF via external navigation. Only the bundled frontend root and subdirectories are accessible. All remote navigation is refused with .unsupportedOrigin state."
+    },
+    {
+      "decision": "Typed BootstrapMessage with schema version, resource load result, capability kinds",
+      "rationale": "Content-light bootstrap channel reports only typed facts (resource availability, bridge status, supported capabilities) without raw file contents, secrets, or paths."
+    },
+    {
+      "decision": "HostState.resolvingResources, .resourceNotFound, .resourceMalformed as new states",
+      "rationale": "Truthful failure states. Missing bundled frontend produces .resourceNotFound; corrupt/unreadable frontend produces .resourceMalformed. Never silently falls back to server assumption."
+    },
+    {
+      "decision": "ResourceLocator accepts configurable Bundle parameter",
+      "rationale": "Production uses Bundle.module (main target). Tests can pass a specific bundle for resource verification."
+    },
+    {
+      "decision": "No localhost server URL fallback",
+      "rationale": "The removed N0 product-tab architecture must not silently restore. AppState never defaults to a remote URL. resolvedFrontendFileURL returns nil when resources are missing."
+    }
+  ],
+  "removed_n0_architecture": {
+    "previous_behavior": "AppState initialized bridgeURL to https://127.0.0.1:9876/index.html — assumed a localhost bridge server was always available.",
+    "removed": [
+      "Default bridgeURL construction in AppState.init()",
+      "resolvedBridgeURL() method returning remote URL fallback",
+      "ContentView.hostName/hostPort computed properties for remote server",
+      "WebKitWebView URL-based loading (URLRequest replaced by loadFileURL)",
+      "Navigation policy based on remote host/port matching (replaced by file:// directory restriction)"
+    ],
+    "structural_absence_verified": "No remote URL construction, no host/port constants, no URLRequest-based loading, no remote navigation allowance exists in the current codebase."
+  },
+  "files_changed": [
+    "macos/RigRelayShell/Package.swift",
+    "macos/RigRelayShell/Sources/RigRelayShell/AppState.swift",
+    "macos/RigRelayShell/Sources/RigRelayShell/ContentView.swift",
+    "macos/RigRelayShell/Sources/RigRelayShell/ResourceLocator.swift",
+    "macos/RigRelayShell/Sources/RigRelayShell/Host/WebKitWebView.swift",
+    "macos/RigRelayShell/Sources/RigRelayShell/Host/HostStatusView.swift",
+    "macos/RigRelayShell/Sources/RigRelayShell/Host/BootstrapMessage.swift",
+    "macos/RigRelayShell/Sources/RigRelayShell/NativeBridge/NativeMessageBridge.swift"
+  ],
+  "files_created": [
+    "macos/RigRelayShell/Sources/RigRelayShell/Resources/GridlineFrontend/ (entire frontend bundle)",
+    "macos/RigRelayShell/Sources/RigRelayShell/Host/BootstrapMessage.swift",
+    "macos/RigRelayShell/Tests/RigRelayShellTests/BootstrapTests.swift"
+  ],
+  "tests": {
+    "count": 17,
+    "suites": ["BootstrapMessageTests (5)", "ResourceLocatorTests (7)", "HostStateTests (5)"],
+    "all_passing": true,
+    "test_build_command": "swift test in macos/RigRelayShell"
+  },
+  "deferred_seams": [
+    {
+      "seam": "Live O0 backend transport",
+      "reason": "Backend gateway WebSocket/HTTP transport is deferred. The native host currently boots the frontend without live backend connectivity. Bootstrap message reports transport_status: local_file."
+    },
+    {
+      "seam": "Safari extension live binding",
+      "reason": "SafariExtensionContract is published as a schema-only contract. Live extension binding (Q0: background script, .appex bundle, entitlements) is deferred."
+    },
+    {
+      "seam": "macOS .app bundle packaging",
+      "reason": "SPM build produces a command-line executable. Full .app bundle packaging (Info.plist, code signing, notarization) is deferred. Resource loading via Bundle.module works in both SPM and .app contexts."
+    },
+    {
+      "seam": "Frontend-to-backend WebSocket connection",
+      "reason": "Frontend currently uses fixture data for projections. Live WebSocket transport to Python gateway is deferred to O0 integration milestone."
+    }
+  ],
+  "blocking_defects": [],
+  "freeze_condition": "frozen_pending_integration — S0 boundary is complete and verified. Reopens only for concrete defect inside the released boundary or a named integration milestone (O0 backend transport, Q0 Safari binding).",
+  "apple_references": [
+    {
+      "title": "WKWebView — Apple Developer Documentation",
+      "url": "https://developer.apple.com/documentation/webkit/wkwebview"
+    },
+    {
+      "title": "loadFileURL(_:allowingReadAccessTo:) — Apple Developer",
+      "url": "https://developer.apple.com/documentation/webkit/wkwebview/1414973-loadfileurl"
+    },
+    {
+      "title": "WKNavigationDelegate — Apple Developer",
+      "url": "https://developer.apple.com/documentation/webkit/wknavigationdelegate"
+    },
+    {
+      "title": "WKUserContentController — Apple Developer",
+      "url": "https://developer.apple.com/documentation/webkit/wkusercontentcontroller"
+    },
+    {
+      "title": "Bundling Resources with a Swift Package — Apple Developer",
+      "url": "https://developer.apple.com/documentation/xcode/bundling-resources-with-a-swift-package"
+    }
+  ]
+}

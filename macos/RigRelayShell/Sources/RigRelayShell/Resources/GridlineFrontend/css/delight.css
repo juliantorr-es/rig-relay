@@ -1,0 +1,142 @@
+/* Rig Relay — Delight: Motion + Sound Utility Classes
+   All classes honor prefers-reduced-motion via CSS variable gating */
+
+/* ── Entrance animations ── */
+
+@keyframes delight-fade-in-keyframes {
+  from { opacity: 0 }
+  to   { opacity: 1 }
+}
+
+@keyframes delight-slide-up-keyframes {
+  from { opacity: 0; transform: translateY(8px) }
+  to   { opacity: 1; transform: translateY(0) }
+}
+
+@keyframes delight-slide-in-keyframes {
+  from { opacity: 0; transform: translateX(-8px) }
+  to   { opacity: 1; transform: translateX(0) }
+}
+
+@keyframes delight-scale-in-keyframes {
+  from { opacity: 0; transform: scale(0.96) }
+  to   { opacity: 1; transform: scale(1) }
+}
+
+/* ── Exit animations ── */
+
+@keyframes delight-fade-out-keyframes {
+  from { opacity: 1 }
+  to   { opacity: 0 }
+}
+
+@keyframes delight-slide-down-keyframes {
+  from { opacity: 1; transform: translateY(0) }
+  to   { opacity: 0; transform: translateY(8px) }
+}
+
+@keyframes delight-slide-out-keyframes {
+  from { opacity: 1; transform: translateX(0) }
+  to   { opacity: 0; transform: translateX(-8px) }
+}
+
+@keyframes delight-scale-out-keyframes {
+  from { opacity: 1; transform: scale(1) }
+  to   { opacity: 0; transform: scale(0.96) }
+}
+
+/* ── Pulse ── */
+
+@keyframes delight-pulse-keyframes {
+  0%, 100% { opacity: 1 }
+  50%      { opacity: 0.6 }
+}
+
+/* ── Attention draw ── */
+
+@keyframes delight-attention-keyframes {
+  0%   { background-color: var(--accent-subtle) }
+  100% { background-color: transparent }
+}
+
+/* ── Utility classes ── */
+
+.delight-fade-in {
+  animation: delight-fade-in-keyframes var(--transition-slow) ease both;
+}
+
+.delight-slide-up {
+  animation: delight-slide-up-keyframes var(--transition-slow) ease both;
+}
+
+.delight-slide-in {
+  animation: delight-slide-in-keyframes var(--transition-slow) ease both;
+}
+
+.delight-scale-in {
+  animation: delight-scale-in-keyframes var(--transition-slow) ease both;
+}
+
+.delight-fade-out {
+  animation: delight-fade-out-keyframes var(--transition-fast) ease both;
+}
+
+.delight-slide-down {
+  animation: delight-slide-down-keyframes var(--transition-fast) ease both;
+}
+
+.delight-slide-out {
+  animation: delight-slide-out-keyframes var(--transition-fast) ease both;
+}
+
+.delight-scale-out {
+  animation: delight-scale-out-keyframes var(--transition-fast) ease both;
+}
+
+.delight-pulse {
+  animation: delight-pulse-keyframes 1.6s ease-in-out infinite;
+  will-change: opacity;
+}
+
+.delight-attention {
+  animation: delight-attention-keyframes 1.2s ease both;
+}
+
+/* ── Stagger-ready ──
+   Children with this class receive a CSS transition for transform + opacity.
+   staggerChildren() sets transition-delay per-child. */
+
+.delight-stagger-child {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity var(--transition-slow) ease, transform var(--transition-slow) ease;
+}
+
+.delight-stagger-child--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Reduced motion ── */
+
+@media (prefers-reduced-motion: reduce) {
+  .delight-fade-in,
+  .delight-slide-up,
+  .delight-slide-in,
+  .delight-scale-in,
+  .delight-fade-out,
+  .delight-slide-down,
+  .delight-slide-out,
+  .delight-scale-out,
+  .delight-pulse,
+  .delight-attention {
+    animation-duration: 0ms;
+    animation-delay: 0ms;
+  }
+
+  .delight-stagger-child {
+    opacity: 1;
+    transform: none;
+    transition-duration: 0ms;
+  }
+}
