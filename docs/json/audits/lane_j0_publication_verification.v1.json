@@ -1,0 +1,73 @@
+{
+  "schema_version": "rig.relay.audit.publication_verification.v1",
+  "audit_id": "lane_j0_publication_verification_v1",
+  "parent_audit": "lane_j0_platform_assumptions_v1",
+  "supersedes": "credential-transport description in lane_j0_platform_assumptions.v1.json (git_auth_method and clone_token_sanitation fields — prior description of 0o700 tempfile askpass script is stale)",
+  "reconciliation_kind": "credential_transport_correction",
+  "lane": "J0",
+  "title": "Lane J0 — Publication Verification: Credential-Transport Correction and Promoted Scope Reconciliation",
+  "generated_at": "2026-05-26T00:00:00Z",
+
+  "publication": {
+    "published_sha": "928d37a601d01c91c04027e51530e137e219673a",
+    "predecessor_sha": "66ecc8e9c94c6cbba8de45aaac1171b56744f633",
+    "pushed_plain": true,
+    "remote_verified": true
+  },
+
+  "promoted_scope": {
+    "file_count": 7,
+    "files": [
+      "rig_relay/integrations/github_provider/_developer_workspace.py",
+      "rig_relay/integrations/github_provider/_workspace_models.py",
+      "rig_relay/integrations/github_provider/__init__.py",
+      "tests/integrations/test_developer_github_workspace.py",
+      "docs/schemas/rig.relay.developer_github_workspace.v1.schema.json",
+      "docs/json/audits/lane_j0_platform_assumptions.v1.json",
+      "pyproject.toml"
+    ],
+    "pyproject_toml_note": "One J0-specific PLR per-file-ignore for _developer_workspace.py; follows established package convention.",
+    "foreign_lane_files": 0
+  },
+
+  "released_service_boundary": "DeveloperGitHubWorkspaceService — installation context, repository discovery/selection, token-safe import/sync, publication-readiness inspection, prepared Pages actions, content-light Gridline projections",
+
+  "credential_transport_corrected": {
+    "actual_mechanism": "os.pipe() + subprocess.Popen(pass_fds=(read_fd,))",
+    "token_path": "memory → anonymous pipe / kernel buffer → inherited file descriptor → token-free generic askpass process output → Git authentication",
+    "askpass_executable": "Temporary token-free generic script. Reads token at runtime from inherited fd via RIG_GIT_TOKEN_FD environment variable. Contains NO token patterns in source.",
+    "no_token_bearing_regular_file": true,
+    "token_absent_from": [
+      "argv",
+      "process listing",
+      "URL",
+      "environment variable value",
+      "askpass source",
+      "temporary regular-file content",
+      "Git configuration and remotes",
+      "logs",
+      "errors",
+      "evidence",
+      "reports",
+      "Gridline projections"
+    ]
+  },
+
+  "live_installation": {
+    "exercised": false,
+    "method": "Controlled external-boundary proofs (respx-mocked API, temp repos, subprocess mocks)",
+    "acceptance_gate_remaining": "Live GitHub App installation discovery/intake must be proven before customer deployment"
+  },
+
+  "deferred_seams": [
+    "Pages deployment execution",
+    "OAuth UX",
+    "Project analysis",
+    "Portfolio generation",
+    "SwiftUI wiring",
+    "Worktree isolation",
+    "Webhooks"
+  ],
+
+  "reconciliation_commit_scope": "Exactly one new audit file. No implementation, test, schema, configuration, or cross-lane changes."
+}
