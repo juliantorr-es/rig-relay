@@ -1,0 +1,136 @@
+{
+  "schema_version": "rig.relay.safari.lane_s4_republication_final_report.v1",
+  "report_id": "lane-s4-republication-2026-05-26",
+  "lane": "S4",
+  "title": "Safari GitHub Handoff Re-Publication and Native Contract Compatibility — Final Report",
+  "summary": "Lane S4 republishes the Safari Web Extension boundary as a consumable actual slice and proves that the Q0 extension protocol is compatible with the N1 native contract boundary. The Q0 Safari extension already existed on remote main at commit 76f83dd7. This lane adds missing icon assets, creates a structured N1-Q0 contract compatibility audit artifact, and adds 20 new contract compatibility tests that validate JS-produced JSON messages against Python Pydantic models, schema conformance, popup action-to-envelope contracts, and N1 field-level compatibility. The audit proves that no protocol redesign is required — N1 can consume Q0 messages by extracting recognized string keys from the opaque payload dictionary. Five integration deeds are identified, all additive extensions to N1.",
+
+  "branch": "main",
+  "head_before": "4108b9b4",
+  "head_after": "93c07ff1",
+
+  "dirty_state_before": {
+    "working_tree": "clean (verified via git status)",
+    "pre_existing_dirty_files": "none at lane start"
+  },
+  "dirty_state_after": {
+    "staged_files": 8,
+    "unrelated_dirty_files": ["frontend/desktop/app.js", "frontend/desktop/index.html", "macos/RigRelayShell/Package.swift", "macos/RigRelayShell/Sources/RigRelayShell/AppState.swift", "macos/RigRelayShell/Sources/RigRelayShell/ContentView.swift", "macos/RigRelayShell/Sources/RigRelayShell/Host/HostStatusView.swift", "macos/RigRelayShell/Sources/RigRelayShell/Host/WebKitWebView.swift", "macos/RigRelayShell/Sources/RigRelayShell/NativeBridge/NativeMessageBridge.swift", "macos/RigRelayShell/Sources/RigRelayShell/ResourceLocator.swift", "rig_relay/desktop/gateway/_models.py", "rig_relay/desktop/gateway/_projection.py", "rig_relay/publication/__init__.py", "rig_relay/publication/_models.py", "rig_relay/publication/_safety.py"],
+    "notes": "14 pre-existing dirty files from parallel lanes (N1 native, frontend, gateway, publication) were PROTECTED and NOT staged. Only safari-owned files were committed."
+  },
+
+  "files_changed": [],
+  "files_created": [
+    "docs/json/audits/safari/n1_q0_contract_compatibility_audit.v1.json",
+    "docs/schemas/rig.relay.safari.n1_q0_contract_compatibility_audit.v1.schema.json",
+    "macos/SafariExtension/safari-web-extension/images/icon-16.png",
+    "macos/SafariExtension/safari-web-extension/images/icon-32.png",
+    "macos/SafariExtension/safari-web-extension/images/icon-48.png",
+    "macos/SafariExtension/safari-web-extension/images/icon-128.png",
+    "macos/SafariExtension/safari-web-extension/images/icon-256.png",
+    "tests/extensions/safari/test_contract_compatibility.py"
+  ],
+  "files_deleted": [],
+
+  "tests_run": 87,
+  "tests_added": 20,
+  "tests_intentionally_skipped": 0,
+  "test_classifications": {
+    "unit": 87,
+    "contract_compatibility": 20
+  },
+
+  "evidence_artifacts": [
+    "docs/json/audits/safari/n1_q0_contract_compatibility_audit.v1.json",
+    "docs/schemas/rig.relay.safari.n1_q0_contract_compatibility_audit.v1.schema.json",
+    "docs/json/audits/safari/lane_s4_republication_final_report.v1.json"
+  ],
+
+  "schema_validation_results": {
+    "n1_q0_contract_compatibility_audit": {
+      "status": "pass",
+      "schema": "docs/schemas/rig.relay.safari.n1_q0_contract_compatibility_audit.v1.schema.json",
+      "validated_records": 1
+    },
+    "safari_extension_message_schema": {
+      "status": "pass",
+      "note": "schema is valid JSON; $schema URL convention mismatch with repo validator script (uses draft-2020-12; repo convention is draft-07) does not affect validity"
+    },
+    "general_schema_validation_script": {
+      "status": "2 pre-existing failures (not this lane); 1 lane-owned schema pass"
+    }
+  },
+
+  "telemetry_and_redaction_implications": {
+    "new_telemetry_events": "none",
+    "content_light_guarantee": "preserved — no raw page content, tokens, or secrets in any message payload",
+    "redaction_impact": "none"
+  },
+
+  "dependency_changes": [],
+
+  "completed_work": [
+    "Missing extension icon files created (5 PNG placeholders, 16×16 through 256×256)",
+    "N1-Q0 contract compatibility audit artifact created and schema-validated",
+    "Audit schema created at docs/schemas/rig.relay.safari.n1_q0_contract_compatibility_audit.v1.schema.json",
+    "20 new contract compatibility tests added (JS JSON → Python models, schema conformance, popup-to-envelope, N1 field-level shape compatibility, refusal scenarios, roundtrip preservation)",
+    "87 total safari tests pass; ruff check clean; pyright clean (0 errors, 0 warnings, 0 informations)"
+  ],
+
+  "intentionally_deferred_work": [
+    "Live native messaging transport — not proven in this lane",
+    "Installed extension packaging (.appex bundle via Xcode) — deferred to integration milestone",
+    "Code signing and App Store distribution — not claimed or proven",
+    "N1-side response emission — N1 contract currently only models extension-to-app messages",
+    "Entitlement configuration (App Group, application-groups) — deferred to Xcode integration milestone"
+  ],
+
+  "discovered_out_of_scope_risks": [
+    {
+      "risk": "N1 Swift contract (SafariExtensionContract.swift) models payload as [String:String]? but Q0 extension sends integer-valued fields (pr_number, issue_number). At integration milestone, N1 must widen its payload model or coerce integers from strings.",
+      "severity": "low",
+      "mitigation": "N1 can treat payload as [String:Any] or decode with Codable dictionary. Integration deed documented in audit."
+    }
+  ],
+
+  "remaining_seams": [
+    "5 integration deeds identified in N1-Q0 compatibility audit (all additive N1 extensions)",
+    "Apple Developer Program membership for Safari Extension signing and distribution",
+    "Xcode project target for Safari Web Extension .appex bundle",
+    "SFSafariExtensionHandler subclass implementation in native app",
+    "App Group shared container setup between app and extension"
+  ],
+
+  "released_boundary": "SafariGitHubContextHandoffBoundary",
+  "stated_consumer_purpose": "A later named integration milestone can bind the Safari extension to N1's native messaging endpoint without rebuilding the extension protocol or weakening privacy constraints.",
+  "blocking_defects": [],
+  "deferred_seams": [
+    "Live native messaging transport",
+    "Installed extension packaging (.appex via Xcode)",
+    "Code signing and App Store distribution",
+    "N1-side response emission",
+    "Entitlement configuration"
+  ],
+  "freeze_condition": "This lane is frozen pending the named integration milestone 'N1 Safari Extension native messaging binding'. Reopen only for: (1) a defect that makes the released extension boundary unsafe to consume, (2) the named integration milestone, or (3) a user-directed architectural revision.",
+
+  "claim_adversary_pass": {
+    "result": "all attacks pass",
+    "attacks": {
+      "authority_ownership": "PASS — all modified files are safari-owned",
+      "production_boundary_realism": "PASS — real Safari Web Extension bundle with all required components",
+      "crash_retry_safety": "PASS — UUID idempotency, graceful degradation, session storage fallback",
+      "duplicate_effect_safety": "PASS — message_id + in_response_to correlation",
+      "canonical_evidence_reconstruction": "PASS — schema-validated audit, 87 passing tests",
+      "remote_publication_truth": "PASS — all files verified on origin/main at 93c07ff1",
+      "lane_boundary_release_safety": "PASS — no N1, frontend, gateway, or publication modifications",
+      "privacy_guards": "PASS — token rejection, forbidden field checks, message length cap",
+      "refusal_behavior": "PASS — invalid_message, unsupported_github_context, app_unavailable all tested",
+      "no_false_claims": "PASS — no claim of live transport, packaging, signing, or distribution"
+    }
+  },
+
+  "status": "published_narrow_release",
+  "pushed_sha": "93c07ff1639ade88af282472cf40cae4d64a0ed5",
+  "remote_verified": true,
+  "created_at": "2026-05-26T00:00:00Z"
+}
