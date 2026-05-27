@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/schemas/rig.relay.publication_portfolio_synthesis.v1",
+  "title": "Publication Portfolio Synthesis",
+  "description": "Schema for portfolio synthesis input and result — aggregates approved project publication records into a portfolio publication projection.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.publication_portfolio_synthesis.v1"
+    },
+    "synthesis_id": { "type": "string" },
+    "generated_at": { "type": "string" },
+    "compilation_successful": { "type": "boolean" },
+    "total_project_records": { "type": "integer" },
+    "included_count": { "type": "integer" },
+    "rejected_count": { "type": "integer" },
+    "rejected_records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "profile_candidate_digest": { "type": "string" },
+          "compilation_receipt_digest": { "type": "string" },
+          "rejection_reason": { "type": "string" },
+          "rejection_detail": { "type": "string" }
+        },
+        "required": ["profile_candidate_digest", "rejection_reason"]
+      }
+    },
+    "portfolio_projection": { "type": "object" },
+    "portfolio_html": { "type": ["string", "null"] },
+    "portfolio_html_digest": { "type": ["string", "null"] },
+    "portfolio_bundle_path": { "type": ["string", "null"] },
+    "synthesis_digest": { "type": "string" },
+    "content_light_guarantee": { "type": "boolean" },
+    "privacy_class": { "type": "string" },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "ready_for_deployment": { "type": "boolean" },
+    "developer_display_name": { "type": "string" },
+    "portfolio_title": { "type": "string" }
+  },
+  "required": [
+    "schema_version", "synthesis_id", "generated_at",
+    "compilation_successful", "content_light_guarantee", "privacy_class"
+  ],
+  "additionalProperties": false
+}

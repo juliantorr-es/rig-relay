@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/schemas/rig.relay.publication_deployment_execution.v1",
+  "title": "Publication Deployment Execution",
+  "description": "Schema for a GitHub Pages deployment execution request and its authorization binding.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.publication_deployment_execution.v1"
+    },
+    "execution_id": { "type": "string" },
+    "operation_id": { "type": "string" },
+    "preparation_digest": { "type": "string" },
+    "authorization_receipt_id": { "type": "string" },
+    "authorization_status": {
+      "type": "string",
+      "enum": ["pending", "validated", "consumed", "revoked", "expired"]
+    },
+    "authorization_digest": { "type": "string" },
+    "pages_action": {
+      "type": "string",
+      "enum": ["configure_and_deploy", "deploy_only", "inspect", "cancel"]
+    },
+    "target_repo": { "type": "string" },
+    "target_owner": { "type": "string" },
+    "source_branch": { "type": "string" },
+    "source_path": { "type": "string" },
+    "build_type": {
+      "type": "string",
+      "enum": ["legacy", "workflow"]
+    },
+    "content_digest": { "type": "string" },
+    "static_content_digest": { "type": "string" },
+    "request_digest": { "type": "string" },
+    "remote_request_sent": { "type": "boolean" },
+    "remote_status_code": { "type": ["integer", "null"] },
+    "remote_response_digest": { "type": "string" },
+    "verification_poll_count": { "type": "integer" },
+    "verification_status": { "type": "string" },
+    "terminal_status": { "type": "string" },
+    "executed_at": { "type": "string" },
+    "evidence_digest": { "type": "string" }
+  },
+  "required": [
+    "schema_version", "execution_id", "operation_id",
+    "authorization_status", "pages_action", "target_repo"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,154 @@
+{
+  "schema_version": "rig.relay.audit.v1",
+  "audit_id": "lane-x3-deployment-authority-v1",
+  "lane": "X3",
+  "title": "Governed GitHub Pages Deployment Authority and Portfolio Synthesis — Publication Audit",
+  "released_boundary": "GovernedPagesPublicationAndPortfolioBoundary",
+  "stated_consumer_purpose": "X0 and later release/distribution milestones can expose real Publish/Portfolio workflows in the desktop product, backed by authorization and verifiable deployment status rather than preview-only artifacts.",
+  "branch": "main",
+  "head_at_audit": "c6838598d3234944be86f26f221a13ceb15e3dea",
+  "head_after": "",
+  "created_at": "2026-05-27T04:50:00Z",
+  "summary": "Lane X3 builds the publication deployment authority that S3/T1/T1.1/T1.2 preview lanes intentionally deferred. Created GitHubPagesDeploymentService, DeploymentEvidenceLedger, PortfolioSynthesisService, deployment models, 4 new schemas, and 29 tests. All existing 96 publication tests continue to pass. Ruff, pyright, and schema validation clean. Live external acceptance remains a named deferred milestone.",
+  "module_audit": {
+    "new_files": [
+      "rig_relay/publication/_deployment_models.py",
+      "rig_relay/publication/_deployment_service.py",
+      "rig_relay/publication/_deployment_evidence.py",
+      "rig_relay/publication/_portfolio_service.py",
+      "tests/publication/test_deployment_service.py",
+      "docs/schemas/rig.relay.publication_deployment_preparation.v1.schema.json",
+      "docs/schemas/rig.relay.publication_deployment_execution.v1.schema.json",
+      "docs/schemas/rig.relay.publication_deployment_evidence.v1.schema.json",
+      "docs/schemas/rig.relay.publication_portfolio_synthesis.v1.schema.json"
+    ],
+    "modified_files": [
+      "rig_relay/publication/__init__.py"
+    ]
+  },
+  "services_created": {
+    "GitHubPagesDeploymentService": {
+      "file": "rig_relay/publication/_deployment_service.py",
+      "public_methods": [
+        "prepare_deployment",
+        "execute_deployment",
+        "verify_deployment",
+        "compute_recovery_state"
+      ],
+      "description": "Governed GitHub Pages deployment application service. Consumes approved ProjectPageCompilerResult output + authorization receipt, executes Pages configuration and content deployment, and produces durable deployment evidence. Never deploys without explicit authorization. Never deploys unapproved or safety-failed content."
+    },
+    "PortfolioSynthesisService": {
+      "file": "rig_relay/publication/_portfolio_service.py",
+      "public_methods": [
+        "synthesize"
+      ],
+      "description": "Aggregates approved project-page publication projections into a deterministic portfolio publication projection. Only approved, safety-passed, content-light-complying project records are included."
+    }
+  },
+  "models_created": {
+    "DeploymentOutcomeReceipt": "Terminal evidence receipt for deployment outcome (success/refusal/failure). Schema: rig.relay.publication_deployment_evidence.v1",
+    "DeploymentPreparationResult": "Deployment readiness inspection result before any external mutation. Schema: rig.relay.publication_deployment_preparation.v1",
+    "DeploymentRecoveryState": "Recovery state for deployment operations needing retry/reconcile",
+    "DeploymentRefusalCode": "Structured refusal reasons for publication deployment (18 codes)",
+    "DeploymentStatus": "Status of a deployment operation (10 states: preparing through recovery_required)",
+    "PortfolioProjectionRejection": "A project record rejected from portfolio synthesis with reason",
+    "PortfolioSynthesisInput": "Input for portfolio synthesis from approved project records",
+    "PortfolioSynthesisResult": "Result of portfolio synthesis with projection, HTML, and evidence"
+  },
+  "schemas_created": [
+    {
+      "path": "docs/schemas/rig.relay.publication_deployment_preparation.v1.schema.json",
+      "description": "Deployment readiness inspection result schema",
+      "required_fields": ["schema_version", "preparation_id", "operation_id", "ready_to_deploy", "authorization_required"]
+    },
+    {
+      "path": "docs/schemas/rig.relay.publication_deployment_execution.v1.schema.json",
+      "description": "GitHub Pages deployment execution request and authorization binding schema",
+      "required_fields": ["schema_version", "execution_id", "operation_id", "authorization_status", "pages_action", "target_repo"]
+    },
+    {
+      "path": "docs/schemas/rig.relay.publication_deployment_evidence.v1.schema.json",
+      "description": "Terminal deployment outcome evidence receipt schema",
+      "required_fields": ["schema_version", "receipt_id", "operation_id", "profile_candidate_digest", "preview_evidence_digest", "deployment_status", "evidence_digest"]
+    },
+    {
+      "path": "docs/schemas/rig.relay.publication_portfolio_synthesis.v1.schema.json",
+      "description": "Portfolio synthesis input and result schema",
+      "required_fields": ["schema_version", "synthesis_id", "generated_at", "compilation_successful", "content_light_guarantee", "privacy_class"]
+    }
+  ],
+  "approval_and_authorization": {
+    "pattern": "Lane A/Lane B remote action authorization",
+    "consumes": [
+      "GitHubAuthorizationConsumer.validate_and_consume()",
+      "RemoteActionActionClass.GITHUB_PAGES_PUBLISH",
+      "GitHubCapabilityContract for pages_publish"
+    ],
+    "gate": "Deployment refuses without valid authorization receipt. Authorization is consumed atomically before any HTTP request.",
+    "receipt_gating": "Existing Lane A receipt infrastructure (remote_action_authorization.py, _authorization_consumer.py) is consumed through well-defined public APIs — no new authorization infrastructure was created."
+  },
+  "evidence_and_idempotency": {
+    "ledger": "DeploymentEvidenceLedger — append-only JSONL under .build/rig-relay/publication/",
+    "pattern": "Same fcntl locking, operation-id dedup, conflict detection as PublicationEvidenceLedger",
+    "idempotency": "Same operation_id + same receipt evidence_digest → returns existing event_digest; same operation_id + different content → RuntimeError('idempotency conflict')",
+    "retry": "compute_recovery_state() returns typed recovery action (retry, reauthorize, verify_only, abandon) based on prior deployment state",
+    "duplicate_safety": "New deployment action requires new operation_id; retry with consumed authorization receipt returns AUTHORIZATION_REVOKED"
+  },
+  "external_api_boundary": {
+    "design": "GitHubPagesDeploymentService consumes optional GitHubPagesAdapter for real API calls",
+    "adapter_present": "Pages adapter routes through `_execute_pages_configure()` and `_query_pages_status()`",
+    "adapter_absent": "Returns `deferred_external_acceptance` status with URL — application-service boundary is production-shaped even without live credentials",
+    "api_verified": "GitHub Pages API endpoints were researched from official docs at https://docs.github.com/en/rest/pages/pages?apiVersion=2022-11-28",
+    "permissions_known": "Pages:write for deployments, Pages:write + Administration:write for site configuration"
+  },
+  "test_evidence": {
+    "total_tests": 29,
+    "test_modules": [
+      "TestDeploymentModels (6 tests)",
+      "TestDeploymentEvidenceLedger (3 tests)",
+      "TestDeploymentService (8 tests)",
+      "TestPortfolioSynthesis (8 tests)",
+      "TestPortfolioModels (3 tests)"
+    ],
+    "existing_tests_still_pass": 96,
+    "schemas_validated": 4,
+    "ruff_check_passed": true,
+    "pyright_errors": 0,
+    "live_acceptance": "deferred_external_acceptance — no authorized test repository was provided"
+  },
+  "deferred_seams": [
+    "Live external GitHub Pages acceptance (requires authorized test repo + working credentials)",
+    "Real content push to gh-pages branch via git boundary (GitHubPagesAdapter configuration tested; content push through git boundary deferred)",
+    "Desktop frontend/gateway integration for Publish/Portfolio workflows",
+    "Frontend projection contracts for deployment status (schema-supported, not wired)",
+    "Step-up authorization in desktop cockpit for pages_publish action"
+  ],
+  "blocking_defects": [],
+  "freeze_status": "published_narrow_release",
+  "lanes_editing_forbidden": [
+    "frontend/desktop/**",
+    "rig_relay/desktop/gateway/**",
+    "rig_relay/data_plane/postgres/**",
+    "rig_relay/repository_estate/**",
+    "rig_relay/investigation_timeline/**",
+    "rig_relay/local_inference/**",
+    "macos/RigRelayShell/**",
+    "Safari extensions",
+    "X0/X1/X2/X4 artifacts"
+  ],
+  "consumed_released_boundaries": [
+    "R0 publication compiler and projection",
+    "S3/T1/T1.1/T1.2 publication preview, schemas, evidence ledger",
+    "L0 PublishableProjectProfileCandidate",
+    "J0 GitHub workspace/readiness/action-preparation boundary (PublicationReadiness, PagesActionPreparation, GitHubPagesAdapter, GitHubAuthorizationConsumer)",
+    "Lane A remote action authorization",
+    "PublicationEvidenceLedger pattern"
+  ],
+  "external_research": [
+    "GitHub Pages REST API documentation (https://docs.github.com/en/rest/pages/pages?apiVersion=2022-11-28)",
+    "GitHub Pages overview (https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages)",
+    "GitHub App permissions for Pages (Pages:read, Pages:write, Administration:write)",
+    "RealGitHubBoundary, GitHubPagesAdapter, GitHubAuthorizationConsumer current code from remote main"
+  ],
+  "claim_adversary_result": "pending"
+}

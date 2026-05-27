@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/schemas/rig.relay.publication_deployment_evidence.v1",
+  "title": "Publication Deployment Evidence",
+  "description": "Schema for the terminal evidence receipt of a publication deployment outcome.",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "rig.relay.publication_deployment_evidence.v1"
+    },
+    "receipt_id": { "type": "string" },
+    "operation_id": { "type": "string" },
+    "preparation_digest": { "type": "string" },
+    "profile_candidate_digest": { "type": "string" },
+    "preview_evidence_digest": { "type": "string" },
+    "compilation_result_digest": { "type": "string" },
+    "authorization_receipt_digest": { "type": "string" },
+    "deployment_status": {
+      "type": "string",
+      "enum": [
+        "preparing", "authorization_pending", "authorized_ready",
+        "executing", "deployed", "verified", "refused",
+        "failed", "recovery_required"
+      ]
+    },
+    "pages_site_url": { "type": "string" },
+    "pages_build_status": { "type": "string" },
+    "refusal_code": { "type": ["string", "null"] },
+    "refusal_reasons": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "remote_request_sent": { "type": "boolean" },
+    "remote_verified": { "type": "boolean" },
+    "remote_verification_digest": { "type": "string" },
+    "recovery_required": { "type": "boolean" },
+    "recovery_hint": { "type": "string" },
+    "deployed_at": { "type": "string" },
+    "evidence_digest": { "type": "string" }
+  },
+  "required": [
+    "schema_version", "receipt_id", "operation_id",
+    "profile_candidate_digest", "preview_evidence_digest",
+    "deployment_status", "evidence_digest"
+  ],
+  "additionalProperties": false
+}
