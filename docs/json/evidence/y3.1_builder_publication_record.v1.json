@@ -140,7 +140,7 @@
     "Resolver passes session_id through ProfileResolutionInput but no caller currently provides it",
     "Evidence persistence writes to cwd-relative path — verify behavior in different working directories"
   ],
-  "prepublication_review_cycle_digest": "sha256:86da607fe13e0e6989d8c69ece9bc4db99302abc4a0ce549537d29000d933262",
+  "prepublication_review_cycle_digest": "sha256:1d2283592307141f2a2b8e11235c53ccc2dfacb26ff975d96eba381e111fb706",
   "prepublication_review_round_count": 4,
   "status": "candidate_local"
 }

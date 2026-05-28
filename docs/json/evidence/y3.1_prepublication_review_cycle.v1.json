@@ -1,6 +1,6 @@
 {
   "schema_version": "rig.relay.prepublication_review_cycle.v1",
-  "generated_at": "2026-05-28T01:13:03Z",
+  "generated_at": "2026-05-28T01:25:39Z",
   "lane_id": "y3.1",
   "mission_id": "y3.1_provider_capability_evidence_and_contract_models",
   "baseline_sha": "",
@@ -512,13 +512,15 @@
     }
   ],
   "final_admission": {
+    "status": "prepublication_admitted",
+    "admitted_at": "2026-05-28T01:25:39Z",
     "admitted_candidate_digest": null,
-    "admitted_boundary": null,
-    "permitted_consumer_purpose": null,
+    "admitted_boundary": "ProviderCapabilityEvidenceAndContractModelsBoundary",
+    "permitted_consumer_purpose": "Provider capability evidence models, evidence-backed profile resolution with append-only evidence persistence and governance routing, and downstream contract models published as Pydantic contract models for Y0/Y1/Y2/Y4/analytics future consumption.",
     "unclaimed_capabilities": [],
     "deferred_seams": [],
     "review_round_count": 4,
     "push_authorized": false
   },
-  "status": "in_review"
+  "status": "prepublication_admitted"
 }
