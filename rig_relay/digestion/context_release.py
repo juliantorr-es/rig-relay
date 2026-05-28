@@ -3,10 +3,12 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from enum import StrEnum, auto
 from hashlib import sha256
-import json
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from rig_relay.coordination._canonical_json import dump_canonical_json
+from rig_relay.digestion.risk_assessor import ExecutionRiskReport
 
 
 class RepositoryLifecycleState(StrEnum):
@@ -38,8 +40,9 @@ class QuarantineInfo(BaseModel):
         default=None, description="Branch cloned from the remote."
     )
     source_head_sha: str = Field(description="Full SHA of the commit at clone time.")
-    is_read_only: bool = Field(
-        default=True, description="True when the quarantine path is read-only."
+    is_read_only_intended: bool = Field(
+        default=True,
+        description="Best-effort permission hint; not a security boundary. .git directory content may remain writable. Subject to OS-level permission enforcement.",
     )
 
 
@@ -198,6 +201,10 @@ class RepositoryContextRelease(BaseModel):
         default=None,
         description="Execution risk summary; set after EXECUTION_RISKS_REVIEWED.",
     )
+    execution_risk_report: ExecutionRiskReport | None = Field(
+        default=None,
+        description="Full per-script risk assessment detail. Stored alongside the summary for downstream query. Requires ExecutionRiskAssessor to have run.",
+    )
     safe_validation_results: list[SafeValidationResult] = Field(
         default_factory=list,
         description="Results of admitted safe validation commands.",
@@ -241,10 +248,13 @@ class RepositoryContextRelease(BaseModel):
     )
 
 
+RepositoryContextRelease.model_rebuild()
+
+
 def compute_digest(release: RepositoryContextRelease) -> str:
     raw = release.model_dump(mode="json")
     raw.pop("content_digest", None)
-    canonical = json.dumps(raw, sort_keys=True, ensure_ascii=False)
+    canonical = dump_canonical_json(raw)
     return sha256(canonical.encode("utf-8")).hexdigest()
 
 

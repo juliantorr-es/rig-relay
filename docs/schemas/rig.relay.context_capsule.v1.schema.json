@@ -10,12 +10,10 @@
     "capsule_id",
     "repository_root",
     "released_context_digest",
-    "instruction_scope_text_length",
     "structural_index_digest",
     "module_count",
     "symbol_count",
     "confidence",
-    "fresh",
     "generated_at",
     "capsule_digest"
   ],
@@ -38,9 +36,8 @@
       "description": "SHA256 hex digest of the RepositoryContextRelease this capsule derives from."
     },
     "instruction_scope_text_length": {
-      "type": "integer",
-      "minimum": 0,
-      "description": "Total character length of instruction scope text across all discovered files."
+      "type": ["integer", "null"],
+      "description": "Deferred to future slice — currently always null. Will sum instruction file content character lengths across all discovered files."
     },
     "structural_index_digest": {
       "type": "string",
@@ -84,8 +81,8 @@
       "description": "Confidence from context release (0.0 to 1.0)."
     },
     "fresh": {
-      "type": "boolean",
-      "description": "True when this capsule matches the latest context release; false when stale."
+      "type": ["boolean", "null"],
+      "description": "Deferred to future slice — currently always null. Will reflect capsule freshness relative to latest context release."
     },
     "stale_since": {
       "type": ["string", "null"],

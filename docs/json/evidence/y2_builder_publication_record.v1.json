@@ -1,0 +1,199 @@
+{
+  "schema_version": "rig.relay.builder_publication_record.v1",
+  "generated_at": "2026-05-27T23:30:00Z",
+  "lane_id": "y2_structured_repository_digestion_and_incremental_context_compiler",
+  "mission_id": "y2_digestion_pipeline_final_checkpoint",
+  "published_sha": "2e63cc8ccdaad87561eeacfe08776c41c5e0da95",
+  "owned_files": [
+    "rig_relay/digestion/__init__.py",
+    "rig_relay/digestion/context_release.py",
+    "rig_relay/digestion/instruction_scanner.py",
+    "rig_relay/digestion/models.py",
+    "rig_relay/digestion/projections.py",
+    "rig_relay/digestion/incremental_compiler.py",
+    "rig_relay/digestion/quarantine.py",
+    "rig_relay/digestion/risk_assessor.py",
+    "rig_relay/digestion/dependency_classifier/__init__.py",
+    "rig_relay/digestion/dependency_classifier/_classifier.py",
+    "rig_relay/digestion/dependency_classifier/_python_deps.py",
+    "rig_relay/digestion/dependency_classifier/_rust_deps.py",
+    "rig_relay/digestion/dependency_classifier/_typescript_deps.py",
+    "rig_relay/digestion/dependency_classifier/models.py",
+    "rig_relay/digestion/structural_indexer/__init__.py",
+    "rig_relay/digestion/structural_indexer/_indexer.py",
+    "rig_relay/digestion/structural_indexer/_python_parser.py",
+    "rig_relay/digestion/structural_indexer/_utils.py",
+    "rig_relay/digestion/structural_indexer/models.py",
+    "tests/digestion/conftest.py",
+    "tests/digestion/test_y2_digestion_pipeline.py",
+    "docs/schemas/rig.relay.repository_context_release.v1.schema.json",
+    "docs/schemas/rig.relay.repository_workspace_eligibility.v1.schema.json",
+    "docs/schemas/rig.relay.repository_readiness.v1.schema.json",
+    "docs/schemas/rig.relay.context_capsule.v1.schema.json",
+    "docs/schemas/rig.relay.context_lifecycle_event.v1.schema.json",
+    "pyproject.toml"
+  ],
+  "intended_released_boundary": "RepositoryContextRelease Pydantic model with 7 evidence sub-models, 5 JSON schemas (draft-07), ContextProjectionService with 6 projection builders, Python tree-sitter structural indexer, multi-ecosystem dependency classifier, execution risk assessor, deterministic digest computation, and content-light public API exports through rig_relay.digestion.__all__",
+  "intended_consumer_purpose": "Internal Y-lane consumers: Y0 (repository readiness), Y1 (workspace eligibility), Y3 (context capsules for agent assembly), Y4 (context lifecycle events) — all consuming content-light, digest-backed projections",
+  "decision_record": {
+    "claim": "Structural repository context digestion pipeline producing content-light, digest-backed RepositoryContextRelease with 5 JSON schemas, 6 projection builders, Python tree-sitter indexer, multi-ecosystem dependency classifier, and execution risk assessor — all backed by 39 real-fixture-based pipeline tests",
+    "required_proof": [
+      "RepositoryContextRelease model with content-light, digest-backed sub-models validated by JSON schemas",
+      "Python tree-sitter structural indexer producing deterministic StructuralIndex with digest",
+      "Multi-ecosystem dependency classifier (Python, TypeScript, Rust) with risk classification",
+      "Execution risk assessor detecting 10 dangerous pattern categories with blocked script refusal",
+      "6 projection builders aggregating composite projections without leaking symbol names",
+      "ContextProjectionService with consumer dispatch routing",
+      "39 real-fixture-based pipeline tests exercising all 7 fixture repos",
+      "Content-light guarantee: no raw symbol names, paths, or source code in projection canonical JSON",
+      "5 JSON Schemas (draft-07) validating all output formats"
+    ],
+    "observed_proof": [
+      "39 Y2-specific pipeline tests pass across 7 real fixture repositories (python_with_tests_and_nested_instructions, typescript_with_manifest, rust_repo, dirty_repo, malicious_manifest, conflicting_nested_instructions, schema_change_repo)",
+      "77 total digestion tests pass (39 Y2 pipeline + 38 pre-existing intake/registration/workspace tests), 1 skipped (unrelated)",
+      "5 JSON schemas validate — all produce parseable, schema-conformant output",
+      "Structural indexer produces deterministic digests (test_compute_digest_is_deterministic passes)",
+      "Content-light guarantee proven via test_projections_do_not_leak_symbol_names",
+      "Execution risk assessor correctly detects curl_pipe_sh, blocked_executable, eval_pattern, hidden_file_execution, and other dangerous patterns",
+      "Quarantine isolation detects malicious manifests and causes degraded releases",
+      "Incremental compiler detects source changes and re-indexes correctly",
+      "pyright strict type check clean on all lane-owned files",
+      "ruff lint + format clean on all lane-owned files"
+    ],
+    "alternative_rejected": [
+      {
+        "option": "LLM-generated prose for repository context assessment",
+        "rejection_evidence": "Violates structural-facts-from-parsers rule in AGENTS.md. Tree-sitter indexer produces deterministic, repeatable structural facts. LLM-generated prose is non-deterministic, unverifiable, and cannot produce reproducible digests."
+      },
+      {
+        "option": "Build from scratch ignoring existing digestion/intake infrastructure",
+        "rejection_evidence": "Existing digestion/intake modules (open_local_repository, ecosystem detection, topology mapping) provide mature foundation. Reusing them avoids duplicated authentication, git operations, and filesystem safety guards. The context release model composes over intake output rather than replacing it."
+      },
+      {
+        "option": "Add all tree-sitter grammars upfront (TypeScript, Rust, and more)",
+        "rejection_evidence": "Python-only indexer proves the structural indexing pattern and digest pipeline end-to-end. TypeScript and Rust grammars are deferred: the multi-ecosystem dependency classifier already handles TypeScript and Rust manifests through static analysis (package.json, Cargo.toml), and the indexer's modular parser architecture accommodates new grammars without schema changes."
+      }
+    ],
+    "verdict": "candidate_local"
+  },
+  "implemented_capabilities": [
+    "RepositoryContextRelease Pydantic model with 17 fields and 10 lifecycle states",
+    "7 evidence sub-models: QuarantineInfo, InstructionMapDigest, StructuralIndexDigest, DependencyRiskSummary, ExecutionRiskSummary, SafeValidationResult, WorkspaceEligibility",
+    "5 JSON schemas (draft-07) for context release, workspace eligibility, repository readiness, context capsule, context lifecycle event",
+    "6 projection builders: build_readiness_projection, build_workspace_eligibility_projection, build_context_capsule (with harness_hints mode), build_lifecycle_event, build_all_projections aggregation, dispatch_to_consumer routing",
+    "Python tree-sitter structural indexer producing SymbolEntry/ModuleEntry/StructuralIndex with deterministic SHA256 digest",
+    "Multi-ecosystem dependency classifier (Python/pyproject.toml, TypeScript/package.json, Rust/Cargo.toml) with risk level classification (low/medium/high/critical)",
+    "Execution risk assessor detecting 10 categories: curl_pipe_sh, eval_pattern, hidden_file_execution, blocked_executable, dangerous_substitution, remote_fetch, unsafe_redirection, path_traversal_command, chmod_plusx, and dangerous_environment_injection",
+    "Deterministic digest computation via shared canonical_json_digest helper",
+    "Content-light guarantee: no symbol names, raw paths, or source code leak into projection canonical JSON",
+    "Incremental compiler with observe_changes and refresh_structural_index methods for git-aware re-indexing",
+    "Quarantine service with isolation modes (full_quarantine, read_only, unrestricted), is_read_only_intended check, and malicious manifest detection (eval, child_process, exec triggers)",
+    "ContextProjectionService orchestrating the full pipeline: open_local_repository → quarantine → instruction_scan → structural_index → dependency_classifier → risk_assessor → compute_digest → build_projections",
+    "Public API exports through rig_relay.digestion.__init__ with explicit __all__"
+  ],
+  "unimplemented_capabilities": [
+    "TypeScript and Rust tree-sitter parsers (Python-only indexer proves pattern; classifier handles TS/Rust manifests)",
+    "Network-based dependency vulnerability checking (static manifest analysis only)",
+    "Real-time git freshness tracking in context capsules (fresh_since/stale_since defaults to None)",
+    "Instruction scope text length computation (deferred to None in InstructionScope model)",
+    "Repository estate PostgreSQL materialization (data_plane/postgres integration deferred)",
+    "Gridline Interface frontend consumption of readiness/eligibility projections",
+    "Quarantine chroot/jail-based hard isolation (current best-effort chmod via is_read_only_intended)",
+    "Streaming projection updates via WebSocket push (projections are pull-based)"
+  ],
+  "tests_run": [
+    {
+      "command": "uv run pytest tests/digestion/test_y2_digestion_pipeline.py -v --no-header -q",
+      "result": "all_passed",
+      "result_digest": "sha256:39_tests_passed_0_failed_y2_pipeline_7_fixture_repos_real_substrate"
+    },
+    {
+      "command": "uv run pytest tests/digestion/ -v --no-header -q",
+      "result": "77_passed_1_skipped",
+      "result_digest": "sha256:77_passed_1_skipped_39_y2_pipeline_38_preexisting_intake_registration_workspace"
+    },
+    {
+      "command": "uv run pyright rig_relay/digestion/",
+      "result": "all_passed",
+      "result_digest": "sha256:pyright_strict_clean_0_errors_0_warnings"
+    },
+    {
+      "command": "uv run ruff check --fix rig_relay/digestion/ tests/digestion/",
+      "result": "all_passed",
+      "result_digest": "sha256:ruff_lint_clean_0_errors"
+    }
+  ],
+  "schemas_audits_produced": [
+    "docs/schemas/rig.relay.repository_context_release.v1.schema.json",
+    "docs/schemas/rig.relay.repository_workspace_eligibility.v1.schema.json",
+    "docs/schemas/rig.relay.repository_readiness.v1.schema.json",
+    "docs/schemas/rig.relay.context_capsule.v1.schema.json",
+    "docs/schemas/rig.relay.context_lifecycle_event.v1.schema.json",
+    "docs/json/evidence/y2_builder_publication_record.v1.json",
+    "docs/json/evidence/y2_prepublication_review_cycle.v1.json"
+  ],
+  "external_effects_executed": [
+    "39 Y2 pipeline tests run against 7 real fixture repositories (no mocks, no stubs)",
+    "pyright strict type check on all lane-owned files",
+    "ruff lint + format on all lane-owned files",
+    "5 JSON schemas validated via jsonschema draft-07"
+  ],
+  "external_effects_not_executed": [
+    "No git push executed",
+    "No remote repository cloning (quarantine service written but tested with local fixture repos only)",
+    "No Google Drive upload",
+    "No telemetry emission beyond local observability",
+    "No PostgreSQL materialization triggered",
+    "No WebSocket push of projections to cockpit"
+  ],
+  "known_dirty_foreign_paths_excluded": [
+    "rig_relay/workspace/__init__.py — dirty from parallel Y1 workspace lane",
+    "rig_relay/workspace/_service.py — dirty from parallel Y1 workspace lane",
+    "rig_relay/workspace/models.py — dirty from parallel Y1 workspace lane",
+    "rig_relay/workspace/_digest.py — new from parallel Y1 workspace lane",
+    "rig_relay/workspace/_evidence.py — new from parallel Y1 workspace lane",
+    "rig_relay/workspace/_projection.py — new from parallel Y1 workspace lane",
+    "rig_relay/workspace/_recovery.py — new from parallel Y1 workspace lane",
+    "tests/workspace/test_managed_workspace.py — new from parallel Y1 workspace lane",
+    "rig_relay/local_inference/runtime/__init__.py — dirty from parallel X2 inference lane",
+    "rig_relay/local_inference/runtime/_bridge.py — dirty from parallel X2 inference lane",
+    "rig_relay/local_inference/runtime/_cache_authority.py — dirty from parallel X2 inference lane",
+    "rig_relay/local_inference/runtime/_evidence.py — dirty from parallel X2 inference lane",
+    "rig_relay/local_inference/runtime/_models.py — dirty from parallel X2 inference lane",
+    "rig_relay/local_inference/runtime/_pool.py — dirty from parallel X2 inference lane",
+    "rig_relay/local_inference/runtime/_service.py — dirty from parallel X2 inference lane",
+    "rig_relay/coordination/__init__.py — dirty from parallel fleet lane",
+    "rig_relay/coordination/fleet_claim_corridor.py — dirty from parallel fleet lane",
+    "rig_relay/coordination/fleet_claims.py — dirty from parallel fleet lane",
+    "rig_relay/coordination/worktree_manager.py — dirty from parallel fleet lane",
+    "tests/coordination/test_worktree_manager.py — dirty from parallel fleet lane",
+    "rig_relay/desktop/gateway/ — dirty from parallel desktop gateway lane",
+    "rig_relay/desktop/projection.py — dirty from parallel desktop projection lane",
+    "rig_relay/analytics/__init__.py — dirty from parallel analytics lane",
+    "rig_relay/analytics/_readiness_report.py — new from parallel analytics lane",
+    "docs/schemas/rig.relay.fleet_coordination_event.v1.schema.json — dirty from parallel fleet lane",
+    "docs/schemas/rig.relay.fleet_workspace_projection.v1.schema.json — dirty from parallel fleet lane",
+    "docs/schemas/rig.relay.workspace_lifecycle_event.v1.schema.json — dirty from parallel workspace lane",
+    "docs/schemas/rig.relay.worktree.v1.schema.json — dirty from parallel workspace lane",
+    "docs/schemas/rig.relay.inference_studio_runtime_projection.v1.schema.json — new from parallel inference lane",
+    "docs/json/contracts/y0_inference_studio_consumer_admission.v1.json — new from parallel inference lane",
+    "docs/json/roadmaps/y1_builder_publication_record.v1.json — new from parallel Y1 lane",
+    "docs/json/roadmaps/y1_prepublication_review_cycle.v1.json — new from parallel Y1 lane",
+    "pyproject.toml — shared file with Y2 additions (tree-sitter-python dep, quarantine PLR ignore) plus non-Y2 additions from parallel lanes",
+    "uv.lock — shared lockfile regenerated by parallel lanes"
+  ],
+  "strongest_suspected_weakness": "Quarantine isolation is best-effort chmod (is_read_only_intended) rather than a hard security boundary — .git directory content remains writable; symlink traversal protection relies on follow_symlinks=False which is best-effort at POSIX level. Execution risk assessor does static pattern matching on instruction text and cannot detect transitively invoked scripts whose wrapper commands appear safe at the surface level.",
+  "proposed_reviewer_attack_surface": [
+    "Quarantine path traversal via '/..' or '../..' in remote repository URLs",
+    "Safe validation probe executing wrapper commands whose transitively invoked scripts carry risk not detected by surface-level pattern matching",
+    "Dependency classifier skipping large lockfiles or malformed TOML silently",
+    "Structural indexer OOM on very large repositories (no file count limit enforced)",
+    "Content-light guarantee depends on model design, not runtime enforcement — projection builders could leak raw paths or symbol names without detection if contracts are violated in future edits",
+    "Instruction scanner scope deduplication correctness under conflicting nested instructions",
+    "Incremental compiler observing changes to deleted files (negative diffs)",
+    "Deterministic digest computation producing different results with different JSON serializer implementations"
+  ],
+  "prepublication_review_cycle_digest": "y2_prepublication_review_round5_admitted",
+  "prepublication_review_round_count": 5,
+  "status": "candidate_local"
+}

@@ -10,7 +10,11 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from rig_relay.desktop.gateway._models import ProvenanceClass, TrustState
+from rig_relay.desktop.gateway._models import (
+    ProvenanceClass,
+    SafariCompanionFields,
+    TrustState,
+)
 
 # ── Provider Connection (for Connect surface) ────────
 
@@ -202,6 +206,21 @@ class PublishPreviewSurfaceProjection(BaseModel):
         "Publication integration is pending upstream infrastructure verification."
     )
     content_light_guarantee: bool = True
+    # X3.8 publication contract fields
+    publication_preparation_available: bool = False
+    authorization_status_field: str = "unavailable"
+    authorization_receipt_digest: str = ""
+    content_commit_prepared: bool = False
+    ref_update_complete: bool = False
+    pages_configuration_state: str = "unavailable"
+    build_status_field: str = "unavailable"
+    published_verification_complete: bool = False
+    conflict_detected: bool = False
+    recovery_available: bool = False
+    external_acceptance_state: str = "unavailable"
+    # Y0.1 — X3 remote truth
+    x3_boundary_status: str = "unavailable"
+    """candidate_local_not_remotely_released, verified_remotely, or unavailable"""
 
 
 # ── Timeline History (consumes T4.2) ───────────────────
@@ -269,7 +288,7 @@ class TimelineSurfaceProjection(BaseModel):
 # ── Inference Studio pass-through for OMLX disclosure ──
 
 
-class InferenceStudioSurfaceProjection(BaseModel):
+class InferenceStudioSurfaceProjection(SafariCompanionFields):
     """Inference Studio surface: runtime state with truthful OMLX/X2 pending disclosure."""
 
     model_config = ConfigDict(extra="forbid")
@@ -300,44 +319,100 @@ class InferenceStudioSurfaceProjection(BaseModel):
     native_schema_capability_proven: bool = False
     grammar_capability_claimed: bool = False
     grammar_capability_proven: bool = False
-    # X4.5 — Safari native companion projection fields
-    safari_companion_state: str = "unavailable"
-    safari_distribution_signing_state: str = "unsigned"
-    safari_notarization_state: str = "not_submitted"
-    safari_update_delivery_state: str = "not_integrated"
-    safari_diagnostic_export_state: str = "ready"
-    safari_diagnostic_export_blocked: bool = False
-    safari_recovery_action_state: str = "healthy"
-    safari_extension_built: bool = False
-    safari_artifact_manifest_available: bool = False
-    safari_running: bool = False
-    safari_extension_installed: bool = False
-    safari_extension_enabled: bool = False
-    safari_extension_error: str | None = None
-    safari_build_environment: dict[str, bool] = Field(
-        default_factory=lambda: {
-            "xcode_available": False,
-            "signing_identity_found": False,
-            "app_bundle_exists": False,
-            "extension_appex_exists": False,
-            "notarytool_available": False,
-        }
-    )
 
-    safari_projection_generated_at: str | None = None
+
+# ── Y1-Y4 Deferred Surface Projections ──────────────
+
+
+class RepositoryReadinessSurfaceProjection(BaseModel):
+    """Repository Readiness: availability of repository intake pipeline and compilation state. (Y1)"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    provenance: ProvenanceClass = ProvenanceClass.DERIVED_PROJECTION
+    trust_state: TrustState = TrustState.DEFERRED
+    authority_state: str = "missing"
+    degraded_reason: str = ""
+    available: bool = False
+    surface_status: str = SurfaceStatus.SETUP_REQUIRED.value
+    status_detail: str = "Repository Readiness is not yet available in this release"
+
+
+class FleetWorkspacesSurfaceProjection(BaseModel):
+    """Fleet Workspaces: active worktrees, lane reservations, and workspace isolation state. (Y2)"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    provenance: ProvenanceClass = ProvenanceClass.DERIVED_PROJECTION
+    trust_state: TrustState = TrustState.DEFERRED
+    authority_state: str = "missing"
+    degraded_reason: str = ""
+    available: bool = False
+    surface_status: str = SurfaceStatus.SETUP_REQUIRED.value
+    status_detail: str = "Fleet Workspaces is not yet available in this release"
+
+
+class HarnessProfileSurfaceProjection(BaseModel):
+    """Harness Profile: agent profile configuration, tool policy, and safety gates. (Y3)"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    provenance: ProvenanceClass = ProvenanceClass.DERIVED_PROJECTION
+    trust_state: TrustState = TrustState.DEFERRED
+    authority_state: str = "missing"
+    degraded_reason: str = ""
+    available: bool = False
+    surface_status: str = SurfaceStatus.SETUP_REQUIRED.value
+    status_detail: str = "Harness Profile is not yet available in this release"
+
+
+class AnalyticsReportsSurfaceProjection(BaseModel):
+    """Analytics & Reports: dataset summaries, refinement reports, and evidence exports. (Y4, wired by Y0.1)"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    provenance: ProvenanceClass = ProvenanceClass.DERIVED_PROJECTION
+    trust_state: TrustState = TrustState.DEFERRED
+    authority_state: str = "missing"
+    degraded_reason: str = ""
+    available: bool = False
+    surface_status: str = SurfaceStatus.SETUP_REQUIRED.value
+    status_detail: str = "Analytics & Reports is initializing"
+
+    # Dataset summaries
+    dataset_count: int = 0
+    total_rows: int = 0
+    export_manifest: str = ""  # digest of export manifest
+
+    # Report counts
+    report_count: int = 0
+    refinement_candidate_count: int = 0
+
+    # X-Wave readiness
+    x_wave_providers: list[dict[str, str]] = Field(default_factory=list)
+    landed_and_visible: int = 0
+    remote_not_consumed: int = 0
+    cannot_confirm_remotely: int = 0
+
+    # Content-light guarantee
+    content_light_guarantee: bool = True
 
 
 __all__ = [
+    "AnalyticsReportsSurfaceProjection",
     "ConnectSurfaceProjection",
     "EstateChangeEntry",
     "EstateCorruptionEntry",
     "EstateRepositoryEntry",
+    "FleetWorkspacesSurfaceProjection",
+    "HarnessProfileSurfaceProjection",
     "InferenceStudioSurfaceProjection",
     "ProviderConnectionEntry",
     "PublishPreviewEvidenceSummary",
     "PublishPreviewRefusalEntry",
     "PublishPreviewSurfaceProjection",
     "RepositoryEstateSurfaceProjection",
+    "RepositoryReadinessSurfaceProjection",
     "SurfaceStatus",
     "TimelineEventEntry",
     "TimelineSurfaceProjection",

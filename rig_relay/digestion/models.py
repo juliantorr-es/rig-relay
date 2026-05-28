@@ -233,6 +233,36 @@ class InstructionFile(BaseModel):
         default_factory=list,
         description="Paths to nested instruction files within this scope.",
     )
+    content: str | None = Field(
+        default=None,
+        description="The instruction file text content, if loaded. None when not loaded.",
+    )
+    content_sha256: str | None = Field(
+        default=None,
+        description="SHA256 hex digest of the file content, if loaded. None when not loaded.",
+    )
+
+
+class InstructionScopeCollection(BaseModel):
+    """Aggregated instruction scope map for a repository.
+
+    Records which instruction files apply to each directory, plus
+    any detected conflicts between overlapping instruction scopes.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    instruction_files: list[InstructionFile] = Field(
+        description="All discovered instruction files with scope metadata."
+    )
+    scope_map: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description="Map of directory path → list of applicable instruction file paths.",
+    )
+    conflicts: list[tuple[str, str, str]] = Field(
+        default_factory=list,
+        description="Conflicting instruction pairs: (path_a, path_b, conflict_description).",
+    )
 
 
 class DetectedCommand(BaseModel):

@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/juliantorr-es/rig-relay/blob/main/docs/schemas/rig.relay.context_lifecycle_event.v1.schema.json",
+  "title": "Rig Relay Context Lifecycle Event v1",
+  "description": "Lifecycle event emitted by Y4 context governance consumers when a repository context release transitions state, becomes stale, or degrades. Content-light and digest-backed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "event_kind",
+    "release_id",
+    "lifecycle_state",
+    "degraded",
+    "context_confidence",
+    "instruction_count",
+    "module_count",
+    "dependency_count",
+    "risk_count",
+    "timestamp",
+    "content_digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "default": "rig.relay.context_lifecycle_event.v1"
+    },
+    "event_id": {
+      "type": "string",
+      "description": "Unique event identifier"
+    },
+    "event_kind": {
+      "type": "string",
+      "enum": [
+        "context.released",
+        "context.stale_detected",
+        "context.refreshed",
+        "context.degraded"
+      ]
+    },
+    "release_id": {
+      "type": "string"
+    },
+    "lifecycle_state": {
+      "type": "string"
+    },
+    "degraded": {
+      "type": "boolean"
+    },
+    "context_confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "instruction_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "module_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "dependency_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "risk_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "content_digest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  }
+}

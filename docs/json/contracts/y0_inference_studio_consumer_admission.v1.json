@@ -1,0 +1,104 @@
+{
+  "schema_version": "rig.relay.consumer_admission.v1",
+  "admission_id": "y0_inference_studio_consumer_admission_v1",
+  "subject_boundary": "GovernedRiggedOMLXAgentRuntimeBoundary",
+  "subject_lane": "Y4",
+  "admitted_consumer": "Y0 Gridline Interface / Inference Studio desktop surface",
+  "admitted_at": "2026-05-27T23:15:00Z",
+  "admission_rules": {
+    "Y0_may_consume": [
+      "runtime.kind, runtime.platform, runtime.mlx_available",
+      "runtime.authority and authority_detail for display labels",
+      "capabilities.* posture values (supported/deferred/pending)",
+      "capabilities.model_pool_active posture values (supported/deferred/pending)",
+      "stream_state.terminal_evidence_contract and possible_states",
+      "stream_state.stream_terminal_ledger_health",
+      "tool_state.session_context_bound, executor_wired, mode, possible_outcomes",
+      "scheduler.mode, queue_depth, running_count, total_processed",
+      "scheduler.serialization_reason, scheduler.refusal_count",
+      "cache.kv_cache_reuse_enabled, hit_count, miss_count, ssd_cache.*",
+      "cache.cache_loop_safety",
+      "pool.loaded_count, max_models, active_generations",
+      "agent_loop.supported, agent_loop.active, agent_loop.state, agent_loop.max_tool_turns, agent_loop.tool_turn_count",
+      "governance.* string values for display labels",
+      "governance.tool_loop_completeness, governance.tool_loop_completeness_detail",
+      "governance.stream_terminal_evidence_integrity, governance.stream_terminal_evidence_integrity_detail",
+      "governance.shutdown_drain_status, governance.scheduling_truth, governance.scheduling_truth_detail",
+      "privacy.* string values for display labels",
+      "health.state, gpu_available, last_probe",
+      "health.stream_terminal_ledger_health, health.shutdown_state",
+      "models.loaded_count, inventory_count, pool_count"
+    ],
+    "Y0_must_not": [
+      "Read raw runtime ledgers directly (runtime_execution_ledger.jsonl, etc.)",
+      "Read PostgreSQL domain tables, materialized views, or private X1 modules directly",
+      "Call RiggedMlxEngine, ModelPoolManager, RiggedCacheAuthority, or ToolExecutionBridge directly",
+      "Execute tool proposals or modify tool state",
+      "Bind or unbind session context on the bridge",
+      "Modify scheduler state (enqueue, admit, complete, fail, cancel)",
+      "Modify cache entries or eviction policy",
+      "Claim capability support that the projection marks as deferred or pending",
+      "Present provisional streaming tokens as verified before terminal evidence emission",
+      "Read raw prompt contexts or model output text from the evidence ledgers"
+    ],
+    "Y0_rendering_rules": {
+      "streaming_state_display": {
+        "provisional_streaming": "Show 'Streaming...' indicator with spinner",
+        "terminal_completed": "Show completed output with green check",
+        "terminal_cancelled": "Show 'Cancelled' with neutral indicator",
+        "terminal_failed": "Show 'Error' with red indicator and error message",
+        "evidence_unavailable": "Show 'Evidence Unavailable' with warning icon and tooltip explaining provenance gap"
+      },
+      "tool_state_display": {
+        "full_execution": "Show 'Tool Execution: Active' with session context indicator",
+        "stateless_preflight_only": "Show 'Tool Execution: Preflight Only' with disabled/ghosted icon"
+      },
+      "capability_display": {
+        "supported": "Green chip",
+        "v1_required_pending_implementation": "Amber chip with 'Pending' tooltip",
+        "deferred": "Grey chip with 'Future' tooltip"
+      },
+      "privacy_display": {
+        "cache_persistence_disabled": "Show 'Local Cache Only' label",
+        "cache_persistence_opt_in": "Show 'SSD Cache: Setup Required' link to settings"
+      },
+      "agent_loop_display": {
+        "idle": "Show no loop indicator",
+        "generating": "Show 'Generating...' spinner",
+        "streaming_provisional": "Show 'Streaming... (provisional)' indicator",
+        "tool_proposal_detected": "Show 'Tool call detected' chip",
+        "tool_executing": "Show 'Executing tool...' progress indicator",
+        "tool_observation_received": "Show tool result summary",
+        "continuing_generation": "Show 'Continuing...' spinner",
+        "completed": "Show completed output with green check",
+        "cancelled": "Show 'Cancelled' with neutral indicator",
+        "loop_limit_reached": "Show 'Max turns reached' with amber indicator",
+        "evidence_degraded": "Show warning icon with tooltip explaining evidence gap"
+      },
+      "shutdown_display": {
+        "normal": "No indicator",
+        "degraded_shutdown_active_generations_remain": "Show 'Shutdown: Active generations may have been interrupted' warning"
+      },
+      "stream_terminal_evidence_display": {
+        "complete": "Green check 'All evidence complete'",
+        "degraded": "Amber warning 'Some stream terminal evidence incomplete'",
+        "unavailable": "Grey indicator 'Stream terminal evidence unavailable'"
+      }
+    }
+  },
+  "prohibited_claims": [
+    "Y0 MUST NOT claim that the runtime supports continuous batching — this is explicitly deferred",
+    "Y0 MUST NOT claim that the runtime supports structured JSON output — this is explicitly pending",
+    "Y0 MUST NOT claim that tool proposals form an iterative agent loop — the runtime is one-shot tool execution",
+    "Y0 MUST NOT claim that embeddings, reranking, or vision/VLM are supported — all are explicitly pending",
+    "Y0 MUST NOT claim that tool execution is available when session_context_bound is false",
+    "Y0 MUST NOT present provisional streaming tokens as evidence-backed verified output",
+    "Y0 MUST NOT read raw evidence ledgers, engine internals, or pool/cache internals directly",
+    "Y0 MUST NOT claim that the iterative agent loop supports continuous batching — scheduling is serialized FCFS",
+    "Y0 MUST NOT claim that the iterative agent loop supports more than max_tool_turns concurrent tool executions",
+    "Y0 MUST NOT claim that stream terminal evidence is complete when health shows degraded or unavailable",
+    "Y0 MUST NOT claim that shutdown was clean when drain_status shows degraded shut down active generations remain",
+    "Y0 MUST NOT read or invoke execute_local_agent_loop() directly — consume only through the typed projection"
+  ],
+  "content_light_guarantee": true
+}

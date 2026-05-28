@@ -64,6 +64,8 @@ class FleetClaimEvent(BaseModel):
         "integration_refused_stale_base",
         "claim_released",
         "work_parked",
+        "workspace_claim_acquired",
+        "workspace_claim_released",
     ]
     mission_id: str
     lane_id: str
@@ -139,7 +141,25 @@ def _paths_conflict(
 
 @dataclass
 class FleetClaimStore:
+    """Canonical fleet claim authority.
+
+    FleetClaimStore is the sole authority for fleet coordination claims.
+    It is event-sourced with a JSONL ledger and jsonschema validation.
+    fleet_claim_corridor.py is the legacy path; FleetClaimStore supersedes it.
+    """
+
     root: Path
+
+    CANONICAL_AUTHORITY: bool = True
+    AUTHORITY_VERSION: str = "rig.relay.fleet_claim_store.v1"
+
+    def authority_manifest(self) -> dict[str, str]:
+        return {
+            "authority": "canonical",
+            "version": self.AUTHORITY_VERSION,
+            "root": str(self.root),
+            "supersedes": "fleet_claim_corridor.py",
+        }
 
     def __post_init__(self) -> None:
         self.root.mkdir(parents=True, exist_ok=True)
@@ -301,6 +321,207 @@ class FleetClaimStore:
         pointer_path.write_text(text, encoding="utf-8")
         return pointer_path
 
+    def acquire_workspace_claim(
+        self,
+        workspace_id: str,
+        mission_id: str,
+        lane_id: str,
+        agent_id: str,
+        claimed_paths: list[str],
+        workspace_authority_id: str | None = None,
+        base_sha256_by_path: dict[str, str] | None = None,
+        ttl_seconds: int = 300,
+    ) -> ClaimResult:
+        normalized = _normalized_paths(claimed_paths)
+        authority_id = workspace_authority_id or f"workspace:{workspace_id}"
+        base = base_sha256_by_path or {}
+        self._acquire()
+        try:
+            all_active = _replay_active_claims(self._events_path, None)
+            for existing in all_active:
+                conflicts, reason = _paths_conflict(normalized, existing.claimed_paths)
+                if conflicts:
+                    refusal_event = FleetClaimEvent(
+                        event_id="",
+                        claim_id=str(uuid.uuid4()),
+                        event_kind="claim_refused_conflict",
+                        mission_id=mission_id,
+                        lane_id=lane_id,
+                        agent_id=agent_id,
+                        workspace_authority_id=authority_id,
+                        claimed_paths=normalized,
+                        base_sha256_by_path=base,
+                        reason_code=reason,
+                        details={
+                            "ttl_seconds": ttl_seconds,
+                            "conflict_with": existing.claim_id,
+                            "conflict_workspace": existing.workspace_authority_id,
+                            "workspace_id": workspace_id,
+                        },
+                    )
+                    result = self._append_event(refusal_event)
+                    return ClaimResult(
+                        acquired=False,
+                        event_id=result.event_id,
+                        event_digest=result.event_digest,
+                        refusal_reason=reason,
+                        conflict_claim_id=existing.claim_id,
+                    )
+
+            claim_id = str(uuid.uuid4())
+            acquire_event = FleetClaimEvent(
+                event_id="",
+                claim_id=claim_id,
+                event_kind="workspace_claim_acquired",
+                mission_id=mission_id,
+                lane_id=lane_id,
+                agent_id=agent_id,
+                workspace_authority_id=authority_id,
+                claimed_paths=normalized,
+                base_sha256_by_path=base,
+                details={
+                    "ttl_seconds": ttl_seconds,
+                    "mode": "exclusive_write",
+                    "workspace_id": workspace_id,
+                },
+            )
+            result = self._append_event(acquire_event)
+
+            expires_at = (
+                datetime.now(UTC) + timedelta(seconds=ttl_seconds)
+            ).isoformat()
+            active = ActiveClaim(
+                claim_id=claim_id,
+                mission_id=mission_id,
+                lane_id=lane_id,
+                agent_id=agent_id,
+                mode=ClaimMode("exclusive_write"),
+                claimed_paths=normalized,
+                workspace_authority_id=authority_id,
+                base_sha256_by_path=base,
+                lane_output_sha256_by_path=None,
+                acquired_at=result.timestamp,
+                expires_at=expires_at,
+                state=ClaimState.claimed,
+                last_event_id=result.event_id,
+                last_event_kind="workspace_claim_acquired",
+            )
+
+            try:
+                self._write_pointer_artifact(
+                    active=active, coordination_event_id=result.event_id
+                )
+            except OSError:
+                logger.warning(
+                    "Pointer artifact write failed for claim_id=%s — claim still valid",
+                    claim_id,
+                )
+
+            return ClaimResult(
+                acquired=True,
+                claim=active,
+                event_id=result.event_id,
+                event_digest=result.event_digest,
+            )
+        finally:
+            self._release()
+
+    def release_workspace_claim(self, claim_id: str) -> ClaimResult:
+        self._acquire()
+        try:
+            active_claims = _replay_active_claims(self._events_path, None)
+            existing = next((c for c in active_claims if c.claim_id == claim_id), None)
+            if existing is None:
+                return ClaimResult(acquired=False, refusal_reason="claim_not_found")
+
+            release_event = FleetClaimEvent(
+                event_id="",
+                claim_id=claim_id,
+                event_kind="workspace_claim_released",
+                mission_id=existing.mission_id,
+                lane_id=existing.lane_id,
+                agent_id=existing.agent_id,
+                workspace_authority_id=existing.workspace_authority_id,
+                claimed_paths=existing.claimed_paths,
+                base_sha256_by_path=existing.base_sha256_by_path,
+                lane_output_sha256_by_path=existing.lane_output_sha256_by_path,
+                reason_code="explicit_release",
+            )
+            result = self._append_event(release_event)
+
+            pointer_path = self.root / "claims" / f"{claim_id}.json"
+            try:
+                if pointer_path.exists():
+                    pointer_path.unlink()
+            except OSError:
+                pass
+
+            return ClaimResult(
+                acquired=True,
+                event_id=result.event_id,
+                event_digest=result.event_digest,
+            )
+        finally:
+            self._release()
+
+    def get_workspace_claims(self, workspace_id: str) -> list[ActiveClaim]:
+        self._acquire()
+        try:
+            authority_id = f"workspace:{workspace_id}"
+            return _replay_active_claims(self._events_path, authority_id)
+        finally:
+            self._release()
+
+    def is_workspace_boundary_claimed(
+        self, workspace_id: str, boundary_name: str
+    ) -> tuple[bool, str]:
+        self._acquire()
+        try:
+            authority_id = f"workspace:{workspace_id}"
+            active_claims = _replay_active_claims(self._events_path, None)
+            for claim in active_claims:
+                if claim.workspace_authority_id == authority_id:
+                    continue
+                for path in claim.claimed_paths:
+                    if boundary_name in path:
+                        return True, claim.claim_id
+            return False, ""
+        finally:
+            self._release()
+
+    def list_integration_boundary_claims(self) -> list[ActiveClaim]:
+        _INTEGRATION_PATH_PREFIXES = ("docs/schemas/", "etc/", "rig_relay/desktop/")
+        self._acquire()
+        try:
+            active_claims = _replay_active_claims(self._events_path, None)
+            result: list[ActiveClaim] = []
+            for claim in active_claims:
+                for path in claim.claimed_paths:
+                    if path.startswith(_INTEGRATION_PATH_PREFIXES):
+                        result.append(claim)
+                        break
+            return result
+        finally:
+            self._release()
+
+    def detect_integration_conflict(
+        self, workspace_id: str, claimed_paths: list[str]
+    ) -> tuple[bool, str, list[str]]:
+        normalized = _normalized_paths(claimed_paths)
+        self._acquire()
+        try:
+            authority_id = f"workspace:{workspace_id}"
+            active_claims = _replay_active_claims(self._events_path, None)
+            for claim in active_claims:
+                if claim.workspace_authority_id == authority_id:
+                    continue
+                conflicts, _ = _paths_conflict(normalized, claim.claimed_paths)
+                if conflicts:
+                    return True, claim.workspace_authority_id, claim.claimed_paths
+            return False, "", []
+        finally:
+            self._release()
+
 
 # ── Active claim projection ──────────────────────────────────────────────────
 
@@ -339,7 +560,11 @@ def _event_to_active_claim(
     )
 
 
-_TERMINAL_KINDS = frozenset(["claim_released", "work_parked"])
+_TERMINAL_KINDS = frozenset([
+    "claim_released",
+    "work_parked",
+    "workspace_claim_released",
+])
 
 
 def _replay_active_claims(
@@ -377,7 +602,7 @@ def _replay_active_claims(
 
                 event_kind = event.get("event_kind")
 
-                if event_kind == "claim_acquired":
+                if event_kind in {"claim_acquired", "workspace_claim_acquired"}:
                     claims_by_id[claim_id] = _event_to_active_claim(event)
                 elif event_kind == "claim_renewed":
                     if claim_id in claims_by_id:

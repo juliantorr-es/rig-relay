@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 from uuid import uuid4
 
@@ -44,6 +44,32 @@ class RecoveryState(StrEnum):
     QUARANTINED = "quarantined"
 
 
+class WorkPreservationState(StrEnum):
+    NO_WORK_DETECTED = "no_work_detected"
+    UNCOMMITTED_EDITS_PRESENT = "uncommitted_edits_present"
+    UNCHECKPOINTED_EDITS_PRESENT = "uncheckpointed_edits_present"
+    CHECKPOINT_PRESENT = "checkpoint_present"
+    REAPPLICATION_SUSPECTED = "reapplication_suspected"
+    CLEAN = "clean"
+
+
+class WorkLossAssessment(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    workspace_id: str
+    worktree_exists: bool
+    work_preservation: WorkPreservationState
+    uncommitted_changes_count: int = 0
+    changed_files: list[str] = Field(default_factory=list)
+    current_head_sha: str | None = None
+    checkpoint_sha: str | None = None
+    duplicate_checkpoint_detected: bool = False
+    duplicate_diff_detected: bool = False
+    recovery_required: bool
+    recovery_possible: bool
+    validation_required: bool
+    assessment_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+
+
 class WorkspaceIdentity(BaseModel):
     model_config = ConfigDict(extra="forbid")
     workspace_id: str = Field(default_factory=lambda: str(uuid4()))
@@ -64,12 +90,9 @@ class WorkspaceLifecycleEventKind(StrEnum):
     WORKTREE_CREATED = "worktree_created"
     BOOTSTRAP_STARTED = "bootstrap_started"
     BOOTSTRAP_COMPLETED = "bootstrap_completed"
-    WORKSPACE_READY = "workspace_ready"
     WORKSPACE_ACTIVATED = "workspace_activated"
     VALIDATION_STARTED = "validation_started"
-    VALIDATION_COMPLETED = "validation_completed"
     REVIEW_STARTED = "review_started"
-    REVIEW_COMPLETED = "review_completed"
     WORKSPACE_CHECKPOINTED = "workspace_checkpointed"
     RELEASED_FOR_INTEGRATION = "released_for_integration"
     INTEGRATED = "integrated"
@@ -89,6 +112,13 @@ class WorkspaceLifecycleEventKind(StrEnum):
     WORKTREE_UNLOCKED = "worktree_unlocked"
     WORKTREE_REPAIRED = "worktree_repaired"
     WORKTREE_PRUNED = "worktree_pruned"
+    CHANGES_RECORDED = "changes_recorded"
+    BOUNDARY_CLAIM_ACQUIRED = "boundary_claim_acquired"
+    BOUNDARY_CLAIM_RELEASED = "boundary_claim_released"
+    BOUNDARY_CONFLICT_DETECTED = "boundary_conflict_detected"
+    WORK_PRESERVATION_ASSESSED = "work_preservation_assessed"
+    VALIDATION_REQUIRED = "validation_required"
+    REAPPLICATION_SUSPECTED = "reapplication_suspected"
 
 
 class WorkspaceLifecycleEvent(BaseModel):
@@ -110,7 +140,7 @@ class WorkspaceLifecycleEvent(BaseModel):
     reason: str | None = None
     prior_event_digest: str | None = None
     event_digest: str | None = None
-    created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 class ManagedWorkspace(BaseModel):
@@ -127,8 +157,11 @@ class ManagedWorkspace(BaseModel):
     changed_files_count: int = Field(default=0, ge=0)
     checkpoint_sha: str | None = None
     session_id: str | None = None
-    created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
-    updated_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    context_capsule_digest: str | None = None
+    harness_profile_digest: str | None = None
+    runtime_binding_reference: str | None = None
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 class FleetWorkspaceProjectionItem(BaseModel):
@@ -145,21 +178,91 @@ class FleetWorkspaceProjectionItem(BaseModel):
     safe_available_actions: list[str] = Field(default_factory=list)
     base_sha: str | None = None
     head_sha: str | None = None
+    branch_name: str | None = None
+    worktree_path_hash: str | None = None
+    session_id: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+    display_status: str = "Unavailable"
 
 
 class FleetWorkspaceProjection(BaseModel):
     model_config = ConfigDict(extra="forbid")
     schema_version: str = "rig.relay.fleet_workspace_projection.v1"
-    generated_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    generated_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    total_workspaces: int = 0
+    active_workspaces: int = 0
+    recovery_needed: int = 0
     workspaces: list[FleetWorkspaceProjectionItem] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class AssignmentState(StrEnum):
+    READY_FOR_ASSIGNMENT = "ready_for_assignment"
+    ASSIGNED = "assigned"
+    DETACHED_WITH_WORK_PRESERVED = "detached_with_work_preserved"
+    RECOVERY_REQUIRED = "recovery_required"
+    RECOVERED = "recovered"
+    BLOCKED_MISSING_CONTEXT_RELEASE = "blocked_missing_context_release"
+    RELEASED_FOR_INTEGRATION = "released_for_integration"
+    RETIRED = "retired"
+
+
+class WorkspaceAssignmentRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    workspace_id: str
+    mission_id: str | None = None
+    lane_id: str | None = None
+    agent_role: WorkspaceRole
+    session_id: str | None = None
+    context_capsule_digest: str | None = None
+    harness_profile_digest: str | None = None
+    runtime_binding_reference: str | None = None
+
+
+class WorkspaceAssignmentReceipt(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    receipt_id: str = Field(default_factory=lambda: str(uuid4()))
+    workspace_id: str
+    mission_id: str | None = None
+    lane_id: str | None = None
+    agent_role: WorkspaceRole
+    assignment_state: AssignmentState
+    session_id: str | None = None
+    base_sha: str | None = None
+    branch_name: str | None = None
+    integration_claims: list[str] = Field(default_factory=list)
+    context_capsule_digest: str | None = None
+    harness_profile_digest: str | None = None
+    runtime_binding_reference: str | None = None
+    evidence_digest: str | None = None
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+
+
+class CurrentAssignmentProjection(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    workspace_id: str
+    assignment_state: AssignmentState
+    agent_role: str
+    session_id: str | None = None
+    context_available: bool = False
+    profile_available: bool = False
+    runtime_available: bool = False
+    blocked_reason: str | None = None
 
 
 __all__ = [
+    "AssignmentState",
+    "CurrentAssignmentProjection",
     "FleetWorkspaceProjection",
     "FleetWorkspaceProjectionItem",
     "ManagedWorkspace",
     "ManagedWorkspaceIdentity",
     "RecoveryState",
+    "WorkLossAssessment",
+    "WorkPreservationState",
+    "WorkspaceAssignmentReceipt",
+    "WorkspaceAssignmentRequest",
     "WorkspaceIdentity",
     "WorkspaceLifecycleEvent",
     "WorkspaceLifecycleEventKind",

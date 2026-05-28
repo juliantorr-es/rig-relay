@@ -19,12 +19,9 @@
         "worktree_created",
         "bootstrap_started",
         "bootstrap_completed",
-        "workspace_ready",
         "workspace_activated",
         "validation_started",
-        "validation_completed",
         "review_started",
-        "review_completed",
         "workspace_checkpointed",
         "released_for_integration",
         "integrated",
@@ -43,7 +40,8 @@
         "worktree_locked",
         "worktree_unlocked",
         "worktree_repaired",
-        "worktree_pruned"
+        "worktree_pruned",
+        "changes_recorded"
       ]
     },
     "state_before": {

@@ -12,6 +12,21 @@
     "generated_at": {
       "type": "string"
     },
+    "total_workspaces": {
+      "type": "integer"
+    },
+    "active_workspaces": {
+      "type": "integer"
+    },
+    "recovery_needed": {
+      "type": "integer"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "workspaces": {
       "type": "array",
       "items": {
@@ -93,6 +108,36 @@
               "string",
               "null"
             ]
+          },
+          "branch_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "worktree_path_hash": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "session_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updated_at": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -110,6 +155,10 @@
   "required": [
     "schema_version",
     "generated_at",
+    "total_workspaces",
+    "active_workspaces",
+    "recovery_needed",
+    "warnings",
     "workspaces"
   ],
   "additionalProperties": false

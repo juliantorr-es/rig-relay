@@ -17,7 +17,7 @@ contradictory, fixture-deferred) are explicitly reported with reasons.
 from __future__ import annotations
 
 import subprocess
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, cast
 
 from rig_relay.core.logger import logger
 from rig_relay.desktop.gateway._models import (
@@ -33,6 +33,7 @@ from rig_relay.desktop.gateway._models import (
     M0RefusalEntry,
     M0TaskSuitabilityEntry,
     ProvenanceClass,
+    SafariCompanionFields,
     TrustState,
 )
 
@@ -424,31 +425,35 @@ def M0_PROJECTION_BUILDER(
             f"M0 runtime available={runtime_available}, configured={runtime_configured}"
         )
 
-    return _merge_safari_fields(
-        M0InferenceProjection(
-            available=True,
-            authority_state=authority,
-            degraded_reason=reason,
-            runtime_available=runtime_available,
-            runtime_configured=runtime_configured,
-            runtime_kind=runtime_kind,
-            platform_class=platform_class,
-            task_suitability=tasks,
-            total_results=total_results,
-            total_executed=total_executed,
-            total_refused=total_refused,
-            drafts_awaiting_review=drafts_awaiting,
-            drafts=drafts,
-            refusals=refusals,
-            native_schema_capability_claimed=False,
-            native_schema_capability_proven=False,
-            grammar_capability_claimed=False,
-            grammar_capability_proven=False,
-        )
+    return cast(
+        M0InferenceProjection,
+        _merge_safari_fields(
+            M0InferenceProjection(
+                available=True,
+                authority_state=authority,
+                degraded_reason=reason,
+                runtime_available=runtime_available,
+                runtime_configured=runtime_configured,
+                runtime_kind=runtime_kind,
+                platform_class=platform_class,
+                task_suitability=tasks,
+                total_results=total_results,
+                total_executed=total_executed,
+                total_refused=total_refused,
+                drafts_awaiting_review=drafts_awaiting,
+                drafts=drafts,
+                refusals=refusals,
+                native_schema_capability_claimed=False,
+                native_schema_capability_proven=False,
+                grammar_capability_claimed=False,
+                grammar_capability_proven=False,
+            )
+        ),
     )
 
 
-def _merge_safari_fields(model: M0InferenceProjection) -> M0InferenceProjection:
+def _merge_safari_fields(model: Any) -> SafariCompanionFields:
+    """Merge live safari companion inspection fields into any SafariCompanionFields model."""
     try:
         from rig_relay.native._safari_x0_contract import build_safari_native_projection
 
@@ -487,7 +492,7 @@ def _merge_safari_fields(model: M0InferenceProjection) -> M0InferenceProjection:
         )
     except Exception as exc:
         logger.warning(
-            "Unexpected exception merging safari fields into M0 projection: %s", exc
+            "Unexpected exception merging safari fields into projection: %s", exc
         )
         return model.model_copy(
             update={

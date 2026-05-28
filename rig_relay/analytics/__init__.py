@@ -262,6 +262,11 @@ def normalize_report_record(record: dict[str, Any]) -> dict[str, Any]:
 # ── Analytics Data Lake exports ─────────────────────────────────
 # Re-export from engine/views/correlation for public API.
 
+from rig_relay.analytics._readiness_report import (
+    ProviderReadinessEntry,
+    XWaveReadinessReportProjection,
+    build_x_wave_readiness_report,
+)
 from rig_relay.analytics.engine import (
     AnalyticsEngine,
     build_projection,
@@ -273,8 +278,11 @@ from rig_relay.analytics.engine import (
 __all__ = [
     "AnalyticsEngine",
     "LedgerLoadResult",
+    "ProviderReadinessEntry",
+    "XWaveReadinessReportProjection",
     "build_projection",
     "build_projection_metadata",
+    "build_x_wave_readiness_report",
     "compute_view",
     "connect_in_memory",
     "correlation_check",

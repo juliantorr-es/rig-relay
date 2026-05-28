@@ -217,39 +217,69 @@ class ModelPoolManager:
                 ],
             }
 
-    def shutdown(self) -> None:
+    def shutdown(self, agents_active_during_shutdown: bool = False) -> dict[str, int]:
         """Unload all models during coordinated shutdown.
 
-        Evicts idle models first (incrementing eviction counters), then
-        forcefully clears any remaining models with active generations.
-        Logs warnings for active models that were holding references at
-        shutdown time — these are the generation-safety risk.
+        Tracks models with active_count > 0 at shutdown time. Idle models
+        are evicted immediately. When agents_active_during_shutdown is False,
+        active models are force-evicted with warnings logged. When True,
+        active models are NOT force-evicted — only a warning is logged.
+
+        Returns:
+            dict with models_evicted, models_delayed, force_evicted counts.
         """
         with self._lock:
-            active_evicted = 0
+            models_evicted = 0
+            models_delayed = 0
+            active_model_hashes: list[str] = []
             for mid in list(self._pool):
                 pm = self._pool[mid]
                 if pm.active_count == 0:
                     del self._pool[mid]
                     self._total_evictions += 1
                     self._last_eviction_reason = PoolEvictionReason.SHUTDOWN
+                    models_evicted += 1
                 else:
-                    active_evicted += 1
+                    models_delayed += 1
+                    active_model_hashes.append(mid)
                     logger.warning(
-                        "ModelPoolManager: shutdown force-evicting model "
+                        "ModelPoolManager: shutdown delaying eviction of model "
                         "model_id_hash=%s with %d active generations",
                         mid[:16],
                         pm.active_count,
                     )
-            if active_evicted:
+            if models_delayed:
                 logger.warning(
-                    "ModelPoolManager: shutdown cleared %d model(s) with "
-                    "active generations. References released — downstream "
-                    "callers must have already drained active work.",
-                    active_evicted,
+                    "ModelPoolManager: %d model(s) have active generations "
+                    "at shutdown. Caller must drain active work before "
+                    "force-evicting.",
+                    models_delayed,
                 )
-            self._pool.clear()
-            self._total_evictions += active_evicted
+            force_evicted = 0
+            if agents_active_during_shutdown:
+                logger.warning(
+                    "ModelPoolManager: agents_active_during_shutdown=True — "
+                    "skipping force-eviction of %d model(s) with active generations",
+                    models_delayed,
+                )
+            else:
+                for mid in active_model_hashes:
+                    pm = self._pool.get(mid)
+                    if pm is not None:
+                        logger.warning(
+                            "ModelPoolManager: shutdown force-evicting model "
+                            "model_id_hash=%s with %d active generations",
+                            mid[:16],
+                            pm.active_count,
+                        )
+                        force_evicted += 1
+                self._pool.clear()
+                self._total_evictions += force_evicted
+            return {
+                "models_evicted": models_evicted,
+                "models_delayed": models_delayed,
+                "force_evicted": force_evicted,
+            }
 
 
 def _now_iso() -> str:

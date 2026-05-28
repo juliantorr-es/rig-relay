@@ -97,6 +97,15 @@
       },
       "description": "Results of admitted safe validation commands."
     },
+    "execution_risk_report": {
+      "anyOf": [
+        { "type": "null" },
+        {
+          "$ref": "#/definitions/ExecutionRiskReport"
+        }
+      ],
+      "description": "Full per-script risk assessment detail. Stored alongside the summary for downstream query."
+    },
     "workspace_eligibility": {
       "anyOf": [
         { "type": "null" },
@@ -155,7 +164,7 @@
         "quarantine_path",
         "cloned_at",
         "source_head_sha",
-        "is_read_only"
+        "is_read_only_intended"
       ],
       "properties": {
         "quarantine_path": {
@@ -179,9 +188,9 @@
           "type": "string",
           "description": "Full SHA of the commit at clone time."
         },
-        "is_read_only": {
+        "is_read_only_intended": {
           "type": "boolean",
-          "description": "True when the quarantine path is read-only."
+          "description": "Best-effort permission hint; not a security boundary. .git directory content may remain writable. Subject to OS-level permission enforcement."
         }
       }
     },
@@ -333,6 +342,134 @@
           "type": "string",
           "pattern": "^[a-f0-9]{64}$",
           "description": "Matches ExecutionRiskReport.report_digest."
+        }
+      }
+    },
+    "ExecutionRiskReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository_root",
+        "assessments",
+        "blocked_count",
+        "dangerous_count",
+        "overall_safe",
+        "report_digest"
+      ],
+      "properties": {
+        "repository_root": {
+          "type": "string",
+          "description": "Root path of the assessed repository."
+        },
+        "assessments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ScriptRiskAssessment"
+          },
+          "description": "All individual script/manifest assessments."
+        },
+        "blocked_count": {
+          "type": "integer",
+          "description": "Number of assessments that are blocked."
+        },
+        "dangerous_count": {
+          "type": "integer",
+          "description": "Number of assessments with at least one DANGEROUS or REJECTED risk."
+        },
+        "overall_safe": {
+          "type": "boolean",
+          "description": "True if no assessments are blocked and no dangerous risks exist."
+        },
+        "report_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "SHA256 digest of the report content (excluding this field)."
+        }
+      }
+    },
+    "ScriptRiskAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "script_path",
+        "script_name",
+        "risk_level",
+        "risks",
+        "blocked"
+      ],
+      "properties": {
+        "script_path": {
+          "type": "string",
+          "description": "Path to the assessed script or manifest."
+        },
+        "script_name": {
+          "type": "string",
+          "description": "Human-readable name for this assessment."
+        },
+        "risk_level": {
+          "type": "string",
+          "enum": ["SAFE", "LOW_RISK", "SUSPICIOUS", "DANGEROUS", "REJECTED"],
+          "description": "Highest risk level across all risks."
+        },
+        "risks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AssessedRisk"
+          },
+          "description": "All detected risks."
+        },
+        "blocked": {
+          "type": "boolean",
+          "description": "Whether execution of this script is blocked."
+        },
+        "reason": {
+          "type": ["string", "null"],
+          "description": "Reason for blocking, if blocked."
+        }
+      }
+    },
+    "AssessedRisk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "category",
+        "level",
+        "source",
+        "detail"
+      ],
+      "properties": {
+        "category": {
+          "type": "string",
+          "enum": [
+            "NETWORK_ACCESS",
+            "FILE_DELETION",
+            "CREDENTIAL_LEAK",
+            "CODE_EXECUTION",
+            "ENV_MANIPULATION",
+            "PRIVILEGE_ESCALATION",
+            "DESTRUCTIVE_SCRIPT",
+            "MALICIOUS_PACKAGE",
+            "UNTRUSTED_SOURCE",
+            "SHELL_INJECTION"
+          ],
+          "description": "Risk classification category."
+        },
+        "level": {
+          "type": "string",
+          "enum": ["SAFE", "LOW_RISK", "SUSPICIOUS", "DANGEROUS", "REJECTED"],
+          "description": "Risk severity level."
+        },
+        "source": {
+          "type": "string",
+          "description": "File, script, or command that triggered this risk."
+        },
+        "detail": {
+          "type": "string",
+          "description": "What was detected and where."
+        },
+        "recommendation": {
+          "type": ["string", "null"],
+          "description": "Recommended action before allowing execution."
         }
       }
     },

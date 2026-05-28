@@ -1,0 +1,132 @@
+{
+  "schema_version": "rig.relay.prepublication_review_cycle.v1",
+  "generated_at": "2026-05-27T00:00:00Z",
+  "lane_id": "Y1",
+  "mission_id": "Y1-managed-agent-workspace-and-recovery-authority",
+  "baseline_sha": "b987ebf99",
+  "candidate_digest": "sha256:y1-managed-workspace-and-recovery-authority",
+  "intended_boundary": "ManagedAgentWorkspaceAndRecoveryAuthority",
+  "intended_consumer_purpose": "Backend service with functional lifecycle state machine, recovery detection engine, event-chained append-only ledger, and unified content-light projection builder for isolated agent workspaces backed by Git linked worktrees.",
+  "rounds": [
+    {
+      "round_number": 1,
+      "reviewer_session_id": "prepub-round1",
+      "reviewed_candidate_digest": "sha256:round1-candidate",
+      "production_paths_inspected": [
+        "rig_relay/workspace/__init__.py",
+        "rig_relay/workspace/models.py",
+        "rig_relay/workspace/_service.py",
+        "rig_relay/workspace/_evidence.py",
+        "rig_relay/workspace/_recovery.py",
+        "rig_relay/workspace/_projection.py",
+        "rig_relay/coordination/worktree_manager.py",
+        "rig_relay/coordination/fleet_claims.py",
+        "rig_relay/desktop/projection.py",
+        "tests/workspace/test_managed_workspace.py"
+      ],
+      "falsifiers_attempted": [
+        {"claim": "Recovery authority works", "attack": "Runtime invocation of recovery engine", "evidence": "4 runtime bugs found: wrong method name, wrong enum access, wrong kwargs x2", "outcome": "succeeded", "severity": "critical", "blocking": true},
+        {"claim": "Evidence chain integrity", "attack": "Digest computation comparison between evidence and service modules", "evidence": "Two incompatible implementations with different separators and model_dump modes", "outcome": "succeeded", "severity": "high", "blocking": true},
+        {"claim": "Canonical evidence for every transition", "attack": "Event stream inspection for prior_event_digest chaining", "evidence": "All production events have prior_event_digest=null — no chaining", "outcome": "succeeded", "severity": "high", "blocking": true},
+        {"claim": "Ready for gridline and fleet consumption", "attack": "Grep for consumer wiring imports", "evidence": "Zero imports of workspace module from desktop or fleet code", "outcome": "succeeded", "severity": "high", "blocking": true}
+      ],
+      "findings": [
+        {"finding_id": "R1-B1", "severity": "critical", "violated_claim": "Recovery authority works", "evidence": "WorkspaceRecoveryEngine has 4 runtime-crashing bugs: wrong method name, wrong enum member access, wrong method signatures for detect_stale_base and recover", "required_repair": "Fix all 4 bugs and add type annotation", "classification": "blocking_inside_declared_boundary"},
+        {"finding_id": "R1-B2", "severity": "high", "violated_claim": "Canonical evidence integrity", "evidence": "Two incompatible _compute_event_digest implementations produce different SHA256 values for same event", "required_repair": "Extract single shared digest function", "classification": "blocking_inside_declared_boundary"}
+      ],
+      "disposition": "repair_required"
+    },
+    {
+      "round_number": 2,
+      "reviewer_session_id": "prepub-round2",
+      "reviewed_candidate_digest": "sha256:round2-repaired-candidate",
+      "production_paths_inspected": [
+        "rig_relay/workspace/_service.py",
+        "rig_relay/workspace/_recovery.py",
+        "rig_relay/workspace/_digest.py",
+        "rig_relay/workspace/_evidence.py",
+        "rig_relay/workspace/_projection.py",
+        "docs/schemas/rig.relay.fleet_workspace_projection.v1.schema.json",
+        "tests/workspace/test_managed_workspace.py"
+      ],
+      "falsifiers_attempted": [
+        {"claim": "Recovery engine works", "attack": "pyright compilation check", "evidence": "Missing import of build_fleet_workspace_projection in _service.py line 712", "outcome": "succeeded", "severity": "high", "blocking": true},
+        {"claim": "Recovery session_id persistence", "attack": "Trace recover() data flow", "evidence": "session_id set on fresh load, not on cached object used by _transition", "outcome": "succeeded", "severity": "high", "blocking": true},
+        {"claim": "Concurrent recovery safety", "attack": "TOCTOU window analysis in attempt_recovery", "evidence": "State re-check then recover() call without atomic lock", "outcome": "succeeded", "severity": "medium", "blocking": true}
+      ],
+      "findings": [
+        {"finding_id": "R2-B1", "severity": "high", "violated_claim": "Compilable service code", "evidence": "build_fleet_workspace_projection called at line 712 but never imported", "required_repair": "Add import statement", "classification": "blocking_inside_declared_boundary"},
+        {"finding_id": "R2-B2", "severity": "high", "violated_claim": "Recovery persists session_id", "evidence": "recover() sets session_id on fresh-loaded object; _transition saves cached object without updated session_id", "required_repair": "Sync cached object before _transition", "classification": "blocking_inside_declared_boundary"}
+      ],
+      "disposition": "repair_required"
+    },
+    {
+      "round_number": 3,
+      "reviewer_session_id": "prepub-round3",
+      "reviewed_candidate_digest": "sha256:round3-repaired-candidate",
+      "production_paths_inspected": [
+        "rig_relay/workspace/_service.py",
+        "rig_relay/workspace/_recovery.py",
+        "rig_relay/workspace/_projection.py",
+        "tests/workspace/test_managed_workspace.py"
+      ],
+      "falsifiers_attempted": [
+        {"claim": "Recovery session_id persisted to disk", "attack": "Verify cached object sync in recover()", "evidence": "session_id set on cached object but _transition's _load_workspace fallback path still reads stale from disk on cold cache", "outcome": "succeeded", "severity": "high", "blocking": true}
+      ],
+      "findings": [
+        {"finding_id": "R3-B1", "severity": "high", "violated_claim": "Recovery persists session_id correctly", "evidence": "recover() syncs session_id to cache at line 609-613, but when self._workspaces is empty (cold cache), _transition loads from disk with stale session_id", "required_repair": "Add cold-cache fallback: if cached is None, load from disk, update, insert into cache before _transition", "classification": "blocking_inside_declared_boundary"}
+      ],
+      "disposition": "repair_required"
+    },
+    {
+      "round_number": 4,
+      "reviewer_session_id": "prepub-round4",
+      "reviewed_candidate_digest": "sha256:round4-repaired-candidate",
+      "production_paths_inspected": [
+        "rig_relay/workspace/_service.py",
+        "tests/workspace/test_managed_workspace.py"
+      ],
+      "falsifiers_attempted": [
+        {"claim": "Recovery session_id persisted to disk in cached path", "attack": "Trace recover() with warm cache, verify test assertion", "evidence": "Cached sync at line 609-613 present; test_recover_from_session_detached asserts ws.session_id == 'new-session'; test passes", "outcome": "defeated", "severity": "low", "blocking": false}
+      ],
+      "findings": [],
+      "disposition": "admitted"
+    }
+  ],
+  "builder_responses": [
+    {
+      "round_number": 1,
+      "repaired_findings": ["R1-B1", "R1-B2", "R1-B3", "R1-B4", "R1-B5", "R1-B6", "R1-B7", "R1-B8", "R1-B10", "R1-B11", "R1-B12", "R1-B13", "R1-B14", "R1-B15", "R1-B16", "R1-B17", "R1-B18", "R1-B19", "R1-B20"],
+      "changed_paths": ["rig_relay/workspace/_service.py", "rig_relay/workspace/_recovery.py", "rig_relay/workspace/_evidence.py", "rig_relay/workspace/_digest.py", "rig_relay/workspace/_projection.py", "rig_relay/workspace/models.py", "docs/schemas/rig.relay.fleet_workspace_projection.v1.schema.json", "docs/schemas/rig.relay.workspace_lifecycle_event.v1.schema.json", "tests/workspace/test_managed_workspace.py"],
+      "validation_rerun": ["uv run pyright rig_relay/workspace/", "uv run pytest tests/workspace/ -x -v --timeout=60", "uv run ruff check rig_relay/workspace/", "uv run python scripts/rig_relay_validate_schemas.py"]
+    },
+    {
+      "round_number": 2,
+      "repaired_findings": ["R2-B1", "R2-B2", "R2-B3", "R2-B4", "R2-B5", "R2-B6", "R2-B7", "R2-B8"],
+      "changed_paths": ["rig_relay/workspace/_service.py", "rig_relay/workspace/_recovery.py", "rig_relay/workspace/_projection.py", "tests/workspace/test_managed_workspace.py"],
+      "validation_rerun": ["uv run pyright rig_relay/workspace/", "uv run pytest tests/workspace/ -x -v --timeout=60"]
+    },
+    {
+      "round_number": 3,
+      "repaired_findings": ["R3-B1"],
+      "changed_paths": ["rig_relay/workspace/_service.py", "tests/workspace/test_managed_workspace.py"],
+      "validation_rerun": ["uv run pyright rig_relay/workspace/", "uv run pytest tests/workspace/ -x -v --timeout=60"]
+    },
+    {
+      "round_number": 4,
+      "repaired_findings": [],
+      "changed_paths": [],
+      "validation_rerun": ["uv run pyright rig_relay/workspace/", "uv run pytest tests/workspace/ -x -v --timeout=60"]
+    }
+  ],
+  "final_admission": {
+    "admitted_candidate_digest": "sha256:y1-managed-workspace-and-recovery-authority",
+    "admitted_boundary": "ManagedAgentWorkspaceAndRecoveryAuthority",
+    "permitted_consumer_purpose": "Backend service with functional lifecycle state machine, recovery detection engine, event-chained append-only ledger, and unified content-light projection builder",
+    "unclaimed_capabilities": ["Desktop Gridline Interface wiring", "Fleet claim corridor live integration", "Cold-cache recovery", "Per-workspace ledger sharding", "Authorization layer", "Stale session timeout"],
+    "deferred_seams": ["Desktop gridline consumption (FleetWorkspacesSurfaceProjection)", "Fleet claim state wiring", "Cold-cache recovery robustness", "Authorization receipt gating", "Path reservation integration with CoordinationStore"],
+    "review_round_count": 4,
+    "push_authorized": false
+  },
+  "status": "prepublication_admitted"
+}

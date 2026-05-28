@@ -538,11 +538,6 @@ class FleetClaimProtocol:
                     base_sha256[p] = file_sha256(rp)
 
             now = _now_iso()
-            from datetime import UTC, datetime, timedelta
-
-            expires = (
-                datetime.now(tz=UTC) + timedelta(minutes=ttl_minutes)
-            ).isoformat()
             event = FleetClaimEvent(
                 event_id="",
                 event_kind=FleetClaimEventKind.CLAIM_ACQUIRED,

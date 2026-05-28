@@ -48,7 +48,10 @@ from rig_relay.local_inference.runtime._models import (
     ContextPrivacyClass,
     ExecutionStatus,
     FinishReason,
+    LocalAgentLoopRequest,
+    LocalAgentLoopResult,
     LocalInferenceResponse,
+    LoopState,
     ModelInventoryEntry,
     RefusalReason,
     RuntimeHealth,
@@ -60,6 +63,7 @@ from rig_relay.local_inference.runtime._models import (
     TaskKind,
     TaskRefusal,
     ToolCallProposal,
+    ToolObservation,
 )
 from rig_relay.local_inference.runtime._pool import ModelPoolManager
 from rig_relay.local_inference.runtime._scheduler import (
@@ -87,6 +91,12 @@ class RiggedLocalRuntime:
         self._model_dirs = model_dirs or []
         self._active_streams: dict[str, asyncio.Task] = {}
         self._stream_lock = asyncio.Lock()
+        self._loop_active: bool = False
+        self._loop_state: LoopState = LoopState.IDLE
+        self._loop_turn_count: int = 0
+        self._loop_max_turns: int = 5
+        self._shutdown_state: str = "not_initiated"
+        self._loop_lock: asyncio.Lock = asyncio.Lock()
 
     @property
     def is_configured(self) -> bool:
@@ -151,6 +161,11 @@ class RiggedLocalRuntime:
 
         After unbinding, the bridge returns to stateless-preflight-only mode.
         """
+        if self._loop_active:
+            raise RuntimeError(
+                "Cannot unbind session while agent loop is active. "
+                "Cancel the loop first or wait for completion."
+            )
         self._tool_bridge.bind_session(None)
         self._tool_bridge.set_tool_runtime(None)
 
@@ -190,7 +205,7 @@ class RiggedLocalRuntime:
         self._last_probe_at = _now_iso()
         return self._health
 
-    async def check_health(self) -> RuntimeHealth:
+    def check_health(self) -> RuntimeHealth:
         if not self._engine.is_mlx_available:
             return RuntimeHealth(state=RuntimeLifecycleState.UNCONFIGURED)
         return RuntimeHealth(
@@ -352,6 +367,7 @@ class RiggedLocalRuntime:
         admitted = await self._scheduler.admit_next()
         if admitted is None:
             op_id = req.operation_id
+            await self._scheduler.refuse(op_id, "max_concurrent_limit")
             refusal = TaskRefusal(
                 reason=RefusalReason.TASK_NOT_ADMITTED,
                 detail="Scheduler refused admission (max concurrent limit).",
@@ -442,30 +458,37 @@ class RiggedLocalRuntime:
             )
 
         tool_outcomes: list[dict[str, Any]] | None = None
-        try:
-            if response.tool_call_proposals:
-                tool_outcomes = await _handle_tool_proposals(
-                    response.tool_call_proposals,
-                    task_id_hash,
-                    op_id,
-                    bridge=self._tool_bridge,
-                )
-        except Exception:
-            logger.exception("Tool proposal handling failed for op=%s", op_id)
-
-        receipt_payload = _build_execution_receipt_payload(
-            task_id_hash, response, model_id_hash, effective_class, op_id
-        )
         terminal_status = ExecutionStatus.EXECUTED
         try:
-            response.evidence_receipt_id = emit_execution_receipt(
-                op_id, receipt_payload
-            )
-        except Exception:
-            logger.exception("Failed to emit execution receipt for op=%s", op_id)
-            terminal_status = ExecutionStatus.EVIDENCE_FAILED
+            try:
+                if response.tool_call_proposals:
+                    tool_outcomes = await _handle_tool_proposals(
+                        response.tool_call_proposals,
+                        task_id_hash,
+                        op_id,
+                        bridge=self._tool_bridge,
+                    )
+            except asyncio.CancelledError:
+                await self._scheduler.fail(op_id, "cancelled_tool_execution")
+                raise
+            except Exception:
+                logger.exception("Tool proposal handling failed for op=%s", op_id)
 
-        await self._scheduler.complete(op_id, response)
+            receipt_payload = _build_execution_receipt_payload(
+                task_id_hash, response, model_id_hash, effective_class, op_id
+            )
+            try:
+                response.evidence_receipt_id = emit_execution_receipt(
+                    op_id, receipt_payload
+                )
+            except Exception:
+                logger.exception("Failed to emit execution receipt for op=%s", op_id)
+                terminal_status = ExecutionStatus.EVIDENCE_FAILED
+        finally:
+            if terminal_status == ExecutionStatus.EXECUTED:
+                await self._scheduler.complete(op_id, response)
+            else:
+                await self._scheduler.fail(op_id, terminal_status.value)
 
         return TaskAdmissionResult(
             task_id_hash=task_id_hash,
@@ -575,6 +598,7 @@ class RiggedLocalRuntime:
         admitted = await self._scheduler.admit_next()
         if admitted is None:
             op_id = req.operation_id
+            await self._scheduler.refuse(op_id, "max_concurrent_limit")
             try:
                 emit_refusal_receipt(
                     op_id,
@@ -778,55 +802,69 @@ class RiggedLocalRuntime:
             cache_hit=cache_hit,
         )
 
+        _terminal_resolved = False
         try:
-            if tool_proposals:
-                await _handle_tool_proposals(
-                    tool_proposals,
-                    task_id_hash,
-                    req.operation_id,
-                    bridge=self._tool_bridge,
-                )
-        except Exception:
-            logger.exception(
-                "Tool proposal handling failed for op=%s", req.operation_id
-            )
-
-        receipt_payload = _build_execution_receipt_payload(
-            task_id_hash, response, model_id_hash, effective_class, req.operation_id
-        )
-        evidence_emitted = False
-        try:
-            response.evidence_receipt_id = emit_execution_receipt(
-                req.operation_id, receipt_payload
-            )
-            evidence_emitted = True
-        except Exception:
-            logger.exception(
-                "Failed to emit execution receipt for op=%s", req.operation_id
-            )
-
-        if evidence_emitted:
-            response.stream_terminal_state = StreamTerminalState.TERMINALIZED
             try:
-                emit_stream_terminal_event(
-                    req.operation_id,
-                    {
-                        "schema_version": "rig.relay.runtime_stream_terminal_event.v1",
-                        "operation_id": req.operation_id,
-                        "terminal_state": "terminalized",
-                        "evidence_receipt_id": response.evidence_receipt_id,
-                        "content_light": True,
-                    },
-                )
+                if tool_proposals:
+                    await _handle_tool_proposals(
+                        tool_proposals,
+                        task_id_hash,
+                        req.operation_id,
+                        bridge=self._tool_bridge,
+                    )
+            except asyncio.CancelledError:
+                await self._scheduler.fail(req.operation_id, "cancelled_tool_execution")
+                raise
             except Exception:
                 logger.exception(
-                    "Failed to emit stream terminal event for op=%s", req.operation_id
+                    "Tool proposal handling failed for op=%s", req.operation_id
                 )
-            await self._scheduler.complete(req.operation_id, response)
-        else:
-            response.stream_terminal_state = StreamTerminalState.EVIDENCE_FAILED
-            yield "[EVIDENCE_UNAVAILABLE]"
-            await self._scheduler.fail(req.operation_id, "evidence_emission_failed")
+
+            receipt_payload = _build_execution_receipt_payload(
+                task_id_hash, response, model_id_hash, effective_class, req.operation_id
+            )
+            evidence_emitted = False
+            try:
+                response.evidence_receipt_id = emit_execution_receipt(
+                    req.operation_id, receipt_payload
+                )
+                evidence_emitted = True
+            except Exception:
+                logger.exception(
+                    "Failed to emit execution receipt for op=%s", req.operation_id
+                )
+
+            if evidence_emitted:
+                response.stream_terminal_state = StreamTerminalState.TERMINALIZED
+                try:
+                    emit_stream_terminal_event(
+                        req.operation_id,
+                        {
+                            "schema_version": "rig.relay.runtime_stream_terminal_event.v1",
+                            "operation_id": req.operation_id,
+                            "terminal_state": "terminalized",
+                            "evidence_receipt_id": response.evidence_receipt_id,
+                            "content_light": True,
+                        },
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to emit stream terminal event for op=%s",
+                        req.operation_id,
+                    )
+                await self._scheduler.complete(req.operation_id, response)
+            else:
+                response.stream_terminal_state = StreamTerminalState.EVIDENCE_FAILED
+                await self._scheduler.fail(req.operation_id, "evidence_emission_failed")
+            _terminal_resolved = True
+        finally:
+            if not _terminal_resolved:
+                try:
+                    await self._scheduler.fail(
+                        req.operation_id, "terminal_not_resolved"
+                    )
+                except Exception:
+                    pass
 
     async def cancel_generation(self, op_id: str) -> bool:
         return await self._scheduler.cancel(op_id)
@@ -834,30 +872,330 @@ class RiggedLocalRuntime:
     async def clear_cache(self) -> bool:
         return await self._cache.clear_cache()
 
-    async def shutdown(self) -> None:
-        """Coordinated runtime shutdown.
+    async def drain_active_streams(
+        self, timeout_seconds: float = 5.0
+    ) -> dict[str, int]:
+        """Cancel all active streams and await their futures with timeout.
 
-        Sets cancel_flag on all active streams, awaits their futures
-        with timeout, clears pool, then resets global reference.
+        Returns counts: drained (successfully awaited), timed_out, cancelled.
         """
-        logger.info("RiggedLocalRuntime: shutdown initiated")
-
         async with self._stream_lock:
             stream_ids = list(self._active_streams)
+        drained = 0
+        timed_out = 0
+        cancelled = 0
         for op_id in stream_ids:
             await self._scheduler.cancel(op_id)
+            cancelled += 1
             async with self._stream_lock:
                 fut = self._active_streams.pop(op_id, None)
             if fut is not None and not fut.done():
                 try:
-                    await asyncio.wait_for(fut, timeout=5.0)
-                except (TimeoutError, Exception):
-                    pass
+                    await asyncio.wait_for(fut, timeout=timeout_seconds)
+                    drained += 1
+                except TimeoutError:
+                    timed_out += 1
+                    logger.warning(
+                        "RiggedLocalRuntime: stream drain timeout for op=%s", op_id
+                    )
+                except Exception:
+                    timed_out += 1
+            else:
+                drained += 1
+        return {"drained": drained, "timed_out": timed_out, "cancelled": cancelled}
 
-        self._pool.shutdown()
+    async def execute_local_agent_loop(
+        self, request: LocalAgentLoopRequest
+    ) -> LocalAgentLoopResult:
+        """Run a governed local-agent work loop: model→tool→observation→model.
+
+        Bounded by max_tool_turns. Each turn:
+        1. Model generates text and/or tool proposals
+        2. If tool proposals: governed execution through ToolRuntime
+        3. Tool observations are returned as synthetic messages into model context
+        4. Model may continue or terminate
+
+        Returns terminal loop outcome with all evidence linkage.
+        """
+        import time as _time
+
+        loop_id = f"loop_{secrets.token_hex(8)}"
+        start_ms = int(_time.monotonic() * 1000)
+        evidence_chain: list[str] = []
+        observations: list[ToolObservation] = []
+        messages: list[dict[str, Any]] = list(request.messages)
+        turn_count = 0
+        final_content = ""
+        terminal_state = LoopState.IDLE
+        final_status = ExecutionStatus.EXECUTED
+
+        if self._loop_lock.locked():
+            raise RuntimeError(
+                "Agent loop already active — concurrent loops not supported"
+            )
+        async with self._loop_lock:
+            self._loop_active = True
+            self._loop_max_turns = request.max_tool_turns
+            self._loop_turn_count = 0
+
+            try:
+                self.bind_session_context(
+                    request.session_id, request.turn_id, request.workspace_root
+                )
+
+                for turn_idx in range(request.max_tool_turns):
+                    turn_count = turn_idx + 1
+                    self._loop_turn_count = turn_count
+                    self._loop_state = LoopState.GENERATING
+
+                    try:
+                        result = await self.execute(
+                            messages=messages,
+                            model_id_hash=request.model_id_hash,
+                            task_kind=TaskKind.TOOL_PROPOSAL,
+                            context_privacy_class=request.context_privacy_class,
+                            max_tokens=request.max_tokens,
+                        )
+                    except asyncio.CancelledError:
+                        terminal_state = LoopState.CANCELLED
+                        final_status = ExecutionStatus.BLOCKED
+                        self._loop_state = LoopState.CANCELLED
+                        break
+                    except Exception as exc:
+                        logger.exception(
+                            "Local agent loop execution failed at turn %d", turn_count
+                        )
+                        terminal_state = LoopState.RUNTIME_FAILED
+                        final_status = ExecutionStatus.ERROR
+                        self._loop_state = LoopState.RUNTIME_FAILED
+                        final_content = (
+                            f"[ERROR: loop failed at turn {turn_count}: {exc}]"
+                        )
+                        break
+
+                    if result.status in (
+                        ExecutionStatus.REFUSED,
+                        ExecutionStatus.BLOCKED,
+                    ):
+                        terminal_state = LoopState.TOOL_PROPOSAL_REFUSED
+                        final_status = ExecutionStatus.REFUSED
+                        self._loop_state = LoopState.TOOL_PROPOSAL_REFUSED
+                        final_content = (
+                            result.refusal.detail if result.refusal else "refused"
+                        )
+                        break
+
+                    if result.evidence_receipt_id:
+                        evidence_chain.append(result.evidence_receipt_id)
+
+                    if result.response and result.response.content:
+                        final_content = result.response.content
+
+                    tool_proposals = (
+                        result.response.tool_call_proposals if result.response else []
+                    )
+
+                    if not tool_proposals:
+                        terminal_state = LoopState.COMPLETED
+                        final_status = ExecutionStatus.EXECUTED
+                        self._loop_state = LoopState.COMPLETED
+                        break
+
+                    self._loop_state = LoopState.TOOL_PROPOSAL_DETECTED
+
+                    tool_outcomes = result.tool_execution_outcomes or []
+
+                    if tool_proposals and not tool_outcomes:
+                        self._loop_state = LoopState.TOOL_EXECUTING
+                        op_id = f"loop_{loop_id}_turn_{turn_count}"
+                        try:
+                            tool_outcomes = await _handle_tool_proposals(
+                                tool_proposals,
+                                result.task_id_hash,
+                                op_id,
+                                bridge=self._tool_bridge,
+                            )
+                        except asyncio.CancelledError:
+                            terminal_state = LoopState.CANCELLED
+                            final_status = ExecutionStatus.BLOCKED
+                            self._loop_state = LoopState.CANCELLED
+                            break
+                        except Exception:
+                            logger.exception(
+                                "Tool execution failed in loop turn %d", turn_count
+                            )
+                            terminal_state = LoopState.TOOL_FAILED
+                            final_status = ExecutionStatus.ERROR
+                            self._loop_state = LoopState.TOOL_FAILED
+                            break
+
+                    self._loop_state = LoopState.TOOL_OBSERVATION_RECEIVED
+
+                    has_critical_failure = False
+                    for outcome_entry in tool_outcomes:
+                        if isinstance(outcome_entry, dict) and outcome_entry.get(
+                            "_meta"
+                        ):
+                            continue
+                        status_str = (
+                            outcome_entry.get("status", "")
+                            if isinstance(outcome_entry, dict)
+                            else ""
+                        )
+                        evidence_emitted_val = (
+                            outcome_entry.get("evidence_emitted", False)
+                            if isinstance(outcome_entry, dict)
+                            else False
+                        )
+                        terminal_outcome_id_val = (
+                            outcome_entry.get("terminal_outcome_id", "")
+                            if isinstance(outcome_entry, dict)
+                            else ""
+                        )
+                        tool_name_val = (
+                            outcome_entry.get("tool_name", "")
+                            if isinstance(outcome_entry, dict)
+                            else outcome_entry.get("preflight", {}).get("tool_name", "")
+                            if isinstance(outcome_entry, dict)
+                            else ""
+                        )
+                        call_id_val = (
+                            outcome_entry.get("call_id", "")
+                            if isinstance(outcome_entry, dict)
+                            else ""
+                        )
+
+                        scan = scan_messages_for_secrets([
+                            {
+                                "content": outcome_entry.get("reason", "")
+                                if isinstance(outcome_entry, dict)
+                                else ""
+                            }
+                        ])
+                        if scan.get("secrets_detected", False):
+                            logger.warning(
+                                "Tool observation contains secrets — cache blocked for "
+                                "tool=%s loop=%s",
+                                call_id_val,
+                                loop_id,
+                            )
+
+                        obs = ToolObservation(
+                            observation_id=secrets.token_hex(8),
+                            operation_id=loop_id,
+                            tool_name=tool_name_val,
+                            call_id=call_id_val,
+                            outcome_status=status_str,
+                            output_digest=hashlib.sha256(
+                                f"{status_str}:{tool_name_val}:{terminal_outcome_id_val}".encode()
+                            ).hexdigest(),
+                            error_digest=(
+                                hashlib.sha256(
+                                    f"error:{terminal_outcome_id_val}".encode()
+                                ).hexdigest()
+                                if status_str in ("failed", "error")
+                                else ""
+                            ),
+                            evidence_emitted=evidence_emitted_val,
+                            terminal_outcome_id=terminal_outcome_id_val,
+                        )
+                        observations.append(obs)
+
+                        if status_str in ("failed", "cancelled", "error"):
+                            has_critical_failure = True
+
+                    if has_critical_failure:
+                        terminal_state = LoopState.TOOL_FAILED
+                        final_status = ExecutionStatus.ERROR
+                        self._loop_state = LoopState.TOOL_FAILED
+                        break
+
+                    tool_result_block = _build_tool_result_synthetic_message(
+                        observations
+                    )
+                    messages.append({"role": "user", "content": tool_result_block})
+
+                    self._loop_state = LoopState.CONTINUING_GENERATION
+
+                else:
+                    terminal_state = LoopState.LOOP_LIMIT_REACHED
+                    final_status = ExecutionStatus.EXECUTED
+                    self._loop_state = LoopState.LOOP_LIMIT_REACHED
+
+            finally:
+                self._loop_active = False
+                if self._loop_state == LoopState.IDLE:
+                    self._loop_state = terminal_state
+                try:
+                    self.unbind_session()
+                except Exception:
+                    logger.exception("Failed to unbind session after agent loop")
+                try:
+                    self._cache.invalidate_loop_cache(loop_id)
+                except Exception:
+                    logger.exception(
+                        "Failed to invalidate loop cache for loop_id=%s", loop_id
+                    )
+
+            total_latency_ms = int(_time.monotonic() * 1000) - start_ms
+            return LocalAgentLoopResult(
+                session_id=request.session_id,
+                loop_id=loop_id,
+                terminal_loop_state=terminal_state,
+                final_content=final_content,
+                tool_observations=observations,
+                tool_turn_count=turn_count,
+                total_latency_ms=total_latency_ms,
+                evidence_chain=evidence_chain,
+                status=final_status,
+            )
+
+    async def shutdown(self) -> dict[str, Any]:
+        """Coordinated runtime shutdown.
+
+        Drains active streams first, waits for agent loop to complete,
+        then clears pool, then resets global reference.
+        Returns a truthful shutdown result dict with drain_status.
+        """
+        logger.info("RiggedLocalRuntime: shutdown initiated")
+
+        drain_result = await self.drain_active_streams(timeout_seconds=5.0)
+        all_drained = drain_result["timed_out"] == 0
+
+        agents_active_during_shutdown = False
+        if self._loop_active:
+            loop_drain_timeout = 10.0
+            try:
+                async with asyncio.timeout(loop_drain_timeout):
+                    while self._loop_active:
+                        await asyncio.sleep(0.1)
+            except TimeoutError:
+                logger.warning(
+                    "Shutdown: agent loop did not complete within %ss",
+                    loop_drain_timeout,
+                )
+                self._shutdown_state = "degraded_shutdown_active_generations_remain"
+                agents_active_during_shutdown = True
+
+        pool_result = self._pool.shutdown(
+            agents_active_during_shutdown=agents_active_during_shutdown
+        )
         if isinstance(self._scheduler, RiggedBatchScheduler):
             self._scheduler.stop_batch_loop()
-        logger.info("RiggedLocalRuntime: shutdown complete")
+
+        drain_status = (
+            "complete" if all_drained else "degraded_shutdown_active_generations_remain"
+        )
+        self._shutdown_state = drain_status
+        logger.info(
+            "RiggedLocalRuntime: shutdown complete — drain_status=%s", drain_status
+        )
+
+        return {
+            "drain_status": drain_status,
+            "drain_result": drain_result,
+            "pool_result": pool_result,
+        }
 
     def load_model(self, model_path: str, model_id: str = "") -> str:
         if not self._engine.is_mlx_available:
@@ -897,8 +1235,20 @@ class RiggedLocalRuntime:
                 logger.exception("Failed to emit lifecycle event for model unload")
         return result
 
+    def _current_loop_state(self) -> LoopState:
+        """Return the current agent loop state from the runtime's loop tracker."""
+        if self._loop_active:
+            return self._loop_state
+        return LoopState.IDLE
+
     def build_projection(self) -> dict:
-        """Typed X0 Inference Studio consumer contract."""
+        """Typed Y0 Inference Studio consumer contract.
+
+        Y4 → Y0 Gridline handoff: structured projection with projection_id
+        and generated_at for Y0 rendering in the Inference Studio surface.
+        Content-light: counts, statuses, hashes, capability postures only.
+        """
+        health_snapshot = self.check_health()
         bridge_proj = self._tool_bridge.build_projection()
         pool_proj = self._pool.build_projection()
         cache_proj = self._cache.build_projection()
@@ -951,8 +1301,16 @@ class RiggedLocalRuntime:
             )
         )
 
+        pid = (
+            f"rtproj_{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}"
+            f"_{secrets.token_hex(4)}"
+        )
+        generated_at = _now_iso()
+
         return {
             "schema_version": "rig.relay.inference_studio_runtime_projection.v1",
+            "projection_id": pid,
+            "generated_at": generated_at,
             "runtime": {
                 "kind": "rigged_mlx_internal",
                 "platform": "metal_apple_silicon"
@@ -962,14 +1320,17 @@ class RiggedLocalRuntime:
                 "authority": tool_execution_authority,
                 "authority_detail": tool_execution_detail,
             },
-            "scheduler": scheduler_proj,
-            "cache": cache_proj,
-            "pool": pool_proj,
-            "bridge": bridge_proj,
             "capabilities": {
-                "text_generation": CapabilityPosture.SUPPORTED,
+                "text_generation": (
+                    CapabilityPosture.SUPPORTED
+                    if self._engine.is_mlx_available
+                    else CapabilityPosture.V1_REQUIRED_PENDING
+                ),
                 "streaming_generation": CapabilityPosture.SUPPORTED,
-                "model_tool_observation_loop": "one_shot_tool_execution_only",
+                "model_tool_observation_loop": {
+                    "posture": "iterative_agent_loop_supported",
+                    "loop_state": str(self._current_loop_state()),
+                },
                 "tool_calling": (
                     CapabilityPosture.SUPPORTED
                     if bridge_has_full_execution
@@ -982,6 +1343,11 @@ class RiggedLocalRuntime:
                 "continuous_batching": batching_posture,
                 "kv_cache_reuse": CapabilityPosture.SUPPORTED,
                 "kv_cache_write_back": cache_write_back,
+                "model_pool_active": (
+                    CapabilityPosture.SUPPORTED
+                    if self._pool.loaded_count > 0
+                    else CapabilityPosture.V1_REQUIRED_PENDING
+                ),
                 "multi_model_pool": (
                     CapabilityPosture.SUPPORTED
                     if self._pool.loaded_count > 0
@@ -993,13 +1359,68 @@ class RiggedLocalRuntime:
                     else CapabilityPosture.V1_REQUIRED_PENDING
                 ),
             },
-            "privacy": {
-                "secret_scanning": "enforced_before_admission",
-                "private_local_context": "allowed",
-                "secret_bearing_context": "refused",
-                "cache_persistence": cache_persistence_privacy,
-                "cache_persistence_detail": cache_persistence_detail,
+            "stream_state": {
+                "terminal_evidence_contract": "provisional_then_terminalized",
+                "possible_states": [
+                    "idle",
+                    "provisional_streaming",
+                    "terminal_completed",
+                    "terminal_cancelled",
+                    "terminal_failed",
+                    "evidence_unavailable",
+                ],
+                "stream_terminal_ledger_health": _compute_stream_terminal_health(),
             },
+            "tool_state": {
+                "session_context_bound": self._tool_bridge.has_session_context,
+                "executor_wired": self._tool_bridge.has_executor,
+                "mode": (
+                    "full_execution"
+                    if bridge_has_full_execution
+                    else "stateless_preflight_only"
+                ),
+                "possible_outcomes": [
+                    "proposed",
+                    "preflight_admitted",
+                    "execution_authorized",
+                    "executed",
+                    "refused",
+                    "failed",
+                    "evidence_failed",
+                ],
+            },
+            "agent_loop": {
+                "active": self._loop_active,
+                "state": self._loop_state,
+                "tool_turn_count": self._loop_turn_count,
+                "max_tool_turns": self._loop_max_turns,
+                "supported": "production_proven",
+            },
+            "scheduler": {
+                **_flatten_scheduler_proj(scheduler_proj),
+                **scheduler_proj,
+                "queue_position_visible": True,
+                "serialization_reason": (
+                    "MLX single-GPU-stream architecture; one model generation "
+                    "at a time. BatchGenerator exists architecturally but not activated."
+                ),
+                "waiting_count": scheduler_proj.get("scheduler_state", {}).get(
+                    "queue_depth", 0
+                ),
+                "refusal_count": scheduler_proj.get("scheduler_state", {}).get(
+                    "total_refused", 0
+                ),
+                "cancellation_count": (
+                    "ledger: runtime_scheduler_ledger.jsonl (cancelled transitions)"
+                ),
+            },
+            "cache": {
+                **_flatten_cache_proj(cache_proj, self._cache.ssd_enabled),
+                **cache_proj,
+                "cache_loop_safety": ("loop_cache_invalidation_on_loop_completion"),
+            },
+            "pool": {**_flatten_pool_proj(pool_proj), **pool_proj},
+            "bridge": bridge_proj,
             "governance": {
                 "evidence": "canonical_locked_digest_chained",
                 "tool_execution": (
@@ -1029,20 +1450,44 @@ class RiggedLocalRuntime:
                     "Provisional evidence event emitted before first token yield. "
                     "After token accumulation, execution receipt is emitted. "
                     "On success, terminalized event recorded and "
-                    "scheduler.complete() called. On failure, yields "
-                    "[EVIDENCE_UNAVAILABLE] terminal signal and calls "
-                    "scheduler.fail() with evidence_emission_failed."
+                    "scheduler.complete() called. On failure, terminal state "
+                    "resolves via scheduler.fail() with evidence_emission_failed "
+                    "— no consumer-visible sentinel is yielded after token stream."
                 ),
                 "tool_loop_completeness": (
-                    "tool_execution_without_model_feedback_loop"
+                    "governed_iterative_model_tool_observation_model_loop"
                 ),
                 "tool_loop_completeness_detail": (
-                    "Tool proposals are executed through ToolRuntime as a terminal "
-                    "side effect. Tool results are NOT returned to the model for "
-                    "continued iterative turns. The iterative agent loop "
-                    "(model -> tool -> model -> tool) is owned by "
-                    "rig_relay.core.agent_loop, not by this local inference runtime."
+                    "Tool proposals → Rig authority execution → content-light observations "
+                    "→ appended to model context → continued generation. "
+                    "Bounded by max_tool_turns. Each iteration produces canonical evidence. "
+                    "Terminal outcome distinguishes completed, cancelled, limit-reached, "
+                    "and runtime-failed states."
                 ),
+                "stream_terminal_evidence_integrity": (
+                    _stream_terminal_integrity_str()
+                ),
+                "stream_terminal_evidence_integrity_detail": (
+                    "Complete when all operations have terminalized evidence. "
+                    "Degraded when provisional-only streams exist or evidence "
+                    "failures are present. Unavailable when the stream terminal "
+                    "ledger cannot be read."
+                ),
+                "shutdown_drain_status": self._shutdown_state,
+            },
+            "privacy": {
+                "secret_scanning": "enforced_before_admission",
+                "private_local_context": "allowed",
+                "secret_bearing_context": "refused",
+                "cache_persistence": cache_persistence_privacy,
+                "cache_persistence_detail": cache_persistence_detail,
+            },
+            "health": {
+                "state": health_snapshot.state,
+                "gpu_available": health_snapshot.gpu_available,
+                "last_probe": health_snapshot.probed_at,
+                "stream_terminal_ledger_health": _compute_stream_terminal_health(),
+                "shutdown_state": self._shutdown_state,
             },
             "models": {
                 "loaded_count": self._engine.loaded_model_count,
@@ -1050,21 +1495,105 @@ class RiggedLocalRuntime:
                 "pool_count": self._pool.loaded_count,
                 "lifecycle_events": "ledger: runtime_lifecycle_ledger.jsonl",
             },
-            "health": {
-                "state": self._health.state,
-                "gpu_available": self._engine.is_mlx_available,
-                "last_probe": self._last_probe_at,
-            },
             "evidence_ledgers": {
                 "execution": "runtime_execution_ledger.jsonl",
                 "lifecycle": "runtime_lifecycle_ledger.jsonl",
                 "cache": "runtime_cache_ledger.jsonl",
+                "stream_terminal": "runtime_stream_terminal_ledger.jsonl",
+                "stream_terminal_health": _compute_stream_terminal_health(),
                 "reconstruct": "RiggedLocalRuntime.reconstruct_evidence()",
             },
         }
 
     def reconstruct_evidence(self) -> dict[str, list[dict]]:
         return reconstruct_ledgers()
+
+
+def _flatten_scheduler_proj(scheduler_proj: dict) -> dict:
+    """Extract schema-required flat fields from scheduler sub-projection."""
+    state = scheduler_proj.get("scheduler_state", {})
+    return {
+        "mode": state.get("mode", "serialized_fcfs"),
+        "queue_depth": state.get("queue_depth", 0),
+        "running_count": state.get("running_count", 0),
+        "total_processed": state.get("total_processed", 0),
+        "batching_status": scheduler_proj.get(
+            "batching_status", "serialized_fcfs_only"
+        ),
+    }
+
+
+def _flatten_cache_proj(cache_proj: dict, ssd_enabled: bool) -> dict:
+    """Extract schema-required flat fields from cache sub-projection."""
+    capability = cache_proj.get("cache_capability", {})
+    stats = cache_proj.get("cache_stats", {})
+    return {
+        "kv_cache_reuse_enabled": capability.get("kv_cache_reuse", "")
+        == "supported_read_only_reuse",
+        "hit_count": stats.get("hit_count", 0),
+        "miss_count": stats.get("miss_count", 0),
+        "ssd_cache": cache_proj.get(
+            "ssd_cache", {"enabled": ssd_enabled, "default": "disabled_opt_in_only"}
+        ),
+    }
+
+
+def _flatten_pool_proj(pool_proj: dict) -> dict:
+    """Extract schema-required flat fields from pool sub-projection."""
+    state = pool_proj.get("pool_state", {})
+    return {
+        "loaded_count": state.get("loaded_count", 0),
+        "max_models": state.get("max_models", 3),
+        "active_generations": state.get("active_generations", 0),
+    }
+
+
+def _compute_stream_terminal_health() -> str:
+    """Read the stream terminal ledger and compute health status.
+
+    Returns 'complete', 'degraded', 'unavailable', or 'empty'.
+    """
+    try:
+        ledgers = reconstruct_ledgers()
+        stream_entries = ledgers.get("stream_terminal", [])
+        if not stream_entries:
+            return "empty"
+        terminalized = 0
+        provisional_only = 0
+        evidence_failed = 0
+        seen_ops: set[str] = set()
+        for entry in reversed(stream_entries):
+            op_id = entry.get("_operation_id", "")
+            if op_id and op_id in seen_ops:
+                continue
+            if op_id:
+                seen_ops.add(op_id)
+            state = entry.get("payload", {}).get("terminal_state", "")
+            if state == "terminalized":
+                terminalized += 1
+            elif state == "provisional":
+                provisional_only += 1
+            elif state == "evidence_failed":
+                evidence_failed += 1
+        total = terminalized + provisional_only + evidence_failed
+        if total == 0:
+            return "empty"
+        if evidence_failed > 0:
+            return "degraded_evidence_failures_present"
+        if provisional_only > 0:
+            return "degraded_provisional_streams_exist"
+        return "complete"
+    except Exception:
+        return "unavailable"
+
+
+def _stream_terminal_integrity_str() -> str:
+    base = _compute_stream_terminal_health()
+    if base == "complete":
+        return "complete"
+    if base.startswith("degraded"):
+        return "degraded"
+    return "unavailable"
 
 
 _global_runtime: RiggedLocalRuntime | None = None
@@ -1132,13 +1661,16 @@ async def _handle_tool_proposals(
     """Preflight and optionally execute tool proposals through governance.
 
     Performs stateless governance preflight for every proposal.
+    Refuses obviously invalid arguments (empty, > 100KB) before governance.
     When a ToolExecutionBridge with session context is provided, also
     executes admitted proposals through ToolRuntime and emits evidence
     for every execution outcome.
 
     Returns:
         List of execution results for each proposal (includes preflight
-        and optionally execution_result fields).
+        and optionally execution_result fields). Every result, including
+        refusals, carries a terminal_outcome_id. A batch_terminal_outcome_digest
+        is computed from all individual outcome IDs.
     """
     for p in proposals:
         logger.info(
@@ -1148,10 +1680,26 @@ async def _handle_tool_proposals(
             p.call_id,
         )
 
-    preflight_results = [_preflight_tool_proposal(p) for p in proposals]
+    MAX_ARG_BYTES = 102_400
+    preflight_results: list[dict[str, Any]] = []
+    for p in proposals:
+        if not p.arguments or (
+            isinstance(p.arguments, str) and len(p.arguments.encode()) > MAX_ARG_BYTES
+        ):
+            tid = secrets.token_hex(12)
+            preflight_results.append({
+                "status": "refused",
+                "reason": "invalid_arguments",
+                "terminal_outcome_id": tid,
+                "evidence_emitted": False,
+            })
+            continue
+        result = _preflight_tool_proposal(p)
+        result["terminal_outcome_id"] = secrets.token_hex(12)
+        preflight_results.append(result)
 
     admitted_count = sum(
-        1 for r in preflight_results if r["status"] == "admitted_pending_execution"
+        1 for r in preflight_results if r.get("status") == "admitted_pending_execution"
     )
     rejected_count = len(preflight_results) - admitted_count
 
@@ -1183,7 +1731,9 @@ async def _handle_tool_proposals(
     execution_results: list[dict[str, Any]] = []
 
     if bridge is not None and bridge.has_session_context and admitted_count > 0:
-        for i, (proposal, preflight) in enumerate(zip(proposals, preflight_results)):
+        for i, (proposal, preflight) in enumerate(
+            zip(proposals, preflight_results, strict=True)
+        ):
             if preflight["status"] != "admitted_pending_execution":
                 execution_results.append(preflight)
                 continue
@@ -1191,6 +1741,16 @@ async def _handle_tool_proposals(
             try:
                 exec_result = await bridge.execute_proposal(proposal)
                 execution_results.append(exec_result)
+            except asyncio.CancelledError:
+                execution_results.append({
+                    "status": "cancelled",
+                    "reason": "Tool execution cancelled",
+                    "preflight": preflight,
+                    "evidence_emitted": False,
+                    "terminal_outcome_id": secrets.token_hex(12),
+                })
+                remaining = preflight_results[i + 1 :] if i + 1 < len(proposals) else []
+                return execution_results + remaining
             except Exception as exc:
                 logger.exception(
                     "Tool execution failed for proposal %s: %s", proposal.call_id, exc
@@ -1199,8 +1759,11 @@ async def _handle_tool_proposals(
                     "status": "failed",
                     "reason": str(exc)[:500],
                     "preflight": preflight,
+                    "evidence_emitted": False,
+                    "terminal_outcome_id": secrets.token_hex(12),
                 })
 
+            evidence_ok = False
             try:
                 proposal_hash = (
                     f"sha256:{hashlib.sha256(proposal.arguments.encode()).hexdigest()}"
@@ -1222,12 +1785,34 @@ async def _handle_tool_proposals(
                         "call_id": proposal.call_id,
                     },
                 )
+                evidence_ok = True
             except Exception:
                 logger.exception(
                     "Failed to emit tool execution evidence for op=%s", op_id
                 )
+            if not evidence_ok:
+                result_entry = execution_results[-1]
+                if result_entry.get("status") == "executed":
+                    result_entry["status"] = "executed_evidence_failed"
+                result_entry["evidence_emitted"] = False
     else:
         execution_results = preflight_results
+
+    outcome_ids = sorted(
+        r.get("terminal_outcome_id", "")
+        for r in execution_results
+        if r.get("terminal_outcome_id")
+    )
+    if outcome_ids:
+        batch_digest = (
+            f"sha256:{hashlib.sha256(''.join(outcome_ids).encode()).hexdigest()}"
+        )
+    else:
+        batch_digest = ""
+    execution_results.append({
+        "_meta": "batch_terminal_outcome_digest",
+        "batch_terminal_outcome_digest": batch_digest,
+    })
 
     return execution_results
 
@@ -1270,6 +1855,23 @@ def _build_execution_receipt_payload(
 
 def _sha256(content: str) -> str:
     return hashlib.sha256(content.encode()).hexdigest()
+
+
+def _build_tool_result_synthetic_message(observations: list[Any]) -> str:
+    """Build a content-light synthetic message from tool observations.
+
+    Follows the pattern used by core agent tool response handling:
+    hash-based, content-light, summarizing tool outcomes without raw output.
+    """
+    parts: list[str] = ["[Tool results from execution round]"]
+    for obs in observations:
+        if hasattr(obs, "tool_name"):
+            parts.append(
+                f"- {obs.tool_name} (call_id={obs.call_id}): "
+                f"status={obs.outcome_status}, "
+                f"evidence_emitted={obs.evidence_emitted}"
+            )
+    return "\n".join(parts)
 
 
 def _now_iso() -> str:

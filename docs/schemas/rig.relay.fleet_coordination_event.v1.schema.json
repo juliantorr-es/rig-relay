@@ -43,7 +43,9 @@
         "integration_accepted",
         "integration_refused_stale_base",
         "claim_released",
-        "work_parked"
+        "work_parked",
+        "workspace_claim_acquired",
+        "workspace_claim_released"
       ]
     },
     "mission_id": {

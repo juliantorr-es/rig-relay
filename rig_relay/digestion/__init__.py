@@ -41,6 +41,12 @@ from rig_relay.digestion.identity import (
     derive_worktree_identity_candidate,
     resolve_git_common_dir,
 )
+from rig_relay.digestion.incremental_compiler import (
+    ChangedFileObservation,
+    IncrementalContextCompiler,
+    IncrementalContextUpdate,
+    StaleAnnotation,
+)
 from rig_relay.digestion.instruction_scanner import (
     build_scope_map,
     discover_instructions,
@@ -72,6 +78,7 @@ from rig_relay.digestion.projections import (
     compute_harness_envelope_hint,
     compute_readiness_summary,
 )
+from rig_relay.digestion.quarantine import RepositoryQuarantineService
 from rig_relay.digestion.registration import RepositoryRegistrationService
 from rig_relay.digestion.registration_models import (
     RegisteredRepository,
@@ -103,6 +110,7 @@ from rig_relay.digestion.validation_detector import detect_validation_candidates
 
 __all__ = [
     "AssessedRisk",
+    "ChangedFileObservation",
     "CheckoutIdentity",
     "ClassifiedDependencies",
     "ContextProjectionService",
@@ -118,6 +126,8 @@ __all__ = [
     "ExecutionRiskAssessor",
     "ExecutionRiskReport",
     "ExecutionRiskSummary",
+    "IncrementalContextCompiler",
+    "IncrementalContextUpdate",
     "InstructionFile",
     "InstructionMapDigest",
     "InstructionScope",
@@ -135,6 +145,7 @@ __all__ = [
     "RepositoryIdentityCandidate",
     "RepositoryIntakeService",
     "RepositoryLifecycleState",
+    "RepositoryQuarantineService",
     "RepositoryRegistrationService",
     "RigApplicationPaths",
     "RiskCategory",
@@ -142,6 +153,7 @@ __all__ = [
     "SafeValidationResult",
     "ScriptRiskAssessment",
     "SourceCheckoutRecord",
+    "StaleAnnotation",
     "StructuralIndex",
     "StructuralIndexConfig",
     "StructuralIndexDigest",

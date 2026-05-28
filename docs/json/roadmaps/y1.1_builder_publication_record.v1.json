@@ -1,0 +1,158 @@
+{
+  "schema_version": "rig.relay.builder_publication_record.v1",
+  "generated_at": "2026-05-27T00:00:00Z",
+  "lane_id": "Y1.1",
+  "mission_id": "Y1.1-managed-workspace-session-recovery-integration-claim-authority",
+  "published_sha": "2e63cc8c",
+  "owned_files": [
+    "rig_relay/workspace/__init__.py",
+    "rig_relay/workspace/models.py",
+    "rig_relay/workspace/_config.py",
+    "rig_relay/workspace/_digest.py",
+    "rig_relay/workspace/_evidence.py",
+    "rig_relay/workspace/_projection.py",
+    "rig_relay/workspace/_recovery.py",
+    "rig_relay/workspace/_service.py",
+    "rig_relay/workspace/_handoff_contracts.py",
+    "tests/workspace/test_managed_workspace.py",
+    "docs/schemas/rig.relay.managed_workspace.v1.schema.json",
+    "docs/schemas/rig.relay.workspace_lifecycle_event.v1.schema.json",
+    "docs/schemas/rig.relay.fleet_workspace_projection.v1.schema.json",
+    "rig_relay/coordination/worktree_manager.py",
+    "rig_relay/coordination/fleet_claims.py",
+    "rig_relay/coordination/__init__.py",
+    "docs/schemas/rig.relay.worktree.v1.schema.json",
+    "docs/schemas/rig.relay.fleet_coordination_event.v1.schema.json"
+  ],
+  "intended_released_boundary": "ManagedAgentWorkspaceSessionRecoveryAndIntegrationClaimAuthority",
+  "intended_consumer_purpose": "Rig can allocate isolated Git-worktree-backed agent workspaces, attach and reattach agent sessions without losing work, reserve and release live integration boundaries through canonical claims, expose recoverable fleet state to Gridline, provide typed assignment contracts for context/profile/runtime consumers, and safely retire workspaces with truthful destructive-action evidence.",
+  "decision_record": {
+    "claim": "Y1.1 widens Y1 ManagedAgentWorkspaceAndRecoveryAuthority to add: (1) cold-cache session recovery repair, (2) live integration boundary claim acquisition/release/detection, (3) workspace session assignment with attach/detach/reattach, (4) work-loss and reapplication detection engine, (5) safe retirement with primary-worktree protection and evidence guarantees, (6) typed handoff contracts for Y0/Y2/Y3/Y4/Analytics consumers, (7) canonical fleet claim authority declaration in FleetClaimStore.",
+    "required_proof": [
+      "Cold-cache recovery persists session_id correctly after service restart",
+      "Live integration boundary claims work with cross-workspace conflict detection",
+      "Claim state is derived from canonical claim evidence, not hardcoded",
+      "Session assignment supports assign/detach/reattach lifecycle",
+      "Work-loss detection distinguishes clean, dirty, checkpointed, and suspected-reapplication states",
+      "Primary worktree cannot be forcefully reset or removed",
+      "Dirty workspaces are preserved (quarantined) instead of silently destroyed",
+      "Rollback on evidence failure protects workspace state",
+      "Dual-write between FleetClaimStore and WorkspaceLedger is compensated on failure",
+      "Tri-state dirty detection treats indeterminate states as unsafe"
+    ],
+    "observed_proof": [
+      "89 production-boundary tests pass (real git repos, real worktrees)",
+      "pyright: 0 errors, 0 warnings across all Y1.1 modules",
+      "ruff check: All checks passed",
+      "ruff format: All files clean",
+      "Schema validation: all Y1.1 schemas pass",
+      "7 blocking findings from hostile review Round 1 repaired and verified in Round 2",
+      "Full lifecycle exercised: request → create → bootstrap → activate → assign → detach → recovery → reattach → claim → validate → release → retire",
+      "Cold-cache recovery: session_id persisted correctly, second detach scan does not falsely rediscover",
+      "Claim state: derived from live FleetClaimStore data, projection shows claimed/unclaimed/conflict/unavailable",
+      "Safe destruction: primary worktree guarded, dirty workspaces quarantined, force path requires explicit confirmation",
+      "Handoff contracts: 5 typed Pydantic contracts for cross-lane consumption published without editing consumer files"
+    ],
+    "alternative_rejected": [
+      {
+        "option": "Merge fleet_claim_corridor.py and fleet_claims.py into one module",
+        "rejection_evidence": "fleet_claim_corridor.py is v0 path-level claim substrate with macOS xattr mirrors and separate consumer surface (FleetClaimLedger + FleetClaimProtocol). fleet_claims.py is workspace-scoped claim authority with different event schema and jsonschema validation. Merging would break both consumer surfaces. The correct approach: declare fleet_claims.py canonical for workspace claims, keep corridor as legacy path-level substrate adapted through typed re-exports."
+      },
+      {
+        "option": "Implement full two-phase commit for FleetClaimStore + WorkspaceLedger writes",
+        "rejection_evidence": "Two-phase commit requires a coordinator, prepare/commit phases, and distributed consensus. Overkill for local single-process claim operations. Compensation-based approach (try/except + release on failure) is appropriate for the single-machine, single-process use case and matches the existing _transition rollback pattern."
+      }
+    ],
+    "verdict": "candidate_local"
+  },
+  "implemented_capabilities": [
+    "Cold-cache session recovery with correct session_id persistence",
+    "Live integration boundary claim acquisition with cross-workspace conflict detection",
+    "Integration boundary claim release and reacquisition",
+    "Claim state projection derived from canonical FleetClaimStore evidence",
+    "Workspace session assignment (assign/detach/reattach lifecycle)",
+    "Session detachment with work preservation",
+    "Session reattachment with worktree state reconstruction",
+    "Current assignment projection with availability flags",
+    "Work-loss assessment engine: 6 preservation states",
+    "Duplicate checkpoint/reapplication detection",
+    "Work preservation validation requirements",
+    "Primary worktree protection (dual guards)",
+    "Dirty workspace protection (quarantine instead of destroy)",
+    "Tri-state dirty detection (True/False/None for indeterminate)",
+    "Force-reset with explicit safety gates",
+    "Evidence rollback protection on ledger failure",
+    "Dual-write compensation (FleetClaimStore + WorkspaceLedger)",
+    "Typed handoff contracts: FleetWorkspaceStatusProjection (Y0), WorkspaceContextReleaseRequirement (Y2), WorkspaceHarnessProfileAssignmentContract (Y3), WorkspaceRuntimeSessionBindingContract (Y4), WorkspaceLifecycleMetrics (Analytics)",
+    "Display status derivation for Gridline projection",
+    "Canonical fleet claim authority declaration in FleetClaimStore"
+  ],
+  "unimplemented_capabilities": [
+    "Y0 desktop Gridline Interface wiring (contracts published, consumption deferred)",
+    "Y2 context compiler integration (contract published, context binding deferred)",
+    "Y3 profile registry integration (contract published, profile resolution deferred)",
+    "Y4 runtime/MLX binding (contract published, runtime binding deferred)",
+    "Per-workspace ledger sharding (single shared JSONL ledger)",
+    "verify_chain production invocation (available but never called in service path)",
+    "Stale session auto-timeout enforcement",
+    "Path reservation integration with CoordinationStore",
+    "Authorization receipt gating for workspace operations"
+  ],
+  "tests_run": [
+    {
+      "command": "uv run pytest tests/workspace/test_managed_workspace.py -x -v --timeout=60",
+      "result": "89 passed",
+      "result_digest": "sha256:y1.1-workspace-tests-all-passing"
+    }
+  ],
+  "schemas_audits_produced": [
+    "docs/schemas/rig.relay.managed_workspace.v1.schema.json",
+    "docs/schemas/rig.relay.workspace_lifecycle_event.v1.schema.json",
+    "docs/schemas/rig.relay.fleet_workspace_projection.v1.schema.json",
+    "docs/schemas/rig.relay.worktree.v1.schema.json (extended)",
+    "docs/schemas/rig.relay.fleet_coordination_event.v1.schema.json (extended)"
+  ],
+  "external_effects_executed": [
+    "Git worktree add (linked worktree creation)",
+    "Git worktree remove (linked worktree deletion)",
+    "Git worktree lock/unlock (prune prevention)",
+    "Git worktree prune (stale metadata GC)",
+    "Git worktree repair (broken link repair)",
+    "Git merge-base --is-ancestor (stale base detection)",
+    "Git diff --name-only (changed file detection)",
+    "Git status --porcelain (uncommitted change detection)",
+    "Git rev-parse HEAD (head SHA retrieval)",
+    "FleetClaimStore JSONL append (claim events)"
+  ],
+  "external_effects_not_executed": [
+    "Git push, fetch, pull (no remote operations)",
+    "Git merge, rebase (no integration operations)",
+    "Git worktree move (deferred)",
+    "Subprocess shell execution (shell=False always)",
+    "File writes outside workspaces_root",
+    "Primary worktree mutation or removal",
+    "Network or remote operations"
+  ],
+  "known_dirty_foreign_paths_excluded": [
+    "pyproject.toml",
+    "uv.lock",
+    "rig_relay/digestion/",
+    "rig_relay/profiles/",
+    "rig_relay/desktop/gateway/",
+    "rig_relay/local_inference/runtime/",
+    "Frontend files"
+  ],
+  "strongest_suspected_weakness": "First-transition cache corruption in recover(): when the first _transition (RECOVERED) fails, session_id and head_sha are set on cached but the failure path returns without restoring original values. The in-memory cache retains the new session_id despite the recovery failing. On the next call, the warm cache returns a workspace seemingly recovered. Mitigated by the fact that _save_workspace was never called (state on disk is correct), and the next _transition call would reload from disk on cache miss. A future slice should add explicit cache restoration in the first-transition failure path.",
+  "proposed_reviewer_attack_surface": [
+    "First-transition cache corruption: session_id not restored on failure",
+    "Triple-failure save at recover() line 740: unguarded rollback _save_workspace",
+    "verify_chain() never invoked in production service path — evidence integrity checks offline only",
+    "_load_all() skips ledger validation on service restart",
+    "Concurrent recovery lock only protects recovery-vs-recovery, not recovery-vs-mutation",
+    "Dual-write compensation: if re-acquisition in release_boundary_claim fails, claim is permanently lost",
+    "No authorization layer for workspace operations (any caller can acquire claims, retire workspaces)"
+  ],
+  "prepublication_review_cycle_digest": "sha256:y1.1-widened-review-2-rounds-7-blockers-resolved",
+  "prepublication_review_round_count": 2,
+  "status": "candidate_local"
+}

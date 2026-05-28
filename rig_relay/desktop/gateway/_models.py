@@ -21,9 +21,22 @@ from datetime import UTC, datetime
 from enum import StrEnum
 import hashlib
 import json
-from typing import Any
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field
+
+if TYPE_CHECKING:
+    from rig_relay.desktop.gateway._models_surfaces import (
+        AnalyticsReportsSurfaceProjection,
+        ConnectSurfaceProjection,
+        FleetWorkspacesSurfaceProjection,
+        HarnessProfileSurfaceProjection,
+        InferenceStudioSurfaceProjection,
+        PublishPreviewSurfaceProjection,
+        RepositoryEstateSurfaceProjection,
+        RepositoryReadinessSurfaceProjection,
+        TimelineSurfaceProjection,
+    )
 
 _DEVELOPER_STUDIO_SCHEMA = "rig.relay.developer_studio_projection.v1"
 
@@ -250,7 +263,37 @@ class M0RefusalEntry(BaseModel):
     created_at: str = ""
 
 
-class M0InferenceProjection(BaseModel):
+class SafariCompanionFields(BaseModel):
+    """X4.5 — Safari native companion projection fields shared by M0 and Inference Studio."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    safari_companion_state: str = "unavailable"
+    safari_distribution_signing_state: str = "unsigned"
+    safari_notarization_state: str = "not_submitted"
+    safari_update_delivery_state: str = "not_integrated"
+    safari_diagnostic_export_state: str = "ready"
+    safari_diagnostic_export_blocked: bool = False
+    safari_recovery_action_state: str = "healthy"
+    safari_extension_built: bool = False
+    safari_artifact_manifest_available: bool = False
+    safari_running: bool = False
+    safari_extension_installed: bool = False
+    safari_extension_enabled: bool = False
+    safari_extension_error: str | None = None
+    safari_build_environment: dict[str, bool] = Field(
+        default_factory=lambda: {
+            "xcode_available": False,
+            "signing_identity_found": False,
+            "app_bundle_exists": False,
+            "extension_appex_exists": False,
+            "notarytool_available": False,
+        }
+    )
+    safari_projection_generated_at: str | None = None
+
+
+class M0InferenceProjection(SafariCompanionFields):
     model_config = ConfigDict(extra="forbid")
 
     provenance: ProvenanceClass = ProvenanceClass.DERIVED_PROJECTION
@@ -272,29 +315,6 @@ class M0InferenceProjection(BaseModel):
     native_schema_capability_proven: bool = False
     grammar_capability_claimed: bool = False
     grammar_capability_proven: bool = False
-
-    safari_companion_state: str = "unavailable"
-    safari_extension_built: bool = False
-    safari_distribution_signing_state: str = "unsigned"
-    safari_notarization_state: str = "not_submitted"
-    safari_update_delivery_state: str = "not_integrated"
-    safari_diagnostic_export_state: str = "ready"
-    safari_diagnostic_export_blocked: bool = False
-    safari_recovery_action_state: str = "healthy"
-    safari_artifact_manifest_available: bool = False
-    safari_running: bool = False
-    safari_extension_installed: bool = False
-    safari_extension_enabled: bool = False
-    safari_extension_error: str | None = None
-    safari_build_environment: dict[str, bool] = {
-        "xcode_available": False,
-        "signing_identity_found": False,
-        "app_bundle_exists": False,
-        "extension_appex_exists": False,
-        "notarytool_available": False,
-    }
-
-    safari_projection_generated_at: str | None = None
 
 
 # ── Aggregate Developer Studio Projection ──────────────────────────
@@ -323,6 +343,76 @@ class StudioServiceHealth(BaseModel):
     m0_inference: str = "unavailable"
 
 
+def _build_connect_surface_default() -> ConnectSurfaceProjection:
+    from rig_relay.desktop.gateway._models_surfaces import ConnectSurfaceProjection
+
+    return ConnectSurfaceProjection()
+
+
+def _build_estate_surface_default() -> RepositoryEstateSurfaceProjection:
+    from rig_relay.desktop.gateway._models_surfaces import (
+        RepositoryEstateSurfaceProjection,
+    )
+
+    return RepositoryEstateSurfaceProjection()
+
+
+def _build_publish_preview_surface_default() -> PublishPreviewSurfaceProjection:
+    from rig_relay.desktop.gateway._models_surfaces import (
+        PublishPreviewSurfaceProjection,
+    )
+
+    return PublishPreviewSurfaceProjection()
+
+
+def _build_timeline_surface_default() -> TimelineSurfaceProjection:
+    from rig_relay.desktop.gateway._models_surfaces import TimelineSurfaceProjection
+
+    return TimelineSurfaceProjection()
+
+
+def _build_inference_studio_surface_default() -> InferenceStudioSurfaceProjection:
+    from rig_relay.desktop.gateway._models_surfaces import (
+        InferenceStudioSurfaceProjection,
+    )
+
+    return InferenceStudioSurfaceProjection()
+
+
+def _build_repository_readiness_surface_default() -> (
+    RepositoryReadinessSurfaceProjection
+):
+    from rig_relay.desktop.gateway._models_surfaces import (
+        RepositoryReadinessSurfaceProjection,
+    )
+
+    return RepositoryReadinessSurfaceProjection()
+
+
+def _build_fleet_workspaces_surface_default() -> FleetWorkspacesSurfaceProjection:
+    from rig_relay.desktop.gateway._models_surfaces import (
+        FleetWorkspacesSurfaceProjection,
+    )
+
+    return FleetWorkspacesSurfaceProjection()
+
+
+def _build_harness_profile_surface_default() -> HarnessProfileSurfaceProjection:
+    from rig_relay.desktop.gateway._models_surfaces import (
+        HarnessProfileSurfaceProjection,
+    )
+
+    return HarnessProfileSurfaceProjection()
+
+
+def _build_analytics_reports_surface_default() -> AnalyticsReportsSurfaceProjection:
+    from rig_relay.desktop.gateway._models_surfaces import (
+        AnalyticsReportsSurfaceProjection,
+    )
+
+    return AnalyticsReportsSurfaceProjection()
+
+
 class DeveloperStudioProjection(BaseModel):
     """Single coherent frontend-safe projection over J0/K0/L0/M0.
 
@@ -346,11 +436,35 @@ class DeveloperStudioProjection(BaseModel):
     inference: M0InferenceProjection = Field(default_factory=M0InferenceProjection)
 
     # X0 surface projections — consume published T1.2/T3.1/T4.2 + W0/W1 policy
-    connect_surface: Any = Field(default_factory=dict)
-    repository_estate_surface: Any = Field(default_factory=dict)
-    publish_preview_surface: Any = Field(default_factory=dict)
-    timeline_surface: Any = Field(default_factory=dict)
-    inference_studio_surface: Any = Field(default_factory=dict)
+    connect_surface: ConnectSurfaceProjection = Field(
+        default_factory=_build_connect_surface_default
+    )
+    repository_estate_surface: RepositoryEstateSurfaceProjection = Field(
+        default_factory=_build_estate_surface_default
+    )
+    publish_preview_surface: PublishPreviewSurfaceProjection = Field(
+        default_factory=_build_publish_preview_surface_default
+    )
+    timeline_surface: TimelineSurfaceProjection = Field(
+        default_factory=_build_timeline_surface_default
+    )
+    inference_studio_surface: InferenceStudioSurfaceProjection = Field(
+        default_factory=_build_inference_studio_surface_default
+    )
+
+    # Y1-Y4 surface projections — deferred stubs
+    repository_readiness_surface: RepositoryReadinessSurfaceProjection = Field(
+        default_factory=_build_repository_readiness_surface_default
+    )
+    fleet_workspaces_surface: FleetWorkspacesSurfaceProjection = Field(
+        default_factory=_build_fleet_workspaces_surface_default
+    )
+    harness_profile_surface: HarnessProfileSurfaceProjection = Field(
+        default_factory=_build_harness_profile_surface_default
+    )
+    analytics_reports_surface: AnalyticsReportsSurfaceProjection = Field(
+        default_factory=_build_analytics_reports_surface_default
+    )
 
     service_health: StudioServiceHealth = Field(default_factory=StudioServiceHealth)
     provenance_summary: StudioProvenanceSummary = Field(
@@ -405,7 +519,39 @@ __all__ = [
     "M0RefusalEntry",
     "M0TaskSuitabilityEntry",
     "ProvenanceClass",
+    "SafariCompanionFields",
     "StudioProvenanceSummary",
     "StudioServiceHealth",
     "TrustState",
 ]
+
+# Resolve forward references in DeveloperStudioProjection for the 9 surface
+# types imported under TYPE_CHECKING.  _models_surfaces imports ProvenanceClass,
+# SafaricCompanionFields, and TrustState from this module, all of which are
+# already defined by the time Python reaches this point.
+from rig_relay.desktop.gateway._models_surfaces import (
+    AnalyticsReportsSurfaceProjection,
+    ConnectSurfaceProjection,
+    FleetWorkspacesSurfaceProjection,
+    HarnessProfileSurfaceProjection,
+    InferenceStudioSurfaceProjection,
+    PublishPreviewSurfaceProjection,
+    RepositoryEstateSurfaceProjection,
+    RepositoryReadinessSurfaceProjection,
+    TimelineSurfaceProjection,
+)
+
+for _name, _cls in [
+    ("AnalyticsReportsSurfaceProjection", AnalyticsReportsSurfaceProjection),
+    ("ConnectSurfaceProjection", ConnectSurfaceProjection),
+    ("FleetWorkspacesSurfaceProjection", FleetWorkspacesSurfaceProjection),
+    ("HarnessProfileSurfaceProjection", HarnessProfileSurfaceProjection),
+    ("InferenceStudioSurfaceProjection", InferenceStudioSurfaceProjection),
+    ("PublishPreviewSurfaceProjection", PublishPreviewSurfaceProjection),
+    ("RepositoryEstateSurfaceProjection", RepositoryEstateSurfaceProjection),
+    ("RepositoryReadinessSurfaceProjection", RepositoryReadinessSurfaceProjection),
+    ("TimelineSurfaceProjection", TimelineSurfaceProjection),
+]:
+    globals()[_name] = _cls
+
+DeveloperStudioProjection.model_rebuild()

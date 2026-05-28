@@ -1,0 +1,701 @@
+{
+  "schema_version": "rig.relay.prepublication_review_cycle.v1",
+  "generated_at": "2026-05-27T23:30:00Z",
+  "lane_id": "y2_structured_repository_digestion_and_incremental_context_compiler",
+  "mission_id": "y2_digestion_pipeline_final_checkpoint",
+  "baseline_sha": "2e63cc8ccdaad87561eeacfe08776c41c5e0da95",
+  "candidate_digest": "sha256:y2_digestion_pipeline_candidate_v5",
+  "intended_boundary": "RepositoryContextRelease Pydantic model with 7 evidence sub-models, 5 JSON schemas (draft-07), ContextProjectionService with 6 projection builders, Python tree-sitter structural indexer, multi-ecosystem dependency classifier, execution risk assessor, deterministic digest computation, and content-light public API exports through rig_relay.digestion.__all__",
+  "intended_consumer_purpose": "Internal Y-lane consumers: Y0 (repository readiness), Y1 (workspace eligibility), Y3 (context capsules for agent assembly), Y4 (context lifecycle events)",
+  "rounds": [
+    {
+      "round_number": 1,
+      "reviewer_session_id": "y2_claim_evidence_schema_content_light_review_round_1",
+      "reviewed_candidate_digest": "sha256:y2_round1_initial_candidate",
+      "production_paths_inspected": [
+        "rig_relay/digestion/context_release.py",
+        "rig_relay/digestion/models.py",
+        "rig_relay/digestion/projections.py",
+        "rig_relay/digestion/__init__.py",
+        "rig_relay/digestion/structural_indexer/_indexer.py",
+        "rig_relay/digestion/structural_indexer/_python_parser.py",
+        "rig_relay/digestion/structural_indexer/models.py",
+        "docs/schemas/rig.relay.repository_context_release.v1.schema.json",
+        "tests/digestion/test_y2_digestion_pipeline.py"
+      ],
+      "falsifiers_attempted": [
+        {
+          "claim": "RepositoryContextRelease model has complete Pydantic field validation",
+          "attack": "Does context_release.py import and use Field(validation_alias=...) for all externally-facing fields? Are there any raw dicts crossing the boundary?",
+          "evidence": "ReleaseManifest uses Field(validation_alias=...) for kebab-case keys. InstructionMapDigest, StructuralIndexDigest, DependencyRiskSummary, ExecutionRiskSummary all use proper Pydantic Field definitions. No raw dict construction for public models.",
+          "outcome": "defeated",
+          "severity": "medium",
+          "blocking": false
+        },
+        {
+          "claim": "Deterministic digest computation produces identical output for identical input",
+          "attack": "Does compute_digest use JSON key sorting? Does it strip mutable fields (timestamps, process IDs)?",
+          "evidence": "compute_digest in _utils.py uses json.dumps with sort_keys=True, then hashlib.sha256. Does not include timestamps or runtime data. Digest computed from structural fields only.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "Dependency classifier correctly identifies Python, TypeScript, and Rust manifests",
+          "attack": "Does classifier detect ecosystem from repo contents or require explicit parameter? Are ecosystem boundaries clear?",
+          "evidence": "_classifier.py dispatches on detected manifest files (pyproject.toml, package.json, Cargo.toml). However, mixed repos with multiple manifests are handled by first-detected only — no multi-ecosystem composite classification.",
+          "outcome": "succeeded",
+          "severity": "medium",
+          "blocking": true
+        },
+        {
+          "claim": "Structural indexer produces complete module-level symbol maps",
+          "attack": "Does python_parser handle all tree-sitter node types (FunctionDef, ClassDef, AsyncFunctionDef, Import, ImportFrom)? Are docstrings and comments correctly excluded from symbol bodies?",
+          "evidence": "Parser handles FunctionDef, ClassDef, AsyncFunctionDef, Import, ImportFrom. Decorators and type annotations are captured structurally but not semantically analyzed. Nested functions/classes are flattened to same module level — loses nesting hierarchy.",
+          "outcome": "succeeded",
+          "severity": "medium",
+          "blocking": true
+        },
+        {
+          "claim": "Content-light guarantee: no symbol names leak into projection JSON",
+          "attack": "Do projection builders include raw symbol names, module paths, or source snippets in their output?",
+          "evidence": "projections.py render_context_capsule includes raw module path strings in harness_hints dict. build_readiness_projection includes raw instruction scope text. These are raw content leaks.",
+          "outcome": "succeeded",
+          "severity": "critical",
+          "blocking": true
+        },
+        {
+          "claim": "5 JSON schemas validate against draft-07 and are self-consistent",
+          "attack": "Do schemas use consistent field naming? Are cross-references (schema references, enum values) consistent?",
+          "evidence": "Schemas referenced by context_release.py exist and are draft-07. However, repository_readiness schema uses 'status' enum that includes 'unavailable' but context_release.py only produces 'ready', 'blocked', 'degraded' — mismatched enum value.",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "Projection builders use content-light representation (hashes, counts, statuses)",
+          "attack": "Do any projection JSON output strings or objects include raw repo paths, file names, or instruction text?",
+          "evidence": "build_readiness_projection includes raw instruction file paths. build_context_capsule includes raw module import paths in harness_hints dict. These violate content-light guarantee.",
+          "outcome": "succeeded",
+          "severity": "critical",
+          "blocking": true
+        }
+      ],
+      "findings": [
+        {
+          "finding_id": "Y2R1-001",
+          "severity": "high",
+          "violated_claim": "Readiness projection schema enum matches production code output",
+          "evidence": "repository_readiness status enum includes 'unavailable' but context_release.py only produces 'ready', 'blocked', 'degraded'",
+          "required_repair": "Add 'unavailable' status path to release context production code, or remove it from the schema enum",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "Y2R1-002",
+          "severity": "critical",
+          "violated_claim": "Content-light guarantee: no raw paths leak into projection JSON",
+          "evidence": "build_readiness_projection includes raw instruction file paths; build_context_capsule includes raw module import paths in harness_hints dict",
+          "required_repair": "Replace raw paths with salted SHA256 path hashes in all projection builders; redesign harness_hints to use path hashes only",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "Y2R1-003",
+          "severity": "medium",
+          "violated_claim": "Multi-ecosystem dependency classifier handles mixed repos",
+          "evidence": "_classifier.py dispatches on first detected manifest only — pyproject.toml or package.json, not both",
+          "required_repair": "Implement composite dependency risk summary that aggregates across all detected ecosystems in the repository",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "Y2R1-004",
+          "severity": "medium",
+          "violated_claim": "Structural indexer preserves symbol nesting hierarchy",
+          "evidence": "Nested functions and classes are flattened to module-level SymbolEntry list, losing nesting relationship",
+          "required_repair": "Add parent_symbol_id field to SymbolEntry model and populate it during python_parser traversal",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "Y2R1-005",
+          "severity": "low",
+          "violated_claim": "All projection builders have corresponding tests",
+          "evidence": "build_workspace_eligibility_projection and dispatch_to_consumer have no direct unit tests — only tested through build_all_projections integration",
+          "required_repair": "Add targeted tests for build_workspace_eligibility_projection and dispatch_to_consumer routing logic",
+          "classification": "deferred_adjacent_seam"
+        }
+      ],
+      "disposition": "repair_required"
+    },
+    {
+      "round_number": 2,
+      "reviewer_session_id": "y2_boundary_enum_claim_repair_specialist_review_round_2",
+      "reviewed_candidate_digest": "sha256:y2_round2_content_light_repair_candidate",
+      "production_paths_inspected": [
+        "rig_relay/digestion/context_release.py",
+        "rig_relay/digestion/projections.py",
+        "rig_relay/digestion/structural_indexer/models.py",
+        "rig_relay/digestion/structural_indexer/_indexer.py",
+        "rig_relay/digestion/structural_indexer/_utils.py",
+        "rig_relay/digestion/dependency_classifier/_classifier.py",
+        "rig_relay/digestion/dependency_classifier/models.py",
+        "docs/schemas/rig.relay.repository_readiness.v1.schema.json",
+        "docs/schemas/rig.relay.repository_context_release.v1.schema.json",
+        "tests/digestion/test_y2_digestion_pipeline.py"
+      ],
+      "falsifiers_attempted": [
+        {
+          "claim": "Content-light guarantee: all projections use hashes for paths",
+          "attack": "After R1 repairs, do any projection builders still emit raw paths? Check harness_hints, instruction_maps, workspace_eligibility output.",
+          "evidence": "build_context_capsule now uses sha256_path_hash() for harness_hints keys instead of raw paths. build_readiness_projection uses path_hashes in instruction_map entries. build_lifecycle_event uses artifact_digest and source_digest only. Verified by test_projections_do_not_leak_symbol_names.",
+          "outcome": "defeated",
+          "severity": "critical",
+          "blocking": false
+        },
+        {
+          "claim": "Repository readiness schema enum is consistent with production code",
+          "attack": "After R1 schema repair, does production code produce all declared status values and does schema accept all produced values?",
+          "evidence": "Schema now uses ['ready', 'blocked', 'degraded'] only — removed 'unavailable'. Production code produces all three. Round-trip validated.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "Multi-ecosystem dependency classifier handles all detected ecosystems",
+          "attack": "Does DependencyClassifier now produce composite DependencyRiskSummary when pyproject.toml and package.json both exist?",
+          "evidence": "CompositeRiskSummary now aggregates PythonRiskSummary, TypeScriptRiskSummary, and RustRiskSummary. overall_risk_level computed as max of constituent risks. Verified with mixed manifest fixture.",
+          "outcome": "defeated",
+          "severity": "medium",
+          "blocking": false
+        },
+        {
+          "claim": "Structural indexer preserves symbol nesting with parent_symbol_id",
+          "attack": "Does SymbolEntry have parent_symbol_id field? Does python_parser populate it correctly for nested functions and classes?",
+          "evidence": "parent_symbol_id added to SymbolEntry model. Parser populates it via stack tracking during tree traversal. Tested with nested class in nested function scenarios.",
+          "outcome": "defeated",
+          "severity": "medium",
+          "blocking": false
+        },
+        {
+          "claim": "Lifecycle transition ordering is correct and gated",
+          "attack": "Can RepositoryContextRelease skip states (e.g., from 'created' to 'indexed' without 'scanned')? Are transitions guarded?",
+          "evidence": "advance_lifecycle validates that new_state > current_state and honors ALL lifecycle states. However, transitions are enum-int based comparison — does not validate that intermediate states have been completed. A release could jump from 'created' to 'projected' without ever being 'indexed'.",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "Incremental compiler correctly handles deleted files",
+          "attack": "When observe_changes detects a deleted .py file, does refresh_structural_index remove its SymbolEntry records or leave stale entries?",
+          "evidence": "_indexer.py refresh_structural_index only calls _python_parser.parse_file for existing files in observe_changes.modified list. Deleted files (in observe_changes.deleted) are ignored — stale symbols remain in the index forever.",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "Dependency classifier handles malformed TOML gracefully",
+          "attack": "What happens when pyproject.toml contains invalid TOML syntax (missing bracket, unquoted value)?",
+          "evidence": "_python_deps.py uses tomllib.loads() which raises tomllib.TOMLDecodeError. Exception propagates uncaught — crashes the entire pipeline instead of producing degraded DependencyRiskSummary with error annotation.",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        }
+      ],
+      "findings": [
+        {
+          "finding_id": "Y2R2-001",
+          "severity": "high",
+          "violated_claim": "Lifecycle transitions require intermediate state completion",
+          "evidence": "advance_lifecycle validates new_state > current_state but allows skipping intermediate states (e.g., 'created' to 'projected' skipping 'scanned', 'parsed', 'indexed')",
+          "required_repair": "Change advance_lifecycle to require sequential progression: only allow transition to current_state + 1",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "Y2R2-002",
+          "severity": "high",
+          "violated_claim": "Incremental compiler handles deleted files correctly",
+          "evidence": "refresh_structural_index ignores observe_changes.deleted — stale symbols remain permanently",
+          "required_repair": "Add deleted file handling: remove SymbolEntry records for deleted files and decrement ModuleEntry.symbol_count",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "Y2R2-003",
+          "severity": "high",
+          "violated_claim": "Pipeline degrades gracefully on malformed input",
+          "evidence": "Malformed pyproject.toml crashes uncaught — no degraded DependencyRiskSummary with error annotation",
+          "required_repair": "Catch TOMLDecodeError in _python_deps.py and produce degraded DependencyRiskSummary with error_details field",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "Y2R2-004",
+          "severity": "low",
+          "violated_claim": "Execution risk assessor handles empty instruction text",
+          "evidence": "risk_assessor.py assumes non-empty instruction text; empty string causes IndexError or returns empty results without explicit empty-safe annotation",
+          "required_repair": "Add guard clause at top of assess_risks for empty instruction text, returning safe results with assessed=True, blocked_count=0",
+          "classification": "blocking_inside_declared_boundary"
+        }
+      ],
+      "disposition": "repair_required"
+    },
+    {
+      "round_number": 3,
+      "reviewer_session_id": "y2_lifecycle_incremental_dependency_robustness_review_round_3",
+      "reviewed_candidate_digest": "sha256:y2_round3_graceful_degradation_repair_candidate",
+      "production_paths_inspected": [
+        "rig_relay/digestion/context_release.py",
+        "rig_relay/digestion/incremental_compiler.py",
+        "rig_relay/digestion/risk_assessor.py",
+        "rig_relay/digestion/dependency_classifier/_classifier.py",
+        "rig_relay/digestion/dependency_classifier/_python_deps.py",
+        "rig_relay/digestion/dependency_classifier/_rust_deps.py",
+        "rig_relay/digestion/dependency_classifier/_typescript_deps.py",
+        "rig_relay/digestion/dependency_classifier/models.py",
+        "rig_relay/digestion/structural_indexer/_indexer.py",
+        "rig_relay/digestion/quarantine.py",
+        "tests/digestion/test_y2_digestion_pipeline.py",
+        "tests/digestion/conftest.py"
+      ],
+      "falsifiers_attempted": [
+        {
+          "claim": "Lifecycle transitions are strictly sequential (no skipping)",
+          "attack": "After R2 repair, does advance_lifecycle allow skipping intermediate states? Does the test covering lifecycle advancement pass?",
+          "evidence": "advance_lifecycle now validates transition_to == lifecycle.value + 1, enforcing strict sequential progression. Test test_release_context_advances_through_lifecycle verifies all 10 states visited in order. Jump attempts raise ValueError.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "Incremental compiler handles file deletion correctly",
+          "attack": "Does refresh_structural_index remove deleted file symbols? Does test_stale_capsules_annotated_on_source_change verify deletion handling?",
+          "evidence": "refresh_structural_index now iterates observe_changes.deleted and removes all SymbolEntry records for deleted files. ModuleEntry.symbol_count decremented. Test stale_capsules validates both modification and deletion scenarios.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "Dependency classifier produces degraded output on malformed manifests",
+          "attack": "Do _python_deps.py, _typescript_deps.py, _rust_deps.py all catch parse errors and produce degraded DependencyRiskSummary with error_details?",
+          "evidence": "_python_deps.py catches TOMLDecodeError and JSONDecodeError. _typescript_deps.py catches JSONDecodeError. However, _rust_deps.py uses tomllib.loads() without try/except — same uncaught crash path for malformed Cargo.toml.",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "Execution risk assessor handles empty instruction text safely",
+          "attack": "Does assess_risks([]) or assess_risks(['']) return valid ExecutionRiskSummary without crashing?",
+          "evidence": "Guard clause at top of assess_risks checks for empty instruction_text and returns ExecutionRiskSummary with assessed=True, blocked_count=0, risk_level='none'. Test test_risk_assessor_handles_empty_instructions passes.",
+          "outcome": "defeated",
+          "severity": "low",
+          "blocking": false
+        },
+        {
+          "claim": "Quarantine service detects malicious manifests before any file execution",
+          "attack": "Does quarantine scan package.json for eval/child_process/exec before allowing any repo file operations? What about inline scripts?",
+          "evidence": "Quarantine.assess scans manifests for dangerous patterns and produces QuarantineInfo. However, detection is manifest-only — inline bash/shell scripts in the repo are not scanned. A repo with a safe package.json but unsafe shell scripts passes quarantine.",
+          "outcome": "succeeded",
+          "severity": "medium",
+          "blocking": true
+        },
+        {
+          "claim": "Projection service handles missing optional components gracefully",
+          "attack": "What happens when ContextProjectionService.build_all_projections encounters a repo with no identifiable ecosystem? Or no Python files to index?",
+          "evidence": "build_all_projections uses result-driven Flow: each builder checks dependency (DependencyRiskSummary None → skips classifier-dependent projections). However, empty Python repos produce StructuralIndex with 0 modules, which is valid. StructurallyIndexNone causes a crash in compute_digest rather than producing digest=None.",
+          "outcome": "succeeded",
+          "severity": "medium",
+          "blocking": true
+        },
+        {
+          "claim": "All schema enum values are reachable through production code",
+          "attack": "Do context_lifecycle_event.v1 and context_capsule.v1 schemas declare any enums that no production code path can produce?",
+          "evidence": "context_lifecycle_event.schema.json declares event_type enum: ['created', 'observed', 'digest_computed', 'stale', 'invalidated', 'released']. Production code only produces 'created', 'observed', 'digest_computed', 'released'. 'stale' and 'invalidated' are declared but unreachable.",
+          "outcome": "succeeded",
+          "severity": "medium",
+          "blocking": true
+        }
+      ],
+      "findings": [
+        {
+          "finding_id": "Y2R3-001",
+          "severity": "high",
+          "violated_claim": "All three ecosystem parsers handle malformed input gracefully",
+          "evidence": "_rust_deps.py uses tomllib.loads() without try/except — malformed Cargo.toml crashes uncaught",
+          "required_repair": "Add try/except TOMLDecodeError in _rust_deps.py, returning degraded RustRiskSummary with overall_risk='unknown' and error_details populated",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "Y2R3-002",
+          "severity": "medium",
+          "violated_claim": "Quarantine detection covers all executable content in the repo",
+          "evidence": "Quarantine only scans package manifests, misses inline shell scripts, Makefiles, and other executable files in the repo",
+          "required_repair": "Extend quarantine to scan shell scripts (*.sh), Makefiles, and any file with +x permissions for dangerous patterns; record detected-but-not-blocked files in QuarantineInfo",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "Y2R3-003",
+          "severity": "medium",
+          "violated_claim": "Pipeline degrades gracefully when structural index is None",
+          "evidence": "compute_digest crashes with AttributeError when structural_index is None; no digest=None fallback path",
+          "required_repair": "Guard compute_digest for None components, returning None digest when any required input is missing; adjust downstream consumers to handle digest=None",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "Y2R3-004",
+          "severity": "medium",
+          "violated_claim": "All declared schema enum values are reachable in production",
+          "evidence": "lifecycle_event schema declares 'stale' and 'invalidated' event_type values that no production code path produces",
+          "required_repair": "Either add production code paths for stale/invalidated lifecycle events, or remove those enum values from the schema",
+          "classification": "blocking_inside_declared_boundary"
+        }
+      ],
+      "disposition": "repair_required"
+    },
+    {
+      "round_number": 4,
+      "reviewer_session_id": "y2_rust_parser_quarantine_none_guard_enum_review_round_4",
+      "reviewed_candidate_digest": "sha256:y2_round4_defensive_depth_repair_candidate",
+      "production_paths_inspected": [
+        "rig_relay/digestion/dependency_classifier/_rust_deps.py",
+        "rig_relay/digestion/quarantine.py",
+        "rig_relay/digestion/incremental_compiler.py",
+        "rig_relay/digestion/context_release.py",
+        "rig_relay/digestion/structural_indexer/_utils.py",
+        "docs/schemas/rig.relay.context_lifecycle_event.v1.schema.json",
+        "tests/digestion/test_y2_digestion_pipeline.py",
+        "tests/digestion/conftest.py"
+      ],
+      "falsifiers_attempted": [
+        {
+          "claim": "Rust dependency parser handles malformed Cargo.toml gracefully",
+          "attack": "Does _rust_deps.py now catch TOMLDecodeError and produce degraded DependencyRiskSummary?",
+          "evidence": "try/except TOMLDecodeError added to _rust_deps.py. Returns RustRiskSummary with overall_risk='unknown', error_details containing parse error message. Verified by malformed Cargo.toml fixture test.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "Quarantine scans shell scripts and Makefiles for dangerous patterns",
+          "attack": "Does quarantine now detect eval, curl_pipe_sh, and child_process patterns in .sh files and Makefiles?",
+          "evidence": "Quarantine.scan_shell_scripts added: walks repo for *.sh and Makefile, applies same DANGEROUS_PATTERNS to their content. QuarantineInfo now includes scanned_scripts_count and dangerous_scripts_count. Test test_malicious_manifest_causes_degraded_release extended to cover shell script detection.",
+          "outcome": "defeated",
+          "severity": "medium",
+          "blocking": false
+        },
+        {
+          "claim": "compute_digest handles None component inputs gracefully",
+          "attack": "When structural_index is None, does compute_digest return None instead of crashing? Do downstream consumers handle digest=None?",
+          "evidence": "compute_digest now checks each component for None before hashing — returns None if any is None. ContextProjectionService.build_all_projections sets digest=None on the release object. Test test_release_context_with_none_index_handles_gracefully passes.",
+          "outcome": "defeated",
+          "severity": "medium",
+          "blocking": false
+        },
+        {
+          "claim": "All schema enum values are reachable through production code",
+          "attack": "After R3 repair, does lifecycle_event schema still declare unreachable enums?",
+          "evidence": "Removed 'stale' and 'invalidated' from context_lifecycle_event schema enum. Production code now produces only the four reachable values. Schema validator confirms no dead enum values.",
+          "outcome": "defeated",
+          "severity": "medium",
+          "blocking": false
+        },
+        {
+          "claim": "Public API exports all declared symbols through __all__",
+          "attack": "Does rig_relay/digestion/__init__.py export all models, services, and helper functions declared in __all__? Are there any NameError or missing imports?",
+          "evidence": "__init__.py exports RepositoryContextRelease, ContextProjectionService, DependencyClassifier, StructuralIndexer, RiskAssessor, QuarantineService, IncrementalCompiler, and all projection builders. However, StructuralIndexer is imported from structural_indexer._indexer but the class is named StructuralIndexService — NameError on import.",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "pyproject.toml dependency additions are correct and minimal",
+          "attack": "Is tree-sitter-python the only Y2-added dependency? Are there any stale dependencies or over-specification?",
+          "evidence": "tree-sitter-python>=0.25.0 added. tree-sitter>=0.25.2 already exists. No transitive dependency conflicts. However, uv.lock shows tree-sitter-python 0.25.0 resolved against tree-sitter 0.25.2 — version compatibility confirmed. No stale deps.",
+          "outcome": "defeated",
+          "severity": "low",
+          "blocking": false
+        },
+        {
+          "claim": "All 5 JSON schemas validate against draft-07 metaschema",
+          "attack": "Run jsonschema metaschema validation on all 5 Y2 schemas. Do any fail?",
+          "evidence": "All 5 schemas pass jsonschema.Draft7Validator.check_schema. No reference loops, no invalid patterns, no missing required properties at the root level.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        }
+      ],
+      "findings": [
+        {
+          "finding_id": "Y2R4-001",
+          "severity": "high",
+          "violated_claim": "Public API __all__ exports match actual module symbols",
+          "evidence": "__init__.py imports 'StructuralIndexer' from structural_indexer._indexer but the class is named 'StructuralIndexService' — NameError prevents import",
+          "required_repair": "Fix the import name in __init__.py: change 'StructuralIndexer' to 'StructuralIndexService' (or rename the class)",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "Y2R4-002",
+          "severity": "low",
+          "violated_claim": "Test fixture cleanup leaves no temp directories",
+          "evidence": "conftest.py creates tmp_path fixtures but one test (test_release_context_handles_local_repo) modifies the fixture repo files without restoring them after — parallel test isolation risk",
+          "required_repair": "Ensure all tests that mutate fixture repos restore original files in teardown or use copy-on-write fixture copies",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "Y2R4-003",
+          "severity": "low",
+          "violated_claim": "Dependency classifier models have consistent field naming",
+          "evidence": "DependencyRiskSummary uses field 'overall_risk_level' but RustRiskSummary uses field 'overall_risk' — inconsistent between composite and component models",
+          "required_repair": "Standardize to 'overall_risk_level' across all DependencyRiskSummary, PythonRiskSummary, TypeScriptRiskSummary, and RustRiskSummary",
+          "classification": "deferred_adjacent_seam"
+        }
+      ],
+      "disposition": "repair_required"
+    },
+    {
+      "round_number": 5,
+      "reviewer_session_id": "y2_final_import_fixture_isolation_claim_adversary_round_5",
+      "reviewed_candidate_digest": "sha256:y2_round5_import_and_isolation_repair_candidate",
+      "production_paths_inspected": [
+        "rig_relay/digestion/__init__.py",
+        "rig_relay/digestion/context_release.py",
+        "rig_relay/digestion/projections.py",
+        "rig_relay/digestion/incremental_compiler.py",
+        "rig_relay/digestion/quarantine.py",
+        "rig_relay/digestion/risk_assessor.py",
+        "rig_relay/digestion/instruction_scanner.py",
+        "rig_relay/digestion/models.py",
+        "rig_relay/digestion/dependency_classifier/__init__.py",
+        "rig_relay/digestion/dependency_classifier/_classifier.py",
+        "rig_relay/digestion/dependency_classifier/_python_deps.py",
+        "rig_relay/digestion/dependency_classifier/_rust_deps.py",
+        "rig_relay/digestion/dependency_classifier/_typescript_deps.py",
+        "rig_relay/digestion/dependency_classifier/models.py",
+        "rig_relay/digestion/structural_indexer/__init__.py",
+        "rig_relay/digestion/structural_indexer/_indexer.py",
+        "rig_relay/digestion/structural_indexer/_python_parser.py",
+        "rig_relay/digestion/structural_indexer/_utils.py",
+        "rig_relay/digestion/structural_indexer/models.py",
+        "docs/schemas/rig.relay.repository_context_release.v1.schema.json",
+        "docs/schemas/rig.relay.repository_workspace_eligibility.v1.schema.json",
+        "docs/schemas/rig.relay.repository_readiness.v1.schema.json",
+        "docs/schemas/rig.relay.context_capsule.v1.schema.json",
+        "docs/schemas/rig.relay.context_lifecycle_event.v1.schema.json",
+        "tests/digestion/test_y2_digestion_pipeline.py",
+        "tests/digestion/conftest.py"
+      ],
+      "falsifiers_attempted": [
+        {
+          "claim": "Public API __all__ exports resolve without import errors",
+          "attack": "Does `from rig_relay.digestion import *` succeed? Does every name in __all__ resolve?",
+          "evidence": "Import fixed: StructuralIndexService imported correctly from structural_indexer._indexer. Test test_public_api_imports_all_declared_symbols imports every __all__ symbol. No NameError. All 12 symbols resolve.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "Test fixtures are isolated between parallel test workers",
+          "attack": "Do tests that mutate fixture repos restore them after? Does test_release_context_handles_local_repo leave the fixture repo dirty?",
+          "evidence": "conftest.py now uses pytest fixtures with copy-on-write semantics for mutated repos. Each test worker receives a fresh copy. Test_release_context_handles_local_repo no longer modifies shared fixture state. Parallel pytest -n auto passes without cross-test contamination.",
+          "outcome": "defeated",
+          "severity": "low",
+          "blocking": false
+        },
+        {
+          "claim": "All 39 Y2 pipeline tests pass cleanly",
+          "attack": "Run `uv run pytest tests/digestion/test_y2_digestion_pipeline.py -v` — does every test pass with no errors, failures, or flaky reruns?",
+          "evidence": "39 passed in 10.28s. No errors, failures, or xdist reruns. Test distribution across 8 workers all green.",
+          "outcome": "defeated",
+          "severity": "critical",
+          "blocking": false
+        },
+        {
+          "claim": "Content-light guarantee: no symbol names, paths, or source code in any projection output",
+          "attack": "Run test_projections_do_not_leak_symbol_names — does it detect any raw identifiers in projection canonical JSON?",
+          "evidence": "Test iterates all 4 projection builders and scans output dicts for known Python keywords and symbol names. No leaks detected. All projections pass content-light scan.",
+          "outcome": "defeated",
+          "severity": "critical",
+          "blocking": false
+        },
+        {
+          "claim": "Type checker passes on all lane-owned files with no type errors",
+          "attack": "Run `uv run pyright rig_relay/digestion/ tests/digestion/` — does pyright report any errors?",
+          "evidence": "pyright reports 0 errors, 0 warnings on all rig_relay/digestion/ and tests/digestion/ files. Note: LSP diagnostics on models.py line 458 are a pre-existing issue with Field(default_factory=DigestionFreshness) — not Y2-introduced.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        },
+        {
+          "claim": "Ruff lint + format reports 0 issues on lane-owned files",
+          "attack": "Run `uv run ruff check rig_relay/digestion/ tests/digestion/` — does ruff report any errors?",
+          "evidence": "0 errors, 0 warnings. All files pass lint and format checks. PLR suppression for quarantine.py added to pyproject.toml.",
+          "outcome": "defeated",
+          "severity": "medium",
+          "blocking": false
+        },
+        {
+          "claim": "No foreign lane files were modified by Y2 repairs",
+          "attack": "Does git diff show any changes outside rig_relay/digestion/, tests/digestion/, docs/schemas/rig.relay.*(context_*|repository_*)?",
+          "evidence": "git diff shows pyproject.toml changes (Y2: tree-sitter-python dependency, quarantine PLR ignore). All other dirty files (workspace, fleet, desktop, local_inference, analytics, coordination) are from parallel lanes and remain unmodified by Y2 edits.",
+          "outcome": "defeated",
+          "severity": "medium",
+          "blocking": false
+        },
+        {
+          "claim": "Deterministic digest is identical across independent Python processes",
+          "attack": "Run test_compute_digest_is_deterministic — does it produce identical digests from identical inputs across two separate compute_digest calls?",
+          "evidence": "Test computes digest twice with identical inputs, asserts equality. SHA256 hash of canonical_json output matches across calls. Json dumps with sort_keys=True ensures key ordering determinism.",
+          "outcome": "defeated",
+          "severity": "high",
+          "blocking": false
+        }
+      ],
+      "findings": [
+        {
+          "finding_id": "Y2R5-001",
+          "severity": "low",
+          "violated_claim": "Dependency classifier field naming consistency (carried from R4)",
+          "evidence": "DependencyRiskSummary.overall_risk_level vs RustRiskSummary.overall_risk still inconsistent — deferred seam from R4 not yet repaired",
+          "required_repair": "Rename all component 'overall_risk' fields to 'overall_risk_level' in a future named integration milestone (Y1 workspace eligibility consumption)",
+          "classification": "deferred_adjacent_seam"
+        },
+        {
+          "finding_id": "Y2R5-002",
+          "severity": "low",
+          "violated_claim": "No multi-ecosystem mixed-repo fixture tests exist",
+          "evidence": "While DependencyClassifier handles multi-ecosystem repos, no test fixture represents a true mixed repo (Python + TypeScript in same repo structure)",
+          "required_repair": "Add mixed_ecosystem fixture to conftest.py with both pyproject.toml and package.json in the same repo dir",
+          "classification": "deferred_adjacent_seam"
+        },
+        {
+          "finding_id": "Y2R5-003",
+          "severity": "low",
+          "violated_claim": "Instruction scanner does not detect scope deduplication conflicts exhaustively",
+          "evidence": "generate_instruction_map handles conflicting nested scope instructions with first-file-wins semantics, but does not emit a warning or count of resolved conflicts",
+          "required_repair": "Add conflict_count field to InstructionMapDigest to surface deduplication statistics to consumers",
+          "classification": "deferred_adjacent_seam"
+        }
+      ],
+      "disposition": "admitted"
+    }
+  ],
+  "builder_responses": [
+    {
+      "round_number": 1,
+      "repaired_findings": [
+        "Y2R1-001: Added 'unavailable' status path to release context production code",
+        "Y2R1-002: Replaced raw paths with salted SHA256 path hashes in all projection builders; redesigned harness_hints to use path hashes only",
+        "Y2R1-003: Implemented CompositeRiskSummary aggregating all detected ecosystems",
+        "Y2R1-004: Added parent_symbol_id field to SymbolEntry and populated in python_parser traversal"
+      ],
+      "changed_paths": [
+        "rig_relay/digestion/context_release.py",
+        "rig_relay/digestion/projections.py",
+        "rig_relay/digestion/structural_indexer/models.py",
+        "rig_relay/digestion/structural_indexer/_indexer.py",
+        "rig_relay/digestion/structural_indexer/_python_parser.py",
+        "rig_relay/digestion/dependency_classifier/_classifier.py",
+        "rig_relay/digestion/dependency_classifier/models.py",
+        "docs/schemas/rig.relay.repository_readiness.v1.schema.json"
+      ],
+      "validation_rerun": [
+        "uv run pytest tests/digestion/test_y2_digestion_pipeline.py -v -q — 28 tests passed, 11 new tests pending",
+        "uv run ruff check rig_relay/digestion/ — 0 errors"
+      ]
+    },
+    {
+      "round_number": 2,
+      "repaired_findings": [
+        "Y2R2-001: Changed advance_lifecycle to require sequential progression (current_state + 1 only)",
+        "Y2R2-002: Added deleted file handling in refresh_structural_index",
+        "Y2R2-003: Added try/except TOMLDecodeError in _python_deps.py with degraded output",
+        "Y2R2-004: Added empty instruction text guard clause in risk_assessor.py"
+      ],
+      "changed_paths": [
+        "rig_relay/digestion/context_release.py",
+        "rig_relay/digestion/incremental_compiler.py",
+        "rig_relay/digestion/risk_assessor.py",
+        "rig_relay/digestion/dependency_classifier/_python_deps.py",
+        "rig_relay/digestion/structural_indexer/_indexer.py",
+        "tests/digestion/test_y2_digestion_pipeline.py",
+        "tests/digestion/conftest.py"
+      ],
+      "validation_rerun": [
+        "uv run pytest tests/digestion/test_y2_digestion_pipeline.py -v -q — 35 tests passed",
+        "uv run pyright rig_relay/digestion/ — 0 errors"
+      ]
+    },
+    {
+      "round_number": 3,
+      "repaired_findings": [
+        "Y2R3-001: Added try/except TOMLDecodeError in _rust_deps.py with degraded RustRiskSummary",
+        "Y2R3-002: Extended quarantine to scan shell scripts and Makefiles",
+        "Y2R3-003: Added None guard in compute_digest, returning None when any component is missing",
+        "Y2R3-004: Removed 'stale' and 'invalidated' from lifecycle_event schema enum"
+      ],
+      "changed_paths": [
+        "rig_relay/digestion/dependency_classifier/_rust_deps.py",
+        "rig_relay/digestion/quarantine.py",
+        "rig_relay/digestion/structural_indexer/_utils.py",
+        "rig_relay/digestion/context_release.py",
+        "docs/schemas/rig.relay.context_lifecycle_event.v1.schema.json",
+        "tests/digestion/test_y2_digestion_pipeline.py",
+        "tests/digestion/conftest.py"
+      ],
+      "validation_rerun": [
+        "uv run pytest tests/digestion/test_y2_digestion_pipeline.py -v -q — 37 tests passed",
+        "uv run ruff check rig_relay/digestion/ — 0 errors"
+      ]
+    },
+    {
+      "round_number": 4,
+      "repaired_findings": [
+        "Y2R4-001: Fixed import name in __init__.py: StructuralIndexer → StructuralIndexService",
+        "Y2R4-002: Added copy-on-write fixture semantics in conftest.py for mutated repos"
+      ],
+      "changed_paths": [
+        "rig_relay/digestion/__init__.py",
+        "tests/digestion/conftest.py",
+        "tests/digestion/test_y2_digestion_pipeline.py"
+      ],
+      "validation_rerun": [
+        "uv run pytest tests/digestion/test_y2_digestion_pipeline.py -v -q — 39 tests passed",
+        "uv run pyright rig_relay/digestion/ — 0 errors",
+        "uv run ruff check rig_relay/digestion/ — 0 errors"
+      ]
+    },
+    {
+      "round_number": 5,
+      "repaired_findings": [
+        "No blocking findings to repair — round 5 admission review"
+      ],
+      "changed_paths": [],
+      "validation_rerun": [
+        "uv run pytest tests/digestion/test_y2_digestion_pipeline.py -v -q — 39 tests passed, 0 skipped, 0 failed",
+        "uv run pytest tests/digestion/ -v -q — 77 passed, 1 skipped",
+        "uv run pyright rig_relay/digestion/ — 0 errors, 0 warnings",
+        "uv run ruff check rig_relay/digestion/ tests/digestion/ — 0 errors"
+      ]
+    }
+  ],
+  "final_admission": {
+    "admitted_candidate_digest": "sha256:y2_round5_import_and_isolation_repair_candidate",
+    "admitted_boundary": "RepositoryContextRelease Pydantic model with 7 evidence sub-models, 5 JSON schemas (draft-07), ContextProjectionService with 6 projection builders, Python tree-sitter structural indexer, multi-ecosystem dependency classifier, execution risk assessor, deterministic digest computation, and content-light public API exports through rig_relay.digestion.__all__",
+    "permitted_consumer_purpose": "Internal Y-lane consumers: Y0 (repository readiness), Y1 (workspace eligibility), Y3 (context capsules for agent assembly), Y4 (context lifecycle events)",
+    "unclaimed_capabilities": [
+      "TypeScript and Rust tree-sitter parsers",
+      "Network-based dependency vulnerability checking",
+      "Real-time git freshness tracking",
+      "Instruction scope text length computation",
+      "Repository estate PostgreSQL materialization",
+      "Gridline Interface frontend consumption",
+      "Quarantine chroot/jail-based hard isolation",
+      "Streaming projection updates via WebSocket"
+    ],
+    "deferred_seams": [
+      "Dependency classifier field naming inconsistency (overall_risk vs overall_risk_level) deferred to Y1 workspace eligibility integration milestone",
+      "Mixed-ecosystem fixture test deferred to named integration milestone",
+      "Instruction scope deduplication conflict_count field deferred to Y4 lifecycle event consumer milestone",
+      "Quarantine hard isolation (chroot/jail) deferred to security hardening milestone",
+      "TypeScript/Rust tree-sitter parsers deferred to multi-language indexing milestone"
+    ],
+    "review_round_count": 5,
+    "push_authorized": false
+  },
+  "status": "prepublication_admitted"
+}

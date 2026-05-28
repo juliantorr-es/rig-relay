@@ -327,6 +327,15 @@ def emit_tool_proposal_evidence(op_id: str, payload: dict[str, Any]) -> str:
     )
 
 
+def emit_tool_execution_outcome(op_id: str, payload: dict[str, Any]) -> str:
+    """Emit a content-light tool execution outcome to the execution ledger.
+
+    Called after a tool proposal is actually executed through ToolRuntime.
+    Content-light: proposal_hash, execution_status, output_sha256, error.
+    """
+    return _execution_ledger.append(op_id, "rig.relay.runtime.tool_executed", payload)
+
+
 def emit_scheduler_event(op_id: str, event_type: str, payload: dict[str, Any]) -> str:
     return _scheduler_ledger.append(
         op_id, f"rig.relay.runtime.scheduler.{event_type}", payload

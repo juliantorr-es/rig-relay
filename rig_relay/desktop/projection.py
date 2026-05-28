@@ -58,6 +58,7 @@ PATCH_SECTION_NAMES: frozenset[str] = frozenset({
     "operating_picture",
     "operational",
     "developer_studio",
+    "fleet_workspaces",
 })
 
 
@@ -1001,6 +1002,46 @@ def _build_developer_studio() -> dict[str, Any]:
         return {"available": False, "reason": "gateway_projection_failed"}
 
 
+def _build_fleet_workspaces(build_root: str | Path) -> dict[str, Any]:
+    build_path = Path(build_root)
+    registry_path = build_path / ".rig" / "relay" / "workspaces" / "registry"
+    if not registry_path.exists():
+        return {"available": False}
+
+    items: list[dict[str, object]] = []
+    for ws_file in sorted(registry_path.glob("*.json")):
+        try:
+            data = json.loads(ws_file.read_text(encoding="utf-8"))
+            identity = data.get("identity", {})
+            item: dict[str, object] = {
+                "workspace_id": identity.get("workspace_id", ""),
+                "project_identity": identity.get("project_identity", ""),
+                "role": identity.get("role", "implementer"),
+                "lifecycle_status": data.get("state", "requested"),
+                "recovery_required": data.get("recovery_state") is not None,
+                "changed_files_count": data.get("changed_files_count", 0),
+                "checkpoint_state": "present"
+                if data.get("checkpoint_sha")
+                else "absent",
+                "claim_state": "healthy",
+                "branch_name": data.get("branch_name"),
+                "base_sha": (data.get("base_commit_sha") or "")[:8] or None,
+                "head_sha": (data.get("head_sha") or "")[:8] or None,
+                "created_at": data.get("created_at"),
+                "updated_at": data.get("updated_at"),
+            }
+            items.append(item)
+        except Exception:
+            continue
+
+    return {
+        "available": True,
+        "schema_version": "rig.relay.fleet_workspace_projection.v1",
+        "total_workspaces": len(items),
+        "workspaces": items,
+    }
+
+
 def _build_service_state() -> dict[str, Any]:
     from rig_relay.governance.service_state import get_capability_gate
 
@@ -1170,6 +1211,7 @@ def build_projection(
     operating_picture = _build_operating_picture()
     operational = _build_operational()
     developer_studio = _build_developer_studio()
+    fleet_workspaces = _build_fleet_workspaces(root)
 
     source_status = {
         "current_state": current_state["available"],
@@ -1194,6 +1236,7 @@ def build_projection(
         "operating_picture": operating_picture["available"],
         "operational": operational["available"],
         "developer_studio": developer_studio["available"],
+        "fleet_workspaces": fleet_workspaces["available"],
     }
 
     warnings: list[str] = []
@@ -1241,6 +1284,7 @@ def build_projection(
         "operating_picture": operating_picture,
         "operational": operational,
         "developer_studio": developer_studio,
+        "fleet_workspaces": fleet_workspaces,
         "warnings": warnings,
         "read_only_actions": list(READ_ONLY_ACTIONS),
     }

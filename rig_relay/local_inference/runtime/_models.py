@@ -17,6 +17,7 @@ OMLX-informed patterns (Apache 2.0 attribution):
 from __future__ import annotations
 
 from enum import StrEnum
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -61,6 +62,7 @@ class ExecutionStatus(StrEnum):
     REFUSED = "refused"
     TIMED_OUT = "timed_out"
     ERROR = "error"
+    EVIDENCE_FAILED = "evidence_failed"
     RUNTIME_UNAVAILABLE = "runtime_unavailable"
 
 
@@ -293,6 +295,7 @@ class TaskAdmissionResult(BaseModel):
     refusal: TaskRefusal | None = None
     response: LocalInferenceResponse | None = None
     evidence_receipt_id: str = ""
+    tool_execution_outcomes: list[dict[str, Any]] | None = None
 
 
 class TaskRefusal(BaseModel):
@@ -333,3 +336,60 @@ class SSDCacheState(BaseModel):
     entries: int = 0
     total_size_mb: float = 0.0
     max_entries: int = 50
+
+
+class LoopState(StrEnum):
+    IDLE = "idle"
+    GENERATING = "generating"
+    STREAMING_PROVISIONAL = "streaming_provisional"
+    TOOL_PROPOSAL_DETECTED = "tool_proposal_detected"
+    TOOL_PROPOSAL_REFUSED = "tool_proposal_refused"
+    TOOL_EXECUTING = "tool_executing"
+    TOOL_OBSERVATION_RECEIVED = "tool_observation_received"
+    CONTINUING_GENERATION = "continuing_generation"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+    RUNTIME_FAILED = "runtime_failed"
+    TOOL_FAILED = "tool_failed"
+    EVIDENCE_DEGRADED = "evidence_degraded"
+    EVIDENCE_FAILED = "evidence_failed"
+    LOOP_LIMIT_REACHED = "loop_limit_reached"
+    SESSION_UNAVAILABLE = "session_unavailable"
+
+
+class ToolObservation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    observation_id: str = ""
+    operation_id: str = ""
+    tool_name: str = ""
+    call_id: str = ""
+    outcome_status: str = ""
+    output_digest: str = ""
+    error_digest: str = ""
+    evidence_emitted: bool = False
+    terminal_outcome_id: str = ""
+
+
+class LocalAgentLoopRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    session_id: str = ""
+    turn_id: str = ""
+    workspace_root: str = ""
+    messages: list[dict[str, Any]] = Field(default_factory=list)
+    model_id_hash: str = ""
+    max_tokens: int = 4096
+    max_tool_turns: int = 5
+    context_privacy_class: ContextPrivacyClass = ContextPrivacyClass.PRIVATE_LOCAL
+
+
+class LocalAgentLoopResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    session_id: str = ""
+    loop_id: str = ""
+    terminal_loop_state: LoopState = LoopState.IDLE
+    final_content: str = ""
+    tool_observations: list[ToolObservation] = Field(default_factory=list)
+    tool_turn_count: int = 0
+    total_latency_ms: int = 0
+    evidence_chain: list[str] = Field(default_factory=list)
+    status: ExecutionStatus = ExecutionStatus.EXECUTED

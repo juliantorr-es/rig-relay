@@ -1,0 +1,404 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "rig.relay.inference_studio_runtime_projection.v1",
+  "title": "Inference Studio Runtime Projection",
+  "description": "Y4 Rigged OMLX runtime projection contract for Y0/Gridline consumption. Content-light: counts, statuses, hashes, capability postures only.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "projection_id",
+    "generated_at",
+    "runtime",
+    "capabilities",
+    "stream_state",
+    "tool_state",
+    "agent_loop",
+    "scheduler",
+    "cache",
+    "pool",
+    "governance",
+    "health",
+    "privacy",
+    "models",
+    "evidence_ledgers"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "rig.relay.inference_studio_runtime_projection.v1"
+    },
+    "projection_id": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "runtime": {
+      "type": "object",
+      "required": ["kind", "platform", "mlx_available", "authority"],
+      "properties": {
+        "kind": {
+          "enum": ["rigged_mlx_internal"]
+        },
+        "platform": {
+          "enum": ["metal_apple_silicon", "unavailable"]
+        },
+        "mlx_available": {
+          "type": "boolean"
+        },
+        "authority": {
+          "type": "string"
+        },
+        "authority_detail": {
+          "type": "string"
+        }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "required": [
+        "text_generation",
+        "streaming_generation",
+        "tool_calling",
+        "continuous_batching",
+        "model_pool_active",
+        "model_tool_observation_loop"
+      ],
+      "properties": {
+        "text_generation": {
+          "enum": ["supported", "v1_required_pending_implementation", "deferred"]
+        },
+        "streaming_generation": {
+          "enum": ["supported", "v1_required_pending_implementation", "deferred"]
+        },
+        "tool_calling": {
+          "enum": ["supported", "v1_required_pending_implementation", "deferred"]
+        },
+        "model_tool_observation_loop": {
+          "type": "object",
+          "required": ["posture"],
+          "properties": {
+            "posture": {"type": "string"},
+            "loop_state": {"type": "string"}
+          }
+        },
+        "structured_output": {
+          "enum": ["supported", "v1_required_pending_implementation", "deferred"]
+        },
+        "embeddings": {
+          "enum": ["supported", "v1_required_pending_implementation", "deferred"]
+        },
+        "reranking": {
+          "enum": ["supported", "v1_required_pending_implementation", "deferred"]
+        },
+        "vision_vlm": {
+          "enum": ["supported", "v1_required_pending_implementation", "deferred"]
+        },
+        "continuous_batching": {
+          "enum": ["supported", "v1_required_pending_implementation", "deferred"]
+        },
+        "kv_cache_reuse": {
+          "enum": ["supported", "v1_required_pending_implementation", "deferred"]
+        },
+        "kv_cache_write_back": {
+          "type": "string"
+        },
+        "model_pool_active": {
+          "enum": ["supported", "v1_required_pending_implementation", "deferred"]
+        },
+        "multi_model_pool": {
+          "enum": ["supported", "v1_required_pending_implementation", "deferred"]
+        },
+        "tool_execution_bridge": {
+          "enum": ["supported", "v1_required_pending_implementation", "deferred"]
+        }
+      }
+    },
+    "stream_state": {
+      "type": "object",
+      "required": ["terminal_evidence_contract"],
+      "properties": {
+        "terminal_evidence_contract": {
+          "type": "string",
+          "description": "provisional_then_terminalized — provisional event emitted before first token; terminalized/evidence_failed emitted after completion"
+        },
+        "possible_states": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "idle",
+              "provisional_streaming",
+              "terminal_completed",
+              "terminal_cancelled",
+              "terminal_failed",
+              "evidence_unavailable"
+            ]
+          }
+        },
+        "stream_terminal_ledger_health": {
+          "type": "string"
+        }
+      }
+    },
+    "tool_state": {
+      "type": "object",
+      "properties": {
+        "session_context_bound": {
+          "type": "boolean"
+        },
+        "executor_wired": {
+          "type": "boolean"
+        },
+        "mode": {
+          "enum": ["full_execution", "stateless_preflight_only"]
+        },
+        "possible_outcomes": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "proposed",
+              "preflight_admitted",
+              "execution_authorized",
+              "executed",
+              "refused",
+              "failed",
+              "evidence_failed"
+            ]
+          }
+        }
+      }
+    },
+    "agent_loop": {
+      "type": "object",
+      "required": ["supported", "active", "state", "max_tool_turns"],
+      "properties": {
+        "supported": {"type": "string"},
+        "active": {"type": "boolean"},
+        "state": {"type": "string"},
+        "tool_turn_count": {"type": "integer"},
+        "max_tool_turns": {"type": "integer"}
+      }
+    },
+    "scheduler": {
+      "type": "object",
+      "required": ["mode", "queue_depth", "running_count", "serialization_reason"],
+      "properties": {
+        "mode": {
+          "type": "string"
+        },
+        "queue_depth": {
+          "type": "integer"
+        },
+        "running_count": {
+          "type": "integer"
+        },
+        "total_processed": {
+          "type": "integer"
+        },
+        "batching_status": {
+          "type": "string"
+        },
+        "serialization_reason": {
+          "type": "string"
+        },
+        "refusal_count": {
+          "type": "integer"
+        },
+        "queue_position_visible": {
+          "type": "boolean"
+        },
+        "waiting_count": {
+          "type": "integer"
+        },
+        "cancellation_count": {
+          "type": "string"
+        }
+      }
+    },
+    "cache": {
+      "type": "object",
+      "required": ["kv_cache_reuse_enabled", "hit_count", "miss_count"],
+      "properties": {
+        "kv_cache_reuse_enabled": {
+          "type": "boolean"
+        },
+        "hit_count": {
+          "type": "integer"
+        },
+        "miss_count": {
+          "type": "integer"
+        },
+        "ssd_cache": {
+          "type": "object"
+        },
+        "cache_loop_safety": {
+          "type": "string"
+        }
+      }
+    },
+    "pool": {
+      "type": "object",
+      "required": ["loaded_count", "max_models"],
+      "properties": {
+        "loaded_count": {
+          "type": "integer"
+        },
+        "max_models": {
+          "type": "integer"
+        },
+        "active_generations": {
+          "type": "integer"
+        }
+      }
+    },
+    "governance": {
+      "type": "object",
+      "required": [
+        "evidence",
+        "scheduling_truth",
+        "tool_loop_completeness",
+        "streaming_terminal_evidence",
+        "stream_terminal_evidence_integrity"
+      ],
+      "properties": {
+        "evidence": {
+          "type": "string"
+        },
+        "scheduling_truth": {
+          "type": "string"
+        },
+        "scheduling_truth_detail": {
+          "type": "string"
+        },
+        "tool_execution": {
+          "type": "string"
+        },
+        "tool_execution_detail": {
+          "type": "string"
+        },
+        "tool_loop_completeness": {
+          "type": "string"
+        },
+        "tool_loop_completeness_detail": {
+          "type": "string"
+        },
+        "streaming_terminal_evidence": {
+          "type": "string"
+        },
+        "streaming_terminal_evidence_detail": {
+          "type": "string"
+        },
+        "stream_terminal_evidence_integrity": {
+          "type": "string",
+          "enum": ["complete", "degraded", "unavailable"]
+        },
+        "stream_terminal_evidence_integrity_detail": {
+          "type": "string"
+        },
+        "shutdown_drain_status": {
+          "type": "string"
+        },
+        "admission_gates": {
+          "type": "string"
+        },
+        "scheduler_authority": {
+          "type": "string"
+        },
+        "streaming_admission": {
+          "type": "string"
+        },
+        "thread_lifecycle": {
+          "type": "string"
+        },
+        "thread_lifecycle_detail": {
+          "type": "string"
+        }
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "required": [
+        "secret_scanning",
+        "private_local_context",
+        "secret_bearing_context",
+        "cache_persistence"
+      ],
+      "properties": {
+        "secret_scanning": {
+          "type": "string"
+        },
+        "private_local_context": {
+          "type": "string"
+        },
+        "secret_bearing_context": {
+          "type": "string"
+        },
+        "cache_persistence": {
+          "type": "string"
+        }
+      }
+    },
+    "health": {
+      "type": "object",
+      "required": ["state", "gpu_available"],
+      "properties": {
+        "state": {
+          "type": "string"
+        },
+        "gpu_available": {
+          "type": "boolean"
+        },
+        "last_probe": {
+          "type": "string"
+        },
+        "stream_terminal_ledger_health": {
+          "type": "string"
+        },
+        "shutdown_state": {
+          "type": "string"
+        }
+      }
+    },
+    "models": {
+      "type": "object",
+      "properties": {
+        "loaded_count": {
+          "type": "integer"
+        },
+        "inventory_count": {
+          "type": "integer"
+        },
+        "pool_count": {
+          "type": "integer"
+        },
+        "lifecycle_events": {
+          "type": "string"
+        }
+      }
+    },
+    "bridge": {
+      "type": "object",
+      "properties": {
+        "bridge_state": {
+          "type": "object",
+          "properties": {
+            "session_bound": {"type": "boolean"},
+            "executor_wired": {"type": "boolean"},
+            "mode": {"type": "string"}
+          }
+        }
+      }
+    },
+    "evidence_ledgers": {
+      "type": "object",
+      "properties": {
+        "execution": {"type": "string"},
+        "lifecycle": {"type": "string"},
+        "cache": {"type": "string"},
+        "stream_terminal": {"type": "string"},
+        "stream_terminal_health": {"type": "string"},
+        "reconstruct": {"type": "string"}
+      }
+    }
+  }
+}

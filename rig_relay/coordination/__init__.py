@@ -15,6 +15,7 @@ from rig_relay.coordination.fleet_claim_corridor import (
     FleetClaimState,
     FleetClaimXattr,
 )
+from rig_relay.coordination.fleet_claims import FleetClaimStore
 from rig_relay.coordination.models import (
     CoordinationArtifactRef,
     CoordinationClaimResult,
@@ -80,6 +81,7 @@ __all__ = [
     "FleetClaimProtocol",
     "FleetClaimResult",
     "FleetClaimState",
+    "FleetClaimStore",
     "FleetClaimXattr",
     "build_artifact_published_payload",
     "build_checkpoint_committed_payload",

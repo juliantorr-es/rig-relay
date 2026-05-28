@@ -476,13 +476,19 @@ def PUBLISH_PREVIEW_SURFACE_PROJECTION_BUILDER(
     gateway: DeveloperStudioGatewayService,
 ) -> PublishPreviewSurfaceProjection:
     """Build Publish Preview surface from X3.8 PublicationStatusContract."""
+    x3_boundary_status = "unavailable"
+    x3_import_failed = False
+
     # Try X3.8 publication projection first
     try:
-        from rig_relay.publication._projection import build_publication_projection
+        from rig_relay.publication import build_publication_projection
 
         pub_contract = build_publication_projection()
         if pub_contract is not None:
             return _build_from_publication_contract(pub_contract, gateway)
+    except ImportError:
+        x3_boundary_status = "candidate_local_not_remotely_released"
+        x3_import_failed = True
     except Exception:
         pass
 
@@ -492,11 +498,45 @@ def PUBLISH_PREVIEW_SURFACE_PROJECTION_BUILDER(
         try:
             preview = pub.build_preview()
             if preview is not None:
-                return _build_from_preview(preview, gateway)
+                proj = _build_from_preview(preview, gateway)
+                if x3_import_failed:
+                    return proj.model_copy(
+                        update={
+                            "x3_boundary_status": x3_boundary_status,
+                            "degraded_reason": (
+                                "Publication projection was not found on remote main. "
+                                "The X3 publication boundary is candidate_local "
+                                "(not yet remotely released). Falling back to T1.2."
+                            ),
+                            "status_detail": (
+                                "Publication preview available via T1.2; "
+                                "X3 boundary: candidate_local_not_remotely_released"
+                            ),
+                        }
+                    )
+                return proj
         except Exception:
             pass
 
     # Unavailable fallback
+    if x3_import_failed:
+        return PublishPreviewSurfaceProjection(
+            available=False,
+            authority_state="missing",
+            trust_state=TrustState.DEFERRED,
+            degraded_reason=(
+                "Publication projection was not found on remote main. "
+                "The X3 publication boundary is candidate_local "
+                "(not yet remotely released). T1.2 preview service also unavailable."
+            ),
+            surface_status=SurfaceStatus.VERIFICATION_PENDING.value,
+            status_detail=(
+                "Publication preview is awaiting upstream handoff. "
+                "X3 boundary: candidate_local_not_remotely_released."
+            ),
+            x3_boundary_status=x3_boundary_status,
+        )
+
     return PublishPreviewSurfaceProjection(
         available=False,
         authority_state="missing",
@@ -507,6 +547,7 @@ def PUBLISH_PREVIEW_SURFACE_PROJECTION_BUILDER(
         ),
         surface_status=SurfaceStatus.VERIFICATION_PENDING.value,
         status_detail="Publication preview is awaiting upstream handoff",
+        x3_boundary_status=x3_boundary_status,
     )
 
 
@@ -584,6 +625,7 @@ def _build_from_publication_contract(
             if getattr(pub_contract, "published_verified", False)
             else "pending"
         ),
+        x3_boundary_status="consumed_from_local_candidate_not_remotely_released",
     )
 
 
@@ -1093,7 +1135,48 @@ def HARNESS_PROFILE_SURFACE_PROJECTION_BUILDER(
 def ANALYTICS_REPORTS_SURFACE_PROJECTION_BUILDER(
     gateway: DeveloperStudioGatewayService,
 ) -> AnalyticsReportsSurfaceProjection:
-    """Analytics & Reports surface — deferred to Y4."""
+    """Analytics & Reports surface — wired to DuckDB analytics engine and X-Wave readiness report."""
+    report = None
+    try:
+        from rig_relay.analytics._readiness_report import build_x_wave_readiness_report
+
+        report = build_x_wave_readiness_report()
+    except Exception:
+        pass
+
+    if report is not None and report.provider_summary:
+        providers: list[dict[str, str]] = []
+        for p in report.provider_summary:
+            providers.append({
+                "provider_lane": p.provider_lane,
+                "product_name": p.product_name,
+                "released_boundary": p.released_boundary,
+                "status": p.status,
+                "consumer_readiness": p.consumer_readiness,
+                "desktop_consumption_state": p.desktop_consumption_state,
+            })
+
+        return AnalyticsReportsSurfaceProjection(
+            available=True,
+            authority_state="derived",
+            trust_state=TrustState.TRUSTED_LIVE,
+            degraded_reason="",
+            surface_status=SurfaceStatus.AVAILABLE.value,
+            status_detail=(
+                f"{report.landed_and_visible} landed, "
+                f"{report.cannot_confirm_remotely} pending"
+            ),
+            dataset_count=0,
+            total_rows=0,
+            report_count=len(report.provider_summary),
+            refinement_candidate_count=0,
+            export_manifest="available",
+            x_wave_providers=providers,
+            landed_and_visible=report.landed_and_visible,
+            remote_not_consumed=report.remote_not_consumed,
+            cannot_confirm_remotely=report.cannot_confirm_remotely,
+        )
+
     return AnalyticsReportsSurfaceProjection()
 
 

@@ -85,6 +85,8 @@ class TestWorktreeStatus:
             WorktreeStatus.STALE,
             WorktreeStatus.REMOVED,
             WorktreeStatus.ERROR,
+            WorktreeStatus.LOCKED,
+            WorktreeStatus.PRUNABLE,
         ]
 
     def test_string_values(self):
@@ -105,6 +107,10 @@ class TestWorktreeOperationKind:
             WorktreeOperationKind.LIST,
             WorktreeOperationKind.INSPECT,
             WorktreeOperationKind.GET_HEAD,
+            WorktreeOperationKind.LOCK,
+            WorktreeOperationKind.UNLOCK,
+            WorktreeOperationKind.PRUNE,
+            WorktreeOperationKind.REPAIR,
         ]
 
     def test_string_values(self):
@@ -155,6 +161,12 @@ class TestWorktreeRecord:
         assert r.removed_at is None
         assert r.refusal_reason is None
         assert r.error_kind is None
+        assert r.locked is None
+        assert r.locked_reason is None
+        assert r.prunable is None
+        assert r.prunable_reason is None
+        assert r.in_maintenance is False
+        assert r.maintenance_holder is None
 
     def test_rejects_unknown_fields(self):
         with pytest.raises(ValidationError):

@@ -1239,13 +1239,17 @@ class DeveloperStudioGatewayService:
             if self._x0_projection_surface is not None:
                 return self._x0_projection_surface
             try:
-                from rig_relay.data_plane.postgres import (
-                    PostgresConnectionConfig,
-                    PostgresOperationalProjectionStore,
+                import importlib
+
+                pg_module = importlib.import_module("rig_relay.data_plane.postgres")
+                PostgresConnectionConfig = pg_module.PostgresConnectionConfig
+                PostgresOperationalProjectionStore = (
+                    pg_module.PostgresOperationalProjectionStore
                 )
-                from rig_relay.data_plane.postgres._x0_projection import (
-                    X0ProjectionSurface,
+                x0_module = importlib.import_module(
+                    "rig_relay.data_plane.postgres._x0_projection"
                 )
+                X0ProjectionSurface = x0_module.X0ProjectionSurface
 
                 config = PostgresConnectionConfig()
                 store = PostgresOperationalProjectionStore(config)

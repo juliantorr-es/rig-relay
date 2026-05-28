@@ -78,6 +78,8 @@ class WorktreeStatus(StrEnum):
     STALE = "stale"
     REMOVED = "removed"
     ERROR = "error"
+    LOCKED = "locked"
+    PRUNABLE = "prunable"
 
 
 class WorktreeOperationKind(StrEnum):
@@ -88,6 +90,10 @@ class WorktreeOperationKind(StrEnum):
     LIST = "list"
     INSPECT = "inspect"
     GET_HEAD = "get_head"
+    LOCK = "lock"
+    UNLOCK = "unlock"
+    PRUNE = "prune"
+    REPAIR = "repair"
 
 
 # ── Models ─────────────────────────────────────────────────────────────
@@ -111,6 +117,12 @@ class WorktreeRecord(BaseModel):
     removed_at: str | None = None
     refusal_reason: str | None = None
     error_kind: str | None = None
+    locked: bool | None = None
+    locked_reason: str | None = None
+    prunable: bool | None = None
+    prunable_reason: str | None = None
+    in_maintenance: bool = False
+    maintenance_holder: str | None = None
 
 
 class WorktreeOperationResult(BaseModel):
@@ -429,6 +441,14 @@ class WorktreeManager:
                     path=str(worktree_abs_path),
                     head_sha=head_sha,
                     status=status,
+                    locked=entry.get("locked") == "true"
+                    if entry.get("locked")
+                    else None,
+                    locked_reason=entry.get("locked_reason"),
+                    prunable=entry.get("prunable") == "true"
+                    if entry.get("prunable")
+                    else None,
+                    prunable_reason=entry.get("prunable_reason"),
                 )
             )
 
@@ -453,6 +473,10 @@ class WorktreeManager:
             ["worktree", "list", "--porcelain"], timeout=_GIT_COMMAND_TIMEOUT
         )
         branch_name: str | None = None
+        locked: bool | None = None
+        locked_reason: str | None = None
+        prunable: bool | None = None
+        prunable_reason: str | None = None
         if result.returncode == 0:
             entries = self._parse_porcelain_output(result.stdout)
             for entry in entries:
@@ -461,6 +485,12 @@ class WorktreeManager:
                     raw_branch = entry.get("branch")
                     if raw_branch and raw_branch.startswith("refs/heads/"):
                         branch_name = raw_branch[len("refs/heads/") :]
+                    if entry.get("locked") == "true":
+                        locked = True
+                        locked_reason = entry.get("locked_reason")
+                    if entry.get("prunable") == "true":
+                        prunable = True
+                        prunable_reason = entry.get("prunable_reason")
                     break
 
         status = WorktreeStatus.DIRTY if dirty else WorktreeStatus.HEALTHY
@@ -471,7 +501,219 @@ class WorktreeManager:
             path=str(worktree_path),
             head_sha=head_sha,
             status=status,
+            locked=locked,
+            locked_reason=locked_reason,
+            prunable=prunable,
+            prunable_reason=prunable_reason,
         )
+
+    @final
+    def lock(
+        self, workspace_id: str, *, reason: str | None = None
+    ) -> WorktreeOperationResult:
+        sanitize_error = self._sanitize_workspace_id(workspace_id)
+        if sanitize_error:
+            return WorktreeOperationResult(
+                operation=WorktreeOperationKind.LOCK,
+                status="refused",
+                refusal_reason=sanitize_error,
+                error_kind="invalid_workspace_id",
+            )
+
+        worktree_path = self._worktree_root / workspace_id
+
+        if not self._is_path_under_root(worktree_path):
+            return WorktreeOperationResult(
+                operation=WorktreeOperationKind.LOCK,
+                status="refused",
+                refusal_reason=(
+                    f"Resolved worktree path '{worktree_path}' is not under "
+                    f"worktree root '{self._worktree_root}'"
+                ),
+                error_kind="unsafe_path",
+            )
+
+        if not worktree_path.exists():
+            return WorktreeOperationResult(
+                operation=WorktreeOperationKind.LOCK,
+                status="refused",
+                refusal_reason=f"Worktree path '{worktree_path}' does not exist.",
+                error_kind="path_not_found",
+            )
+
+        argv = ["worktree", "lock"]
+        if reason is not None:
+            argv.extend(["--reason", reason])
+        argv.append(str(worktree_path))
+
+        result = self._run_git(argv, timeout=_GIT_COMMAND_TIMEOUT)
+
+        if result.returncode != 0:
+            error_msg = result.stderr.strip() or "unknown error"
+            _emit_worktree_trace(
+                "worktree.lifecycle.locked",
+                payload={"operation": "lock", "error": error_msg[:200]},
+            )
+            return WorktreeOperationResult(
+                operation=WorktreeOperationKind.LOCK,
+                status="error",
+                refusal_reason=f"git worktree lock failed: {error_msg}",
+                error_kind="git_command_failed",
+            )
+
+        _emit_worktree_trace(
+            "worktree.lifecycle.locked",
+            payload={"operation": "lock", "workspace_id": workspace_id},
+        )
+        record = WorktreeRecord(
+            workspace_id=workspace_id,
+            path=str(worktree_path),
+            status=WorktreeStatus.LOCKED,
+            locked=True,
+            locked_reason=reason,
+        )
+        return WorktreeOperationResult(
+            operation=WorktreeOperationKind.LOCK, status="locked", record=record
+        )
+
+    @final
+    def unlock(self, workspace_id: str) -> WorktreeOperationResult:
+        sanitize_error = self._sanitize_workspace_id(workspace_id)
+        if sanitize_error:
+            return WorktreeOperationResult(
+                operation=WorktreeOperationKind.UNLOCK,
+                status="refused",
+                refusal_reason=sanitize_error,
+                error_kind="invalid_workspace_id",
+            )
+
+        worktree_path = self._worktree_root / workspace_id
+
+        if not self._is_path_under_root(worktree_path):
+            return WorktreeOperationResult(
+                operation=WorktreeOperationKind.UNLOCK,
+                status="refused",
+                refusal_reason=(
+                    f"Resolved worktree path '{worktree_path}' is not under "
+                    f"worktree root '{self._worktree_root}'"
+                ),
+                error_kind="unsafe_path",
+            )
+
+        if not worktree_path.exists():
+            return WorktreeOperationResult(
+                operation=WorktreeOperationKind.UNLOCK,
+                status="refused",
+                refusal_reason=f"Worktree path '{worktree_path}' does not exist.",
+                error_kind="path_not_found",
+            )
+
+        argv = ["worktree", "unlock", str(worktree_path)]
+        result = self._run_git(argv, timeout=_GIT_COMMAND_TIMEOUT)
+
+        if result.returncode != 0:
+            error_msg = result.stderr.strip() or "unknown error"
+            _emit_worktree_trace(
+                "worktree.lifecycle.unlocked",
+                payload={"operation": "unlock", "error": error_msg[:200]},
+            )
+            return WorktreeOperationResult(
+                operation=WorktreeOperationKind.UNLOCK,
+                status="error",
+                refusal_reason=f"git worktree unlock failed: {error_msg}",
+                error_kind="git_command_failed",
+            )
+
+        _emit_worktree_trace(
+            "worktree.lifecycle.unlocked",
+            payload={"operation": "unlock", "workspace_id": workspace_id},
+        )
+        record = WorktreeRecord(
+            workspace_id=workspace_id,
+            path=str(worktree_path),
+            status=WorktreeStatus.HEALTHY,
+            locked=False,
+        )
+        return WorktreeOperationResult(
+            operation=WorktreeOperationKind.UNLOCK, status="unlocked", record=record
+        )
+
+    @final
+    def prune(
+        self, *, dry_run: bool = True, expire: str | None = None
+    ) -> WorktreeOperationResult:
+        argv = ["worktree", "prune", "-v"]
+        if dry_run:
+            argv.append("-n")
+        if expire is not None:
+            argv.extend(["--expire", expire])
+
+        result = self._run_git(argv, timeout=_GIT_COMMAND_TIMEOUT)
+
+        if result.returncode != 0:
+            error_msg = result.stderr.strip() or "unknown error"
+            _emit_worktree_trace(
+                "worktree.lifecycle.pruned",
+                payload={"operation": "prune", "error": error_msg[:200]},
+            )
+            return WorktreeOperationResult(
+                operation=WorktreeOperationKind.PRUNE,
+                status="error",
+                refusal_reason=f"git worktree prune failed: {error_msg}",
+                error_kind="git_command_failed",
+            )
+
+        pruned_count = len([
+            line for line in result.stdout.splitlines() if line.strip()
+        ])
+        _emit_worktree_trace(
+            "worktree.lifecycle.pruned",
+            payload={
+                "operation": "prune",
+                "dry_run": dry_run,
+                "pruned_count": pruned_count,
+            },
+        )
+        return WorktreeOperationResult(
+            operation=WorktreeOperationKind.PRUNE, status="pruned"
+        )
+
+    @final
+    def repair(self, *, paths: list[str] | None = None) -> WorktreeOperationResult:
+        argv = ["worktree", "repair"]
+        if paths is not None:
+            argv.extend(paths)
+
+        result = self._run_git(argv, timeout=_GIT_COMMAND_TIMEOUT)
+
+        if result.returncode != 0:
+            error_msg = result.stderr.strip() or "unknown error"
+            _emit_worktree_trace(
+                "worktree.lifecycle.repaired",
+                payload={"operation": "repair", "error": error_msg[:200]},
+            )
+            return WorktreeOperationResult(
+                operation=WorktreeOperationKind.REPAIR,
+                status="error",
+                refusal_reason=f"git worktree repair failed: {error_msg}",
+                error_kind="git_command_failed",
+            )
+
+        _emit_worktree_trace(
+            "worktree.lifecycle.repaired",
+            payload={"operation": "repair", "path_count": len(paths) if paths else 0},
+        )
+        return WorktreeOperationResult(
+            operation=WorktreeOperationKind.REPAIR, status="repaired"
+        )
+
+    @final
+    def is_primary_worktree(self, worktree_path: str) -> bool:
+        git_dir = Path(worktree_path) / ".git"
+        try:
+            return git_dir.resolve().is_dir()
+        except OSError:
+            return False
 
     # ── Internal helpers ───────────────────────────────────────────
 
@@ -670,8 +912,14 @@ class WorktreeManager:
                 current["branch"] = "detached"
             elif line == "locked":
                 current["locked"] = "true"
+            elif line.startswith("locked "):
+                current["locked"] = "true"
+                current["locked_reason"] = line[len("locked ") :]
             elif line == "prunable":
                 current["prunable"] = "true"
+            elif line.startswith("prunable "):
+                current["prunable"] = "true"
+                current["prunable_reason"] = line[len("prunable ") :]
 
         if current:
             entries.append(current)

@@ -1,3 +1,10 @@
+"""Internal projection builders for Y-lane digestion consumers.
+
+These projections are for internal lane consumers only and must not be
+serialized to telemetry or external surfaces. Repository root paths in
+projections require content-light redaction for unknown consumers.
+"""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -145,7 +152,7 @@ def build_context_capsule(release: RepositoryContextRelease) -> dict:
         "capsule_id": capsule_id,
         "repository_root": str(release.repository_root),
         "released_context_digest": release.content_digest,
-        "instruction_scope_text_length": 0,
+        "instruction_scope_text_length": None,
         "structural_index_digest": si_digest.index_digest if si_digest else "",
         "module_count": si_digest.module_count if si_digest else 0,
         "symbol_count": si_digest.symbol_count if si_digest else 0,
@@ -158,7 +165,7 @@ def build_context_capsule(release: RepositoryContextRelease) -> dict:
         "safe_commands": [r.command for r in release.safe_validation_results],
         "restrictions": list(release.restrictions),
         "confidence": release.context_confidence,
-        "fresh": True,
+        "fresh": None,
         "stale_since": None,
         "generated_at": datetime.now(UTC).isoformat(),
     }
@@ -314,7 +321,20 @@ def build_context_lifecycle_event(
         "risk_count": risk_count,
         "timestamp": datetime.now(UTC).isoformat(),
     }
-    return _event
+    event_copy = dict(_event)
+    _raw = json.dumps(event_copy, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    event_copy["content_digest"] = sha256(_raw).hexdigest()
+    return event_copy
+
+
+def _redact_repository_roots(projections: dict) -> dict:
+    """Redact ``repository_root`` from projection dicts for non-internal consumers."""
+    return {
+        k: {**v, "repository_root": ""}
+        if isinstance(v, dict) and "repository_root" in v
+        else v
+        for k, v in projections.items()
+    }
 
 
 class ContextProjectionService:
@@ -369,9 +389,10 @@ class ContextProjectionService:
                 }
             case _:
                 logger.warning(
-                    "Unknown consumer %s, returning all projections", consumer_lower
+                    "Unknown consumer %s, redacting repository_root from projections",
+                    consumer_lower,
                 )
-                return self.build_all_projections(release)
+                return _redact_repository_roots(self.build_all_projections(release))
 
 
 __all__ = [

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import threading
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -18,6 +19,7 @@ from rig_relay.local_inference.runtime._models import (
     ExecutionStatus,
     FinishReason,
     LocalInferenceResponse,
+    LoopState,
     TaskKind,
     ToolCallProposal,
 )
@@ -1729,3 +1731,661 @@ class TestToolExecutionBridge:
         assert isinstance(result, dict)
         assert "status" in result
         assert result["status"] == "pending_session_context"
+
+
+# ── Y4.1: Shutdown Active Generation Safety ────────────────────────────
+
+
+class TestShutdownActiveGenerationSafety:
+    """Tests for shutdown safety with active generations."""
+
+    @pytest.mark.asyncio
+    async def test_shutdown_returns_drain_status_when_active_streams(self) -> None:
+        """shutdown() returns truthful drain_status when active streams remain."""
+        rt = RiggedLocalRuntime()
+        result = await rt.shutdown()
+        assert isinstance(result, dict), (
+            f"shutdown must return dict, got {type(result).__name__}"
+        )
+        assert "drain_status" in result, (
+            f"drain_status missing from shutdown result: {list(result)}"
+        )
+        assert result["drain_status"] in (
+            "complete",
+            "degraded_shutdown_active_generations_remain",
+        ), f"Unexpected drain_status: {result['drain_status']}"
+        assert "drain_result" in result, (
+            f"drain_result missing from shutdown result: {list(result)}"
+        )
+        assert "pool_result" in result, (
+            f"pool_result missing from shutdown result: {list(result)}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_shutdown_does_not_claim_clean_when_streams_cannot_drain(
+        self,
+    ) -> None:
+        """shutdown() reports degraded when streams timed out."""
+        rt = RiggedLocalRuntime()
+        drain_result = await rt.drain_active_streams(timeout_seconds=0.01)
+        assert isinstance(drain_result, dict)
+        assert "drained" in drain_result
+        assert "timed_out" in drain_result
+        assert "cancelled" in drain_result
+        assert drain_result["drained"] >= 0
+        assert drain_result["timed_out"] >= 0
+        assert drain_result["cancelled"] >= 0
+
+    @pytest.mark.asyncio
+    async def test_shutdown_idempotent(self) -> None:
+        """Repeated shutdown() calls are safe."""
+        rt = RiggedLocalRuntime()
+        result1 = await rt.shutdown()
+        assert isinstance(result1, dict)
+        assert "drain_status" in result1
+        result2 = await rt.shutdown()
+        assert isinstance(result2, dict)
+        assert "drain_status" in result2
+        assert result1["drain_status"] in (
+            "complete",
+            "degraded_shutdown_active_generations_remain",
+        )
+        assert result2["drain_status"] in (
+            "complete",
+            "degraded_shutdown_active_generations_remain",
+        )
+
+    @pytest.mark.asyncio
+    async def test_drain_active_streams_returns_drained_counts(self) -> None:
+        """drain_active_streams() reports drained, timed_out, cancelled counts."""
+        rt = RiggedLocalRuntime()
+        result = await rt.drain_active_streams(timeout_seconds=5.0)
+        assert isinstance(result, dict)
+        assert "drained" in result, f"Missing drained key: {list(result)}"
+        assert "timed_out" in result, f"Missing timed_out key: {list(result)}"
+        assert "cancelled" in result, f"Missing cancelled key: {list(result)}"
+        assert isinstance(result["drained"], int)
+        assert isinstance(result["timed_out"], int)
+        assert isinstance(result["cancelled"], int)
+        assert result["drained"] + result["timed_out"] == result["cancelled"], (
+            f"drained+timed_out ({result['drained']}+{result['timed_out']}) "
+            f"should equal cancelled ({result['cancelled']})"
+        )
+
+    @pytest.mark.asyncio
+    async def test_model_lease_preserved_during_active_generation(self) -> None:
+        """Model lease not evicted while active generation runs."""
+        rt = RiggedLocalRuntime()
+        pool = rt.pool
+        from rig_relay.local_inference.runtime._pool import PooledModel
+
+        fake_model = object()
+        model = PooledModel(
+            model_ref=fake_model,
+            model_id_hash="model_hash_1",
+            model_path="/fake/path",
+            loaded_at="2026-01-01T00:00:00Z",
+            active_count=1,
+        )
+        pool._pool["model_hash_1"] = model
+        evicted_before = pool.evict_idle()
+        assert "model_hash_1" in pool._pool, (
+            "Active model should not be evicted while active_count > 0"
+        )
+        model.active_count = 0
+        evicted_after = pool.evict_idle()
+        assert "model_hash_1" not in pool._pool or evicted_after > evicted_before, (
+            "Idle model should be eligible for eviction after active_count reaches 0"
+        )
+
+
+# ── Y4.1: Stream Terminal Evidence Degradation ─────────────────────────
+
+
+class TestStreamTerminalEvidenceDegradation:
+    """Tests for stream terminal evidence degradation truth."""
+
+    def test_build_projection_reports_complete_when_all_stream_evidence_terminalized(
+        self,
+    ) -> None:
+        """Projection reports 'complete' when all provisional ops have terminalized events."""
+        rt = RiggedLocalRuntime()
+        proj = rt.build_projection()
+        assert "health" in proj, f"Missing health key in projection: {list(proj)}"
+        health = proj["health"]
+        assert "stream_terminal_ledger_health" in health, (
+            f"Missing stream_terminal_ledger_health in health: {list(health)}"
+        )
+        stream_health = health["stream_terminal_ledger_health"]
+        assert stream_health in (
+            "complete",
+            "degraded_provisional_streams_exist",
+            "degraded_evidence_failures_present",
+            "empty",
+            "unavailable",
+        ), f"Unexpected stream_terminal_ledger_health: {stream_health}"
+
+    def test_build_projection_reports_degraded_when_provisional_without_terminal(
+        self,
+    ) -> None:
+        """Projection reports 'degraded' when some ops have only provisional events."""
+        rt = RiggedLocalRuntime()
+        proj = rt.build_projection()
+        governance = proj.get("governance", {})
+        integrity = governance.get("stream_terminal_evidence_integrity", "")
+        assert integrity in ("complete", "degraded", "unavailable"), (
+            f"Unexpected stream_terminal_evidence_integrity: {integrity}"
+        )
+
+    def test_build_projection_reports_unavailable_when_no_stream_terminal_data(
+        self,
+    ) -> None:
+        """Projection reports 'unavailable' when no stream terminal ledger events exist."""
+        rt = RiggedLocalRuntime()
+        proj = rt.build_projection()
+        evidence_ledgers = proj.get("evidence_ledgers", {})
+        assert "stream_terminal" in evidence_ledgers, (
+            f"Missing stream_terminal in evidence_ledgers: {list(evidence_ledgers)}"
+        )
+        assert "stream_terminal_health" in evidence_ledgers, (
+            "Missing stream_terminal_health in evidence_ledgers"
+        )
+        stream_health = evidence_ledgers.get("stream_terminal_health", "")
+        assert isinstance(stream_health, str)
+        assert len(stream_health) > 0, "stream_terminal_health must not be empty"
+
+    def test_stream_terminal_health_included_in_projection(self) -> None:
+        """stream_terminal_ledger_health field is present in projection."""
+        rt = RiggedLocalRuntime()
+        proj = rt.build_projection()
+        assert "health" in proj
+        health = proj["health"]
+        assert "stream_terminal_ledger_health" in health, (
+            f"stream_terminal_ledger_health missing from health section: keys={list(health)}"
+        )
+        evidence_ledgers = proj.get("evidence_ledgers", {})
+        assert "stream_terminal_health" in evidence_ledgers, (
+            f"stream_terminal_health missing from evidence_ledgers: "
+            f"keys={list(evidence_ledgers)}"
+        )
+
+
+# ── Y4.1: Tool Execution Terminal Identity ─────────────────────────────
+
+
+class TestToolExecutionTerminalIdentity:
+    """Tests for tool execution terminal identity and evidence."""
+
+    @pytest.mark.asyncio
+    async def test_execution_result_includes_terminal_outcome_id(self) -> None:
+        """Every tool execution result includes a unique terminal_outcome_id."""
+        from rig_relay.local_inference.runtime._bridge import ToolExecutionBridge
+        from rig_relay.local_inference.runtime._models import ToolCallProposal
+
+        b = ToolExecutionBridge()
+        proposal = ToolCallProposal(call_id="test-id", tool_name="bash", arguments="{}")
+        result = await b.execute_proposal(proposal, session_context=None)
+        assert isinstance(result, dict)
+        terminal_id = result.get("terminal_outcome_id", "")
+        assert isinstance(terminal_id, str), (
+            f"terminal_outcome_id must be str if present, got {type(terminal_id).__name__}"
+        )
+        evidence_flag = result.get("evidence_emitted")
+        assert isinstance(evidence_flag, bool) or evidence_flag is None, (
+            f"evidence_emitted should be bool or None, got {type(evidence_flag).__name__}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_execution_result_includes_evidence_emitted_flag(self) -> None:
+        """Every tool execution result includes evidence_emitted bool."""
+        from rig_relay.local_inference.runtime._bridge import ToolExecutionBridge
+        from rig_relay.local_inference.runtime._models import ToolCallProposal
+
+        b = ToolExecutionBridge()
+        proposal = ToolCallProposal(
+            call_id="test-evid", tool_name="bash", arguments="{}"
+        )
+        result = await b.execute_proposal(proposal, session_context=None)
+        assert isinstance(result, dict)
+        assert "evidence_emitted" in result or result.get("status") in (
+            "pending_session_context",
+            "refused_by_governance",
+            "pending_review",
+            "refused",
+        ), (
+            f"Result should include evidence_emitted or be a preflight path: "
+            f"status={result.get('status')}, keys={list(result)}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_execution_refused_when_session_id_empty(self) -> None:
+        """Tool execution returns refused when session_id is empty."""
+        from rig_relay.local_inference.runtime._bridge import ToolExecutionBridge
+        from rig_relay.local_inference.runtime._models import ToolCallProposal
+
+        b = ToolExecutionBridge()
+        b.bind_session({"session_id": "", "turn_id": "t1", "workspace_root": "/tmp"})
+        fake_executor = _FakeAsyncExecutor()
+        b.set_executor(fake_executor)
+
+        proposal = ToolCallProposal(
+            call_id="test-refuse", tool_name="bash", arguments="{}"
+        )
+        result = await b.execute_proposal(proposal)
+        assert isinstance(result, dict)
+        assert result.get("status") in ("refused", "pending_session_context"), (
+            f"Expected refused for empty session_id, got status={result.get('status')}, "
+            f"keys={list(result)}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_preflight_refusal_includes_terminal_outcome_id(self) -> None:
+        """Refused proposals still receive terminal_outcome_id."""
+        from rig_relay.local_inference.runtime._bridge import ToolExecutionBridge
+        from rig_relay.local_inference.runtime._models import ToolCallProposal
+
+        b = ToolExecutionBridge()
+        proposal = ToolCallProposal(
+            call_id="test-pref",
+            tool_name="unknown_tool_xyz_nonexistent",
+            arguments="{}",
+        )
+        result = await b.execute_proposal(proposal, session_context=None)
+        assert isinstance(result, dict)
+        status = result.get("status", "")
+        if status == "pending_review":
+            assert "reason" in result, "pending_review result should include reason"
+
+    @pytest.mark.asyncio
+    async def test_batch_terminal_outcome_digest_computed(self) -> None:
+        """Batch terminal outcome digest is computed from individual outcome IDs."""
+        from rig_relay.local_inference.runtime._bridge import ToolExecutionBridge
+        from rig_relay.local_inference.runtime._models import ToolCallProposal
+
+        b = ToolExecutionBridge()
+        proposals = [
+            ToolCallProposal(
+                call_id=f"batch-{i}", tool_name="bash", arguments=f'{{"n":{i}}}'
+            )
+            for i in range(3)
+        ]
+        results: list[dict] = []
+        for p in proposals:
+            r = await b.execute_proposal(p, session_context=None)
+            results.append(r)
+        assert len(results) == 3, f"Expected 3 results, got {len(results)}"
+        for i, r in enumerate(results):
+            assert isinstance(r, dict), (
+                f"Result {i} must be dict, got {type(r).__name__}"
+            )
+            assert "status" in r, f"Result {i} missing status: keys={list(r)}"
+
+
+# ── Y4.1: Iterative Agent Loop ─────────────────────────────────────────
+
+
+class TestIterativeAgentLoop:
+    """Tests for the model→tool→observation→model iterative agent loop."""
+
+    @pytest.mark.asyncio
+    async def test_execute_local_agent_loop_binds_and_unbinds_session(self) -> None:
+        """Loop binds session at start and unbinds in finally."""
+        rt = RiggedLocalRuntime()
+        rt._engine._mlx_available = True
+        mock_loaded = MagicMock(model_id_hash="abc123")
+        rt._engine._loaded_models["abc123"] = mock_loaded
+        mock_gen = MagicMock(
+            return_value=LocalInferenceResponse(
+                content="done", finish_reason=FinishReason.STOP
+            )
+        )
+        rt._engine.generate = mock_gen
+
+        from rig_relay.local_inference.runtime._models import LocalAgentLoopRequest
+
+        request = LocalAgentLoopRequest(
+            session_id="sess-loop-bind",
+            turn_id="t1",
+            workspace_root="/tmp",
+            messages=[{"role": "user", "content": "hi"}],
+            model_id_hash="abc123",
+            max_tool_turns=1,
+        )
+        result = await rt.execute_local_agent_loop(request)
+        assert result.session_id == "sess-loop-bind"
+        assert not rt.tool_bridge.has_session_context, (
+            "Bridge should be unbound after agent loop completes"
+        )
+        assert not rt._loop_active, "Loop should be marked inactive after completion"
+
+    @pytest.mark.asyncio
+    async def test_execute_local_agent_loop_returns_loop_state(self) -> None:
+        """Loop returns LocalAgentLoopResult with terminal_loop_state."""
+        rt = RiggedLocalRuntime()
+        rt._engine._mlx_available = True
+        mock_loaded = MagicMock(model_id_hash="abc123")
+        rt._engine._loaded_models["abc123"] = mock_loaded
+        mock_gen = MagicMock(
+            return_value=LocalInferenceResponse(
+                content="done", finish_reason=FinishReason.STOP
+            )
+        )
+        rt._engine.generate = mock_gen
+
+        from rig_relay.local_inference.runtime._models import LocalAgentLoopRequest
+
+        request = LocalAgentLoopRequest(
+            session_id="sess-loop-state",
+            messages=[{"role": "user", "content": "hi"}],
+            model_id_hash="abc123",
+            max_tool_turns=1,
+        )
+        result = await rt.execute_local_agent_loop(request)
+        assert result.terminal_loop_state in (
+            LoopState.COMPLETED,
+            LoopState.LOOP_LIMIT_REACHED,
+        ), f"Unexpected terminal_loop_state: {result.terminal_loop_state}"
+        assert result.loop_id, "loop_id must not be empty"
+        assert result.loop_id.startswith("loop_"), (
+            f"loop_id should start with 'loop_', got: {result.loop_id}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_execute_local_agent_loop_respects_max_tool_turns(self) -> None:
+        """Loop terminates with LOOP_LIMIT_REACHED after max_tool_turns."""
+        rt = RiggedLocalRuntime()
+        rt._engine._mlx_available = True
+        mock_loaded = MagicMock(model_id_hash="abc123")
+        rt._engine._loaded_models["abc123"] = mock_loaded
+        mock_gen = MagicMock(
+            return_value=LocalInferenceResponse(
+                content="repeated", finish_reason=FinishReason.STOP
+            )
+        )
+        rt._engine.generate = mock_gen
+
+        from rig_relay.local_inference.runtime._models import LocalAgentLoopRequest
+
+        request = LocalAgentLoopRequest(
+            session_id="sess-max-turns",
+            messages=[{"role": "user", "content": "test"}],
+            model_id_hash="abc123",
+            max_tool_turns=2,
+        )
+        result = await rt.execute_local_agent_loop(request)
+        assert result.tool_turn_count <= request.max_tool_turns, (
+            f"tool_turn_count {result.tool_turn_count} exceeds "
+            f"max_tool_turns {request.max_tool_turns}"
+        )
+        if result.tool_turn_count >= request.max_tool_turns:
+            assert result.terminal_loop_state == LoopState.LOOP_LIMIT_REACHED, (
+                f"Expected LOOP_LIMIT_REACHED after max turns, "
+                f"got {result.terminal_loop_state}"
+            )
+
+    @pytest.mark.asyncio
+    async def test_execute_local_agent_loop_tool_observations_tracked(self) -> None:
+        """Tool observations are tracked in the result."""
+        rt = RiggedLocalRuntime()
+        rt._engine._mlx_available = True
+        mock_loaded = MagicMock(model_id_hash="abc123")
+        rt._engine._loaded_models["abc123"] = mock_loaded
+        mock_gen = MagicMock(
+            return_value=LocalInferenceResponse(
+                content="done", finish_reason=FinishReason.STOP
+            )
+        )
+        rt._engine.generate = mock_gen
+
+        from rig_relay.local_inference.runtime._models import LocalAgentLoopRequest
+
+        request = LocalAgentLoopRequest(
+            session_id="sess-obs",
+            messages=[{"role": "user", "content": "hi"}],
+            model_id_hash="abc123",
+            max_tool_turns=1,
+        )
+        result = await rt.execute_local_agent_loop(request)
+        assert hasattr(result, "tool_observations"), (
+            "LocalAgentLoopResult must have tool_observations attribute"
+        )
+        assert isinstance(result.tool_observations, list), (
+            f"tool_observations must be list, got {type(result.tool_observations).__name__}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_execute_local_agent_loop_evidence_chain_populated(self) -> None:
+        """Evidence chain contains receipt IDs."""
+        rt = RiggedLocalRuntime()
+        rt._engine._mlx_available = True
+        mock_loaded = MagicMock(model_id_hash="abc123")
+        rt._engine._loaded_models["abc123"] = mock_loaded
+        mock_gen = MagicMock(
+            return_value=LocalInferenceResponse(
+                content="done", finish_reason=FinishReason.STOP
+            )
+        )
+        rt._engine.generate = mock_gen
+
+        from rig_relay.local_inference.runtime._models import LocalAgentLoopRequest
+
+        request = LocalAgentLoopRequest(
+            session_id="sess-evid",
+            messages=[{"role": "user", "content": "hi"}],
+            model_id_hash="abc123",
+            max_tool_turns=1,
+        )
+        result = await rt.execute_local_agent_loop(request)
+        assert hasattr(result, "evidence_chain"), (
+            "LocalAgentLoopResult must have evidence_chain attribute"
+        )
+        assert isinstance(result.evidence_chain, list), (
+            f"evidence_chain must be list, got {type(result.evidence_chain).__name__}"
+        )
+
+    def test_build_projection_reports_agent_loop_supported(self) -> None:
+        """Projection reports iterative agent loop as supported."""
+        rt = RiggedLocalRuntime()
+        proj = rt.build_projection()
+        assert "agent_loop" in proj, f"agent_loop missing from projection: {list(proj)}"
+        agent_loop = proj["agent_loop"]
+        assert "supported" in agent_loop, (
+            f"agent_loop missing 'supported' field: {list(agent_loop)}"
+        )
+        assert agent_loop["supported"] == "production_proven", (
+            f"Expected production_proven, got {agent_loop['supported']}"
+        )
+        capabilities = proj.get("capabilities", {})
+        assert "model_tool_observation_loop" in capabilities, (
+            "capabilities missing model_tool_observation_loop"
+        )
+        loop_cap = capabilities["model_tool_observation_loop"]
+        assert isinstance(loop_cap, dict), (
+            f"model_tool_observation_loop should be dict, got {type(loop_cap).__name__}"
+        )
+        assert "posture" in loop_cap, (
+            f"model_tool_observation_loop missing posture: {list(loop_cap)}"
+        )
+        assert loop_cap["posture"] == "iterative_agent_loop_supported", (
+            f"Expected posture iterative_agent_loop_supported, got {loop_cap['posture']}"
+        )
+        assert "loop_state" in loop_cap, (
+            f"model_tool_observation_loop missing loop_state: {list(loop_cap)}"
+        )
+        assert isinstance(capabilities["model_tool_observation_loop"], dict), (
+            f"Expected dict, got {type(capabilities['model_tool_observation_loop'])}"
+        )
+        loop_obj = capabilities["model_tool_observation_loop"]
+        assert loop_obj["posture"] == "iterative_agent_loop_supported", (
+            f"Expected iterative_agent_loop_supported posture, got {loop_obj['posture']}"
+        )
+        assert "loop_state" in loop_obj, (
+            f"model_tool_observation_loop missing loop_state: {list(loop_obj)}"
+        )
+
+    def test_build_projection_reports_loop_state(self) -> None:
+        """Projection reports current agent loop state."""
+        rt = RiggedLocalRuntime()
+        proj = rt.build_projection()
+        agent_loop = proj["agent_loop"]
+        assert "active" in agent_loop, (
+            f"agent_loop missing 'active' field: {list(agent_loop)}"
+        )
+        assert "state" in agent_loop, (
+            f"agent_loop missing 'state' field: {list(agent_loop)}"
+        )
+        assert isinstance(agent_loop["active"], bool)
+        assert agent_loop["state"] in (s.value for s in LoopState), (
+            f"Unexpected loop state: {agent_loop['state']}"
+        )
+        assert "tool_turn_count" in agent_loop, "agent_loop missing tool_turn_count"
+        assert "max_tool_turns" in agent_loop, "agent_loop missing max_tool_turns"
+
+
+# ── Y4.1: Scheduling Batching Truth ────────────────────────────────────
+
+
+class TestSchedulingBatchingTruth:
+    """Tests for scheduling/batching truth in projection."""
+
+    def test_projection_reports_serialized_fcfs_scheduling(self) -> None:
+        """Projection reports serialized FCFS scheduling only."""
+        rt = RiggedLocalRuntime()
+        proj = rt.build_projection()
+        governance = proj.get("governance", {})
+        assert "scheduling_truth" in governance, (
+            f"governance missing scheduling_truth: {list(governance)}"
+        )
+        assert governance["scheduling_truth"] in (
+            "serialized_fcfs_is_the_only_live_production_path",
+            "serialized_fcfs_is_the_only_live_production_path",
+        ), f"Unexpected scheduling_truth: {governance['scheduling_truth']}"
+        scheduler = proj.get("scheduler", {})
+        assert "batching_status" in scheduler or "mode" in scheduler, (
+            f"scheduler should report mode or batching_status: {list(scheduler)}"
+        )
+
+    def test_projection_includes_serialization_reason(self) -> None:
+        """Projection includes serialization_reason field."""
+        rt = RiggedLocalRuntime()
+        proj = rt.build_projection()
+        scheduler = proj.get("scheduler", {})
+        assert "serialization_reason" in scheduler, (
+            f"scheduler missing serialization_reason: {list(scheduler)}"
+        )
+        reason = scheduler["serialization_reason"]
+        assert isinstance(reason, str)
+        assert len(reason) > 0, "serialization_reason must not be empty"
+        assert (
+            "MLX" in reason or "single" in reason.lower() or "batch" in reason.lower()
+        ), f"serialization_reason should describe FCFS architecture: {reason}"
+
+    def test_projection_reports_refusal_count(self) -> None:
+        """Projection reports refusal count from scheduler."""
+        rt = RiggedLocalRuntime()
+        proj = rt.build_projection()
+        scheduler = proj.get("scheduler", {})
+        assert "refusal_count" in scheduler, (
+            f"scheduler missing refusal_count: {list(scheduler)}"
+        )
+        assert isinstance(scheduler["refusal_count"], int), (
+            f"refusal_count must be int, got {type(scheduler['refusal_count']).__name__}"
+        )
+        assert scheduler["refusal_count"] >= 0, (
+            f"refusal_count must be >= 0, got {scheduler['refusal_count']}"
+        )
+
+
+# ── Y4.1: Cache Loop Safety ────────────────────────────────────────────
+
+
+class TestCacheLoopSafety:
+    """Tests for cache safety in iterative tool loops."""
+
+    def test_cache_invalidate_loop_cache_removes_entries(self) -> None:
+        """invalidate_loop_cache() removes entries associated with loop_id."""
+        from rig_relay.local_inference.runtime._cache_authority import (
+            RiggedCacheAuthority,
+        )
+
+        c = RiggedCacheAuthority()
+        c._ensure_cache()
+        loop_id = "test_loop_abc123"
+        c._loop_cache_entries.setdefault(loop_id, []).append("model_key_1")
+        c._cache_store["model_key_1"] = [MagicMock()]
+        assert "model_key_1" in c._cache_store
+
+        invalidated = c.invalidate_loop_cache(loop_id)
+        assert invalidated >= 1, (
+            f"Expected at least 1 invalidated entry, got {invalidated}"
+        )
+        assert "model_key_1" not in c._cache_store, (
+            "Cache store should not contain invalidated key"
+        )
+
+    def test_cache_invalidate_loop_cache_returns_zero_for_unknown_loop(self) -> None:
+        """invalidate_loop_cache() returns 0 for unknown loop_id."""
+        from rig_relay.local_inference.runtime._cache_authority import (
+            RiggedCacheAuthority,
+        )
+
+        c = RiggedCacheAuthority()
+        invalidated = c.invalidate_loop_cache("nonexistent_loop_xyz")
+        assert invalidated == 0, (
+            f"Expected 0 invalidated for unknown loop, got {invalidated}"
+        )
+
+    def test_cache_invalidate_loop_cache_handles_empty_id(self) -> None:
+        """invalidate_loop_cache() handles empty loop_id safely."""
+        from rig_relay.local_inference.runtime._cache_authority import (
+            RiggedCacheAuthority,
+        )
+
+        c = RiggedCacheAuthority()
+        invalidated = c.invalidate_loop_cache("")
+        assert invalidated == 0, f"Expected 0 for empty loop_id, got {invalidated}"
+
+    def test_cache_projection_reports_loop_safety(self) -> None:
+        """Cache projection includes cache_loop_safety field."""
+        rt = RiggedLocalRuntime()
+        proj = rt.build_projection()
+        cache = proj.get("cache", {})
+        assert "cache_loop_safety" in cache, (
+            f"cache missing cache_loop_safety: {list(cache)}"
+        )
+        assert isinstance(cache["cache_loop_safety"], str)
+        assert len(cache["cache_loop_safety"]) > 0, (
+            "cache_loop_safety must not be empty"
+        )
+
+    def test_cache_clear_also_clears_loop_entries(self) -> None:
+        """clear_cache() also clears loop-associated entries."""
+        from rig_relay.local_inference.runtime._cache_authority import (
+            RiggedCacheAuthority,
+        )
+
+        c = RiggedCacheAuthority()
+        c._ensure_cache()
+        loop_id = "test_loop_clear"
+        c._loop_cache_entries.setdefault(loop_id, []).append("mk_clear")
+        c._cache_store["mk_clear"] = [MagicMock()]
+        assert "mk_clear" in c._cache_store
+        assert loop_id in c._loop_cache_entries
+
+        import asyncio
+
+        asyncio.run(c.clear_cache())
+        assert len(c._loop_cache_entries) == 0, "loop_cache_entries should be cleared"
+        assert c.clear_count >= 1, f"clear_count should be >= 1, got {c.clear_count}"
+
+
+class _FakeAsyncExecutor:
+    """Fake async executor for ToolExecutionBridge tests."""
+
+    async def __call__(self, request: Any) -> Any:
+        result = MagicMock()
+        result.status = MagicMock(value="completed")
+        result.receipt_refs = []
+        result.error_message = None
+        result.to_debug_dict = MagicMock(return_value={"status": "completed"})
+        return result

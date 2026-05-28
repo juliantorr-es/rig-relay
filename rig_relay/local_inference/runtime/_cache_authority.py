@@ -50,6 +50,7 @@ class RiggedCacheAuthority:
         self._max_ssd_entries: int = max_ssd_entries
         self._ssd_entries_count: int = 0
         self._ssd_total_size_mb: float = 0.0
+        self._loop_cache_entries: dict[str, list[str]] = {}
 
     @property
     def kv_cache_reuse_enabled(self) -> bool:
@@ -147,6 +148,7 @@ class RiggedCacheAuthority:
         prompt_tokens: list[int],
         prompt_cache: list | object,
         privacy_class: str = "",
+        loop_id: str = "",
     ) -> None:
         """Store prompt cache for future reuse.
 
@@ -155,6 +157,13 @@ class RiggedCacheAuthority:
 
         Refuses cache insertion for secret-bearing context — prompt tokens
         are reversible with the tokenizer and must not be persisted.
+
+        Args:
+            model: The MLX model object for cache key derivation.
+            prompt_tokens: Token IDs of the prompt prefix.
+            prompt_cache: KV cache segments to store.
+            privacy_class: Privacy label (refused if 'secret_bearing').
+            loop_id: Optional loop identifier for tracking tool-loop cache entries.
         """
         self._ensure_cache()
         if prompt_cache is None:
@@ -186,6 +195,9 @@ class RiggedCacheAuthority:
         model_key = self._model_key(model)
         self._cache_store[model_key] = cache_list
         self._prompt_hashes[model_key] = prompt_tokens
+
+        if loop_id:
+            self._loop_cache_entries.setdefault(loop_id, []).append(model_key)
 
         if self.ssd_enabled:
             self._save_to_disk(model_key, prompt_tokens, cache_list)
@@ -291,6 +303,7 @@ class RiggedCacheAuthority:
         self._write_back_count = 0
         self._cache_store.clear()
         self._prompt_hashes.clear()
+        self._loop_cache_entries.clear()
         try:
             import mlx.core as mx
 
@@ -298,6 +311,32 @@ class RiggedCacheAuthority:
             return True
         except Exception:
             return False
+
+    def invalidate_loop_cache(self, loop_id: str) -> int:
+        """Remove all cache entries associated with a loop_id.
+
+        Intended for cleanup after a tool-loop completes. Since cache keys
+        are object-id-based rather than token-content-based, this method
+        clears the loop_id's tracked entries from the in-memory store.
+
+        Returns count of entries invalidated.
+        """
+        if not loop_id:
+            return 0
+        model_keys = self._loop_cache_entries.pop(loop_id, [])
+        count = 0
+        for mk in model_keys:
+            if mk in self._cache_store:
+                del self._cache_store[mk]
+                count += 1
+            self._prompt_hashes.pop(mk, None)
+        if count > 0:
+            logger.debug(
+                "RiggedCacheAuthority: invalidated %d cache entries for loop_id=%s",
+                count,
+                loop_id[:20],
+            )
+        return count
 
     def mark_corrupt_entry(self, model_id_hash: str) -> bool:
         """Mark a specific model's cache entries for removal.

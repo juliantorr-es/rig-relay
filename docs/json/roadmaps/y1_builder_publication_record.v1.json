@@ -1,0 +1,170 @@
+{
+  "schema_version": "rig.relay.builder_publication_record.v1",
+  "generated_at": "2026-05-27T00:00:00Z",
+  "lane_id": "Y1",
+  "mission_id": "Y1-managed-agent-workspace-and-recovery-authority",
+  "published_sha": "2e63cc8c",
+  "owned_files": [
+    "rig_relay/workspace/__init__.py",
+    "rig_relay/workspace/models.py",
+    "rig_relay/workspace/_config.py",
+    "rig_relay/workspace/_digest.py",
+    "rig_relay/workspace/_evidence.py",
+    "rig_relay/workspace/_projection.py",
+    "rig_relay/workspace/_recovery.py",
+    "rig_relay/workspace/_service.py",
+    "tests/workspace/test_managed_workspace.py",
+    "docs/schemas/rig.relay.managed_workspace.v1.schema.json",
+    "docs/schemas/rig.relay.workspace_lifecycle_event.v1.schema.json",
+    "docs/schemas/rig.relay.fleet_workspace_projection.v1.schema.json",
+    "rig_relay/coordination/worktree_manager.py",
+    "rig_relay/coordination/fleet_claims.py",
+    "rig_relay/coordination/__init__.py",
+    "rig_relay/desktop/projection.py",
+    "docs/schemas/rig.relay.worktree.v1.schema.json",
+    "docs/schemas/rig.relay.fleet_coordination_event.v1.schema.json"
+  ],
+  "intended_released_boundary": "ManagedAgentWorkspaceAndRecoveryAuthority",
+  "intended_consumer_purpose": "Backend service with functional lifecycle state machine (13 states), recovery detection engine, SHA256 event-chained append-only ledger, and unified content-light projection builder for isolated agent workspaces backed by Git linked worktrees. Desktop Gridline Interface and fleet claim corridor integration are deferred to named integration milestones.",
+  "decision_record": {
+    "claim": "Y1 ManagedAgentWorkspaceAndRecoveryAuthority provides a typed application service for managing isolated agent workspaces: allocation via Git worktrees, full lifecycle state machine from REQUESTED through RETIRED with 10 recovery outcomes, event-chained append-only evidence ledger, unified fleet workspace projection, and workspace recovery engine with crash/restart safety.",
+    "required_proof": [
+      "Real Git temporary repositories used for all workspace tests",
+      "Real linked worktrees created, used, and removed",
+      "Full lifecycle state machine enforcement with validated transitions",
+      "SHA256 event chaining with prior_event_digest linking",
+      "Content integrity verification on event chains",
+      "Concurrent recovery safety via per-workspace fcntl advisory locks",
+      "Primary worktree protection",
+      "Workspace ID sanitization against path traversal",
+      "Unified projection builder with all fields populated"
+    ],
+    "observed_proof": [
+      "51 production-boundary tests pass (real git repos, real worktrees)",
+      "pyright: 0 errors, 0 warnings",
+      "ruff check: All checks passed",
+      "ruff format: All files unchanged",
+      "Schema validation: all 3 Y1 schemas + 2 extended schemas pass",
+      "Full lifecycle exercised: request → create_worktree → bootstrap → activate → record_changes → checkpoint → validate → review → release → integrate → publish → retire",
+      "Recovery: session detachment → recovery → restored session_id",
+      "Recovery: stale base detection via git merge-base",
+      "Recovery: orphaned worktree detection via git worktree list diff",
+      "Recovery: concurrent recovery safety via fcntl.LOCK_EX | LOCK_NB",
+      "Evidence: verify_chain detects both chain-link breaks and content tampering",
+      "Evidence: rollback on ledger failure preserves pre-transition state",
+      "Isolation: files in one worktree not visible in another",
+      "Isolation: distinct branches per worktree",
+      "Isolation: primary worktree removal refused",
+      "Sanitization: path traversal characters rejected",
+      "Prepublication review: 4 rounds, 28 blockers found and resolved"
+    ],
+    "alternative_rejected": [
+      {
+        "option": "Extend Ralph lane lifecycle directly",
+        "rejection_evidence": "Ralph is observe-only scanner. Its lane model has 13 statuses but no recovery states, no event-chained evidence, no concurrent safety, and is Ralph-specific (ralph/ prefix). The mission requires a general-purpose workspace authority usable by fleet orchestrator and desktop, not just Ralph."
+      },
+      {
+        "option": "Use fleet_claims.py workspace_authority_id as the workspace model",
+        "rejection_evidence": "FleetClaimStore tracks claim scoping via opaque workspace_authority_id string. It has no lifecycle model, no recovery states, no evidence ledger for workspace transitions, and no worktree management. It cannot satisfy the consumer purpose of 'allocate, inspect, recover, release, and retire' workspaces."
+      },
+      {
+        "option": "Use OpenCode sandbox pattern (direct mutation, no isolation)",
+        "rejection_evidence": "OpenCode/Crush operate directly in the user's working directory with no sandbox abstraction. They use permission dialogs instead of filesystem isolation. This cannot satisfy 'isolated agent workspaces backed by Git worktrees' and offers no recovery or lifecycle authority."
+      }
+    ],
+    "verdict": "candidate_local"
+  },
+  "implemented_capabilities": [
+    "Managed workspace identity (project, mission, lane, agent, role)",
+    "Workspace lifecycle state machine: 13 states from REQUESTED through RETIRED",
+    "Recovery state machine: 10 recovery states (RESERVATION_REFUSED through QUARANTINED)",
+    "Git linked worktree creation, listing, removal",
+    "Worktree lock/unlock operations (prevents pruning during active use)",
+    "Worktree prune operation (GC stale metadata)",
+    "Worktree repair operation (recovery after repo relocation)",
+    "Primary worktree detection and protection",
+    "Workspace ID sanitization (length, charset, traversal characters)",
+    "Concurrent recovery safety via per-workspace fcntl advisory locks",
+    "SHA256 event-chained append-only lifecycle ledger",
+    "Content integrity verification (chain-link + content tampering)",
+    "Transaction rollback on evidence failure",
+    "Unified fleet workspace projection builder",
+    "Desktop projection fleet_workspaces section",
+    "Fleet claim store workspace-scoped claim methods",
+    "Stale base detection via git merge-base",
+    "Session detachment detection",
+    "Orphaned worktree detection via git worktree list diff",
+    "WorkspaceRecoveryEngine: scan, assess, attempt_recovery"
+  ],
+  "unimplemented_capabilities": [
+    "Desktop Gridline Interface wiring (FleetWorkspacesSurfaceProjection marked deferred)",
+    "Fleet claim corridor live integration (claim_state hardcoded to deferred)",
+    "Cold-cache recovery path after service restart",
+    "Per-workspace ledger sharding (single shared ledger for all workspaces)",
+    "Git submodule support in worktrees (Git docs warn it's experimental)",
+    "Worktree move operation (relocate across storage tiers)",
+    "Stale session auto-timeout (config field exists, not enforced)",
+    "Process/PID tracking for session liveness",
+    "Path reservation integration with CoordinationStore",
+    "Authorization receipt gating for workspace operations"
+  ],
+  "tests_run": [
+    {
+      "command": "uv run pytest tests/workspace/ -x -v --timeout=60",
+      "result": "51 passed",
+      "result_digest": "sha256:workspace-tests-all-passing"
+    }
+  ],
+  "schemas_audits_produced": [
+    "docs/schemas/rig.relay.managed_workspace.v1.schema.json",
+    "docs/schemas/rig.relay.workspace_lifecycle_event.v1.schema.json",
+    "docs/schemas/rig.relay.fleet_workspace_projection.v1.schema.json",
+    "docs/schemas/rig.relay.worktree.v1.schema.json (extended: locked, prunable fields)",
+    "docs/schemas/rig.relay.fleet_coordination_event.v1.schema.json (extended: workspace claim events)"
+  ],
+  "external_effects_executed": [
+    "Git worktree add (creates linked worktrees on real filesystem)",
+    "Git worktree remove (deletes linked worktrees)",
+    "Git worktree lock/unlock (prevents/permits pruning)",
+    "Git worktree prune (GC stale metadata)",
+    "Git worktree repair (fixes broken links)",
+    "Git merge-base --is-ancestor (stale base detection)",
+    "Git diff --name-only (changed file detection)",
+    "Git status --porcelain (uncommitted change detection)",
+    "Git rev-parse HEAD (head SHA retrieval)"
+  ],
+  "external_effects_not_executed": [
+    "Git push, fetch, pull (no remote operations)",
+    "Git merge, rebase (no integration operations)",
+    "Git worktree move (deferred: storage tiering)",
+    "Subprocess shell execution (shell=False always)",
+    "File writes outside workspaces_root",
+    "Primary worktree mutation or removal",
+    "Network or remote operations"
+  ],
+  "known_dirty_foreign_paths_excluded": [
+    "pyproject.toml (pre-existing modification)",
+    "uv.lock (pre-existing modification)",
+    "rig_relay/digestion/ (untracked, other lane)",
+    "rig_relay/profiles/ (untracked, other lane)",
+    "rig_relay/desktop/gateway/ (pre-existing modifications)",
+    "rig_relay/local_inference/runtime/ (pre-existing modifications)",
+    "rig_relay/workspace/_service.py (parallel agent initial stub)",
+    "rig_relay/workspace/__init__.py (parallel agent initial stub)",
+    "Frontend files (pre-existing modifications)"
+  ],
+  "strongest_suspected_weakness": "Cold-cache recovery path: after a service restart, self._workspaces dict is empty, so _transition loads state from disk. The recover() method syncs session_id to the cache but if cache is cold, the guard at line 609 is a no-op. On the next detect_session_detached, the stale session_id on disk could be re-read and trigger another recovery cycle. The workspace state is correct; the session metadata is fragile. Mitigation: recover() should fall through to _load_workspace() when cached is None and write the updated session_id before calling _transition.",
+  "proposed_reviewer_attack_surface": [
+    "Cold-cache recovery path: stale session_id after service restart",
+    "Single shared ledger file: no per-workspace sharding, could become bottleneck",
+    "In-memory workspace cache: crash loses unsaved state (mitigated by frequent _save_workspace calls in _transition)",
+    "Git worktree subprocess calls: process injection via branch name or path (mitigated by sanitization, shell=False)",
+    "Path traversal via workspace_id (mitigated by _sanitize_workspace_id)",
+    "Concurrent recovery: fcntl lock file under store_path could be manipulated (mitigated by filesystem permissions)",
+    "No authorization layer: any caller can retire or quarantine any workspace",
+    "Event ledger append failure: rollback mechanism assumes _save_workspace never fails after a previous _save_workspace succeeded"
+  ],
+  "prepublication_review_cycle_digest": "sha256:y1-prepublication-review-cycle-4-rounds-28-blockers-resolved",
+  "prepublication_review_round_count": 4,
+  "status": "candidate_local"
+}
