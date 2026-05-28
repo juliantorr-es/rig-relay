@@ -85,6 +85,24 @@ class WorkspaceSubagentPosture(BaseModel):
     subagent_tool_scoping: bool = False
 
 
+class ResolutionOutcome(StrEnum):
+    SELECTED = auto()
+    SELECTED_EXPERIMENTAL = auto()
+    SELECTED_RESTRICTED = auto()
+    REFUSED_MISSING_CAPABILITY_EVIDENCE = auto()
+    REFUSED_CONFLICTING_CAPABILITY_EVIDENCE = auto()
+    REFUSED_UNSUPPORTED_CAPABILITY = auto()
+    FALLBACK_RIG_NATIVE = auto()
+    UNAVAILABLE_PROVIDER_CAPABILITY_RESOLUTION = auto()
+
+
+class GovernanceAdmissionState(StrEnum):
+    ADMITTED = auto()
+    REFUSED = auto()
+    REQUIRES_REVIEW = auto()
+    NOT_EVALUATED = auto()
+
+
 class CapabilityRequirements(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -140,6 +158,9 @@ class ProfileResolutionInput(BaseModel):
     task_role: TaskRole = TaskRole.IMPLEMENTATION
     prefer_profile_id: str | None = None
     model_capabilities: dict[str, object] | None = None
+    capability_evidence_sources: list[str] | None = None
+    require_governance_admission: bool = False
+    session_id: str = ""
 
 
 class ProfileResolutionResult(BaseModel):
@@ -158,6 +179,11 @@ class ProfileResolutionResult(BaseModel):
     override_source_profile_id: str | None = None
     warnings: list[str] = Field(default_factory=list)
     resolved_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    outcome: str = "selected"
+    capability_evidence_map: dict[str, object] = Field(default_factory=dict)
+    capability_evidence_digest: str = ""
+    governance_admission_state: str = "not_evaluated"
+    governance_admission_digest: str = ""
 
 
 class ProfileResolutionError(Exception):
@@ -197,5 +223,11 @@ class ProfileEvaluationResult(BaseModel):
     deterministic_resolution: bool | None = None
     unsupported_capability_refused: bool | None = None
     receipt_reconstructable: bool | None = None
+    evidence_based_selection: bool | None = None
+    capability_authority_valid: bool | None = None
+    governance_integration_tested: bool | None = None
+    evidence_persistence_tested: bool | None = None
+    ledger_integrity_tested: bool | None = None
+    downstream_contracts_valid: bool | None = None
     warnings: list[str] = Field(default_factory=list)
     evaluated_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())

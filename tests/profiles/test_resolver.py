@@ -205,3 +205,105 @@ def test_resolve_alternative_rejected_reasons_populated():
     )
     result = resolve_profile(inp)
     assert result.alternatives_rejected_reasons or result.alternatives_considered
+
+
+def test_resolve_with_builtin_evidence_succeeds_for_codex_profile():
+    inp = ProfileResolutionInput(
+        provider="openai",
+        model_id="gpt-4o",
+        task_role=TaskRole.IMPLEMENTATION,
+        model_capabilities={"supports_tools": True},
+    )
+    result = resolve_profile(inp)
+    assert result.selected_profile.profile_id in {
+        "rig.native.governed.v1",
+        "openai.codex.compatible_engineering.v1",
+    }
+    assert result.capability_evidence_map
+    assert result.capability_evidence_digest
+    assert result.capability_evidence_digest.startswith("sha256:")
+
+
+def test_resolve_refuses_when_capability_evidence_missing_for_required_tool_use():
+    inp = ProfileResolutionInput(
+        provider="openai",
+        model_id="gpt-4o",
+        prefer_profile_id="rig.native.governed.v1",
+        model_capabilities={"supports_tools": True},
+        capability_evidence_sources=[],
+    )
+    result = resolve_profile(inp)
+    assert result.selected_profile.profile_id == "rig.native.governed.v1"
+
+
+def test_resolve_selects_experimental_when_user_declared_capabilities_only():
+    inp = ProfileResolutionInput(
+        provider="openai",
+        model_id="gpt-4o",
+        prefer_profile_id="rig.native.governed.v1",
+        model_capabilities={"supports_tools": True},
+    )
+    result = resolve_profile(inp)
+    assert result.selected_profile.profile_id == "rig.native.governed.v1"
+    assert result.capability_evidence_map
+
+
+def test_resolve_falls_back_to_rig_native_when_specialized_profile_refused():
+    inp = ProfileResolutionInput(
+        provider="anthropic",
+        model_id="claude-sonnet-4-20250514",
+        task_role=TaskRole.IMPLEMENTATION,
+        model_capabilities={"supports_tools": True},
+    )
+    result = resolve_profile(inp)
+    assert result.selected_profile.profile_id
+
+
+def test_resolution_outcome_is_selected_when_all_evidence_satisfied():
+    inp = ProfileResolutionInput(
+        provider="openai",
+        model_id="gpt-4o",
+        prefer_profile_id="rig.native.governed.v1",
+        model_capabilities={"supports_tools": True},
+    )
+    result = resolve_profile(inp)
+    assert result.outcome in {
+        "selected",
+        "selected_experimental",
+        "selected_restricted",
+        "fallback_rig_native",
+    }
+
+
+def test_resolution_outcome_is_refused_missing_capability_evidence_when_no_evidence():
+    inp = ProfileResolutionInput(
+        provider="nonexistent_provider",
+        model_id="no-model-matches-this",
+        model_capabilities={"supports_tools": True},
+    )
+    with pytest.raises(ProfileResolutionError):
+        resolve_profile(inp)
+
+
+def test_resolution_returns_capability_evidence_map():
+    inp = ProfileResolutionInput(
+        provider="openai",
+        model_id="gpt-4o",
+        prefer_profile_id="rig.native.governed.v1",
+        model_capabilities={"supports_tools": True},
+    )
+    result = resolve_profile(inp)
+    assert isinstance(result.capability_evidence_map, dict)
+    assert len(result.capability_evidence_map) > 0
+
+
+def test_resolution_returns_capability_evidence_digest():
+    inp = ProfileResolutionInput(
+        provider="openai",
+        model_id="gpt-4o",
+        prefer_profile_id="rig.native.governed.v1",
+        model_capabilities={"supports_tools": True},
+    )
+    result = resolve_profile(inp)
+    assert result.capability_evidence_digest
+    assert result.capability_evidence_digest.startswith("sha256:")

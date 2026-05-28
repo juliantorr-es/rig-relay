@@ -1,0 +1,34 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://rig-relay.local/schemas/rig.relay.y3_profile_event.v1.schema.json",
+    "title": "Y3 Profile Event",
+    "description": "Canonical append-only evidence event for Y3 profile operations. Content-light: no raw prompts, secrets, or file contents.",
+    "type": "object",
+    "properties": {
+        "schema_version": {
+            "type": "string",
+            "const": "rig.relay.y3_profile_event.v1"
+        },
+        "event_id": {"type": "string"},
+        "event_kind": {"type": "string", "enum": ["profile_registered","profile_deprecated","profile_superseded","capability_evidence_observed","capability_evidence_declared","capability_evidence_resolved","profile_resolution_attempted","profile_selected","profile_refused","user_override_selected","context_envelope_assembled","session_resolution_emitted","profile_evaluation_observation_emitted"]},
+        "session_id": {"type": "string"},
+        "task_id": {"type": "string"},
+        "created_at": {"type": "string"},
+        "provider": {"type": "string"},
+        "model_id": {"type": "string"},
+        "profile_id": {"type": "string"},
+        "profile_digest": {"type": "string"},
+        "task_role": {"type": "string"},
+        "resolution_outcome": {"type": "string"},
+        "capability_evidence_digest": {"type": "string"},
+        "context_envelope_digest": {"type": "string"},
+        "governance_admission_digest": {"type": "string"},
+        "session_receipt_digest": {"type": "string"},
+        "evaluation_digest": {"type": "string"},
+        "warnings": {"type": "array", "items": {"type": "string"}},
+        "content_light": {"type": "boolean"},
+        "event_digest": {"type": "string"}
+    },
+    "required": ["schema_version", "event_id", "event_kind", "created_at", "content_light"],
+    "additionalProperties": false
+}

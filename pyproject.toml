@@ -80,6 +80,7 @@ dependencies = [
   "numpy>=1.24.0",
   "protobuf",
   "sentencepiece",
+  "tree-sitter-python>=0.25.0",
 ]
 
 [project.optional-dependencies]
@@ -193,6 +194,11 @@ ignore = ["D203", "D205", "D213", "ANN401", "PLR6301"]
 "rig_relay/desktop/_intents/_refresh.py" = ["PLR"]
 "rig_relay/recovery/evaluation.py" = ["PLR"]
 "rig_relay/recovery/report.py" = ["PLR"]
+"rig_relay/workspace/_recovery.py" = ["PLR"]
+"rig_relay/workspace/_service.py" = ["PLR"]
+
+"rig_relay/profiles/_resolver.py" = ["PLR"]
+"rig_relay/profiles/_governance_adapter.py" = ["PLR"]
 
 "rig_relay/runtime/tool_invocation_execution.py" = ["PLR"]
 "rig_relay/core/tool_result_runtime/__init__.py" = ["PLR"]
@@ -212,6 +218,7 @@ ignore = ["D203", "D205", "D213", "ANN401", "PLR6301"]
 "rig_relay/digestion/registration.py" = ["PLR"]
 "rig_relay/digestion/execution_workspace.py" = ["PLR"]
 "rig_relay/digestion/topology_mapper.py" = ["PLR"]
+"rig_relay/digestion/quarantine.py" = ["PLR"]
 "rig_relay/repository_estate/_service.py" = ["PLR"]
 "rig_relay/repository_estate/_observation_engine.py" = ["PLR"]
 "rig_relay/repository_estate/_projection_builder.py" = ["PLR"]
@@ -308,6 +315,7 @@ ignore = ["D203", "D205", "D213", "ANN401", "PLR6301"]
 "rig_relay/integrations/github_provider/_claims_index.py" = ["PLR"]
 "rig_relay/integrations/google_workspace/_capabilities.py" = ["PLR"]
 "rig_relay/coordination/models.py" = ["PLR0913"]
+"rig_relay/coordination/fleet_claims.py" = ["PLR"]
 "rig_relay/events/duckdb_projection.py" = ["PLR"]
 "scripts/rig_event_fabric_duckdb_projection.py" = ["PLR"]
 "rig_relay/desktop/bridge_refusals.py" = ["PLR0913", "PLR0911"]

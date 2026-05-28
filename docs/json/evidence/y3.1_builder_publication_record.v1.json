@@ -1,0 +1,146 @@
+{
+  "schema_version": "rig.relay.builder_publication_record.v1",
+  "generated_at": "2026-05-28T01:13:03Z",
+  "lane_id": "Y3.1",
+  "mission_id": "y3.1_provider_capability_evidence_and_contract_models",
+  "published_sha": "",
+  "owned_files": [
+    "rig_relay/profiles/__init__.py",
+    "rig_relay/profiles/_capability_evidence.py",
+    "rig_relay/profiles/_context_envelope.py",
+    "rig_relay/profiles/_downstream_contracts.py",
+    "rig_relay/profiles/_evaluation.py",
+    "rig_relay/profiles/_evidence_ledger.py",
+    "rig_relay/profiles/_governance_adapter.py",
+    "rig_relay/profiles/_profile_registry.py",
+    "rig_relay/profiles/_projection.py",
+    "rig_relay/profiles/_resolver.py",
+    "rig_relay/profiles/_session_receipt.py",
+    "rig_relay/profiles/_tool_dialect.py",
+    "rig_relay/profiles/models.py",
+    "tests/profiles/__init__.py",
+    "tests/profiles/test_capability_evidence.py",
+    "tests/profiles/test_context_envelope.py",
+    "tests/profiles/test_downstream_contracts.py",
+    "tests/profiles/test_evaluation.py",
+    "tests/profiles/test_evidence_ledger.py",
+    "tests/profiles/test_governance_adapter.py",
+    "tests/profiles/test_models.py",
+    "tests/profiles/test_profile_registry.py",
+    "tests/profiles/test_projection.py",
+    "tests/profiles/test_resolver.py",
+    "tests/profiles/test_session_receipt.py",
+    "tests/profiles/test_tool_dialect.py",
+    "docs/schemas/rig.relay.provider_harness_compatibility_profile.v1.schema.json",
+    "docs/schemas/rig.relay.session_resolution_receipt.v1.schema.json",
+    "docs/schemas/rig.relay.profile_resolution_projection.v1.schema.json"
+  ],
+  "intended_released_boundary": "ProviderCapabilityEvidenceAndContractModelsBoundary",
+  "intended_consumer_purpose": "Provider capability evidence models, evidence-backed profile resolution with append-only evidence persistence and governance routing, and downstream contract models published as Pydantic contract models for Y0/Y1/Y2/Y4/analytics future consumption.",
+  "decision_record": {
+    "claim": "candidate_local: y3_1_provider_capability_evidence_persistence_governance_and_downstream_contract_models",
+    "required_proof": [
+      "131 tests passing, all existing Y3 tests preserved",
+      "Evidence persistence wired into resolver at every resolution return point (fail-closed)",
+      "Governance admission called on every resolution with state captured in result",
+      "Downstream contract models published as Pydantic contract models for Y0/Y1/Y2/Y4/analytics consumers",
+      "6 new evaluation checks integrated into evaluate_profile pipeline",
+      "0 pyright errors, 0 ruff issues on profiles package"
+    ],
+    "observed_proof": [
+      "131 tests pass (pytest): sha256:46e7d1fbfcb650a1e2f60cbb9ecf0e9ef243bec83523652d71d2e65405d49fd5",
+      "0 pyright errors: sha256:ff51dc5df17a5412afc51cce4a97976aaef60860eca153b974775b3ff35f752a",
+      "0 ruff issues: sha256:f0d0b1081d9d3ebb26c4c93543053ecdc0a58998f22c071dc4ddb26021b57645",
+      "Evidence persistence fails-closed: persist_y3_event called in all 3 resolver return paths plus fallback",
+      "Governance admission called in all 3 resolver return paths plus fallback, admission_state + admission_digest populated",
+      "Instruction rendering strategies produce distinct envelope content"
+    ],
+    "alternative_rejected": [
+      {
+        "option": "Silent persistence (fail-open)",
+        "rejection_evidence": "Fails-closed required by evidence integrity: corrupt or unwritten evidence is a canonical defect, not recoverable"
+      },
+      {
+        "option": "Deferred persistence to caller",
+        "rejection_evidence": "Resolver is the single authority for profile selection; callers should not know about the evidence ledger"
+      },
+      {
+        "option": "Governance as optional caller-side concern",
+        "rejection_evidence": "Profile selection admission is part of the resolver's contract, not an external decoration"
+      },
+      {
+        "option": "Publishing with old boundary name",
+        "rejection_evidence": "Boundary name GovernedProviderCapabilityEvidenceIntegrationAndDownstreamHandoffsBoundary overclaims enforcement, integration, and handoffs"
+      }
+    ],
+    "verdict": "candidate_local"
+  },
+  "implemented_capabilities": [
+    "13 built-in static capability evidence items (6 OpenAI, 7 Anthropic) with SHA256 digests and official_documented_static_capability source class",
+    "Evidence-gated profile resolution: validates required capabilities against admissible evidence, returns ResolutionOutcome with 8 values",
+    "Canonical evidence persistence: append-only JSONL with fcntl locking, digest chaining, integrity verification, fail-closed on I/O failure",
+    "Governance integration: admit_profile_selection() routed through GovernanceEngine or local admission rules, called on every resolution",
+    "Instruction rendering strategies consumed: 4 strategies produce distinct instruction blocks in context envelopes",
+    "9 Pydantic downstream contract models + 4 builder helpers for Y0/Y1/Y2/Y4/analytics",
+    "Upgraded evaluation harness with evidence, governance, persistence, and contract checks"
+  ],
+  "unimplemented_capabilities": [
+    "AgentLoop session envelope wiring (deferred to Y4 integration)",
+    "Tool execution path wiring (deferred to Y4 integration)",
+    "Y0/Y1/Y2/Y4 code editing (contracts published as models, consumer implementations deferred)",
+    "Cryptographic receipt signing (no public signing authority exists)",
+    "Live provider API dynamic capability discovery (static evidence only, typed adapter interface provided)",
+    "Instruction rendering file I/O (strategies produce strategy descriptions in envelopes, not actual file reads per strategy)"
+  ],
+  "tests_run": [
+    {
+      "command": "uv run pytest tests/profiles/ -v",
+      "result": "131 passed in 3.89s",
+      "result_digest": "sha256:46e7d1fbfcb650a1e2f60cbb9ecf0e9ef243bec83523652d71d2e65405d49fd5"
+    },
+    {
+      "command": "uv run pyright rig_relay/profiles/",
+      "result": "0 errors, 0 warnings, 0 informations",
+      "result_digest": "sha256:ff51dc5df17a5412afc51cce4a97976aaef60860eca153b974775b3ff35f752a"
+    },
+    {
+      "command": "uv run ruff check rig_relay/profiles/ tests/profiles/",
+      "result": "All checks passed!",
+      "result_digest": "sha256:f0d0b1081d9d3ebb26c4c93543053ecdc0a58998f22c071dc4ddb26021b57645"
+    }
+  ],
+  "schemas_audits_produced": [
+    "docs/schemas/rig.relay.provider_harness_compatibility_profile.v1.schema.json",
+    "docs/schemas/rig.relay.session_resolution_receipt.v1.schema.json",
+    "docs/schemas/rig.relay.profile_resolution_projection.v1.schema.json"
+  ],
+  "external_effects_executed": [
+    ".build/rig-relay/profiles/y3_profile_evidence_events.v1.jsonl ledger append (via persist_y3_event in resolver)"
+  ],
+  "external_effects_not_executed": [
+    "git push (candidate_local only, no publication authorization)",
+    "remote telemetry upload",
+    "checkpoint commit creation",
+    "workspace mutation"
+  ],
+  "known_dirty_foreign_paths_excluded": [
+    "docs/schemas/rig.relay.context_capsule.v1.schema.json",
+    "docs/schemas/rig.relay.fleet_coordination_event.v1.schema.json",
+    "rig_relay/desktop/gateway/",
+    "rig_relay/workspace/",
+    "rig_relay/digestion/",
+    "rig_relay/local_inference/",
+    "rig_relay/coordination/"
+  ],
+  "strongest_suspected_weakness": "Resolver persists events and calls governance but does not gate on governance refusal — an admitted profile can be returned even when governance says REQUIRES_REVIEW. Enforcement is on the caller (Y1 workspace).",
+  "proposed_reviewer_attack_surface": [
+    "ProfileResolutionResult fields populated with stale governance_admission_state before governance adapter runs",
+    "Event ledger written to .build/ with fcntl locking — verify concurrent-writer safety",
+    "admit_profile_selection may silently fall through to local admission rules if GovernanceEngine import fails",
+    "Resolver passes session_id through ProfileResolutionInput but no caller currently provides it",
+    "Evidence persistence writes to cwd-relative path — verify behavior in different working directories"
+  ],
+  "prepublication_review_cycle_digest": "sha256:86da607fe13e0e6989d8c69ece9bc4db99302abc4a0ce549537d29000d933262",
+  "prepublication_review_round_count": 4,
+  "status": "candidate_local"
+}

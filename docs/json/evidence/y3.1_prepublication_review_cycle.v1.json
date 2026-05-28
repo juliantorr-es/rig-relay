@@ -1,0 +1,524 @@
+{
+  "schema_version": "rig.relay.prepublication_review_cycle.v1",
+  "generated_at": "2026-05-28T01:13:03Z",
+  "lane_id": "y3.1",
+  "mission_id": "y3.1_provider_capability_evidence_and_contract_models",
+  "baseline_sha": "",
+  "candidate_digest": "",
+  "intended_boundary": "ProviderCapabilityEvidenceAndContractModelsBoundary",
+  "intended_consumer_purpose": "Provider capability evidence models, evidence-backed profile resolution with append-only evidence persistence and governance routing, and downstream contract models for Y0/Y1/Y2/Y4/analytics future consumption.",
+  "rounds": [
+    {
+      "round_number": 1,
+      "reviewer_session_id": "prepublication-conductor-y3.1-r1",
+      "reviewed_candidate_digest": "",
+      "production_paths_inspected": [
+        "rig_relay/profiles/",
+        "tests/profiles/",
+        "docs/schemas/",
+        "docs/json/evidence/"
+      ],
+      "falsifiers_attempted": [
+        {
+          "claim": "Evidence persistence wired into resolver",
+          "attack": "Trace all resolve_profile return paths for persist_y3_event calls",
+          "evidence": "Source inspection of _resolver.py; resolve_profile had 0 calls to persist_y3_event",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "Governance integration wired into resolver",
+          "attack": "Trace all resolve_profile return paths for admit_profile_selection calls",
+          "evidence": "Source inspection; resolve_profile returned NOT_EVALUATED, never called admit_profile_selection",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "Evaluation functions integrated into evaluate_profile",
+          "attack": "Verify 6 new evaluation checks wired into evaluate_profile pipeline",
+          "evidence": "Source inspection; 6 evaluation functions existed but not called from evaluate_profile",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "Boundary name accurately describes capability",
+          "attack": "Audit every word in GovernedProviderCapabilityEvidenceIntegrationAndDownstreamHandoffsBoundary against proven capabilities",
+          "evidence": "Governed has no enforcement mechanism; Integration and Handoffs overstate the contract model scope",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "Status vocabulary matches builder authority",
+          "attack": "Check for reviewer-only or disallowed status terms in builder artifacts",
+          "evidence": "Builder used releases vocabulary; candidate_local is the maximum builder-awarded status",
+          "outcome": "succeeded",
+          "severity": "medium",
+          "blocking": true
+        },
+        {
+          "claim": "Consumer purpose stated in present-tense factual language",
+          "attack": "Verify consumer purpose describes proven capability, not aspirational future state",
+          "evidence": "Consumer purpose used present-tense for unproven consumption by other lanes",
+          "outcome": "succeeded",
+          "severity": "medium",
+          "blocking": true
+        },
+        {
+          "claim": "Review round provenance is canonical and documented",
+          "attack": "Check for formal review artifacts documenting round 1",
+          "evidence": "No prepublication review cycle artifact existed; round data was fabricated",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "Y3.1-specific evidence artifacts exist",
+          "attack": "Check docs/json/evidence/ for y3.1- prefixed evidence files",
+          "evidence": "Only narrower Y3 artifacts existed; no y3.1 builder record or findings ledger",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "Boundary does not regress on previously repaired issues",
+          "attack": "Check if Governed was re-added after being stripped in narrow Y3 boundary",
+          "evidence": "Governed appeared in Y3.1 boundary after Repair 4 removed it from Y3",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "Boundary claims integration and handoffs, not just models",
+          "attack": "Verify IntegrationContract and downstream handoffs are proven, not aspirational",
+          "evidence": "Code contains Pydantic models only; no integration wiring or handoff protocol exists",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "Claim uses only builder-issued status vocabulary",
+          "attack": "Search for releases, admitted, verified in builder artifacts",
+          "evidence": "Claim used releases vocabulary; must use candidate_local per builder authority",
+          "outcome": "succeeded",
+          "severity": "medium",
+          "blocking": true
+        },
+        {
+          "claim": "Tests exercise exact production boundary",
+          "attack": "Run test suite and verify all profiles tests pass with new evidence/governance wiring",
+          "evidence": "Tests existed but did not cover new evaluation, evidence, or governance paths",
+          "outcome": "defeated",
+          "severity": "low",
+          "blocking": false
+        }
+      ],
+      "findings": [
+        {
+          "finding_id": "y3.1-pr-1",
+          "severity": "high",
+          "violated_claim": "Evidence persistence wired into resolver",
+          "evidence": "resolve_profile had 0 calls to persist_y3_event",
+          "required_repair": "Wire persist_y3_event at all resolver return points",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "y3.1-pr-2",
+          "severity": "high",
+          "violated_claim": "Governance integration wired into resolver",
+          "evidence": "resolve_profile returned NOT_EVALUATED, never called admit_profile_selection",
+          "required_repair": "Wire admit_profile_selection at all resolver return points",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "y3.1-pr-3",
+          "severity": "high",
+          "violated_claim": "Evaluation functions integrated into evaluate_profile",
+          "evidence": "6 evaluation functions existed but not called from evaluate_profile",
+          "required_repair": "Integrate 6 evaluation checks into evaluate_profile pipeline",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "y3.1-pr-4",
+          "severity": "high",
+          "violated_claim": "Boundary name accurately describes capability",
+          "evidence": "Governed, Integration, Handoffs all overclaim the proven scope",
+          "required_repair": "Rename to ProviderCapabilityEvidenceAndContractModelsBoundary",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "y3.1-pr-5",
+          "severity": "high",
+          "violated_claim": "Claim uses only builder-issued status vocabulary",
+          "evidence": "Claim used releases; must use candidate_local per builder authority",
+          "required_repair": "Reduce claim to candidate_local with builder-issued vocabulary only",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "y3.1-pr-6",
+          "severity": "medium",
+          "violated_claim": "Consumer purpose stated in present-tense factual language",
+          "evidence": "Consumer purpose overclaimed in present tense for unproven consumption",
+          "required_repair": "Change to capability-descriptive language",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "y3.1-pr-7",
+          "severity": "high",
+          "violated_claim": "Review round provenance is canonical and documented",
+          "evidence": "No formal review artifacts existed; round data was fabricated",
+          "required_repair": "Record this review as round 1 in canonical findings ledger",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "y3.1-pr-8",
+          "severity": "high",
+          "violated_claim": "Y3.1-specific evidence artifacts exist",
+          "evidence": "Only narrower Y3 artifacts existed; no y3.1 builder record or findings ledger",
+          "required_repair": "Create y3.1 builder publication record and findings ledger",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "y3.1-pr-9",
+          "severity": "high",
+          "violated_claim": "Boundary does not regress on previously repaired issues",
+          "evidence": "Governed re-added after Repair 4 removed it from Y3 boundary",
+          "required_repair": "Drop Governed from boundary name per Repair 4",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "y3.1-pr-10",
+          "severity": "high",
+          "violated_claim": "Boundary claims integration and handoffs, not just models",
+          "evidence": "IntegrationContract and downstream handoffs overclaim — models, not integrations",
+          "required_repair": "Change boundary and claim to contract models, not integration or handoffs",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "y3.1-pr-11",
+          "severity": "medium",
+          "violated_claim": "Claim uses only builder-issued status vocabulary",
+          "evidence": "Releases vocabulary violation under candidate_local",
+          "required_repair": "Drop releases from claim per Repair 5",
+          "classification": "blocking_inside_declared_boundary"
+        }
+      ],
+      "disposition": "repair_required"
+    },
+    {
+      "round_number": 2,
+      "reviewer_session_id": "prepublication-conductor-y3.1-r2",
+      "reviewed_candidate_digest": "",
+      "production_paths_inspected": [
+        "docs/json/evidence/y3.1_builder_publication_record.v1.json",
+        "docs/json/evidence/y3.1_prepublication_review_findings.v1.jsonl"
+      ],
+      "falsifiers_attempted": [
+        {
+          "claim": "Downstream consumer lanes import contract models",
+          "attack": "Search for imports of y3.1 contract models in downstream packages",
+          "evidence": "No imports of y3.1 contract models in desktop/, workspace/, context/, local_inference/",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "Canonical persistence backed by Y3 event schema",
+          "attack": "Check docs/schemas/ for Y3-specific event schema",
+          "evidence": "docs/schemas/rig.relay.y3_profile_event.v1.schema.json did not exist",
+          "outcome": "succeeded",
+          "severity": "medium",
+          "blocking": true
+        },
+        {
+          "claim": "prepublication_review_round_count is accurate",
+          "attack": "Compare builder record round_count against actual review round",
+          "evidence": "Builder record had round_count=1 but this was round 2",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "prepublication_review_cycle_digest is computed from real artifact",
+          "attack": "Verify review cycle artifact exists and SHA256 matches digest",
+          "evidence": "Review cycle artifact did not exist; digest was computed from non-existent file",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        },
+        {
+          "claim": "Round 1 findings ledger is append-only and complete",
+          "attack": "Verify all 11 claimed findings exist in the JSONL ledger",
+          "evidence": "Ledger had 11 rows matching the 11 round-1 finding IDs",
+          "outcome": "defeated",
+          "severity": "low",
+          "blocking": false
+        },
+        {
+          "claim": "Consumer purpose language is narrowed from downstream to published",
+          "attack": "Verify consumer purpose matches round-1 repair record",
+          "evidence": "Consumer purpose now uses capability-descriptive language, not present-tense claims",
+          "outcome": "defeated",
+          "severity": "low",
+          "blocking": false
+        },
+        {
+          "claim": "Builder record schema validates",
+          "attack": "Validate builder record against governing schema",
+          "evidence": "Builder record conforms to rig.relay.builder_publication_record.v1",
+          "outcome": "defeated",
+          "severity": "low",
+          "blocking": false
+        },
+        {
+          "claim": "Evidence persistence is fail-closed at all resolver paths",
+          "attack": "Source inspection of resolver for fail-closed I/O handling",
+          "evidence": "persist_y3_event called at all 4 return points with try/except fail-closed",
+          "outcome": "defeated",
+          "severity": "low",
+          "blocking": false
+        }
+      ],
+      "findings": [
+        {
+          "finding_id": "y3.1-pr-12",
+          "severity": "high",
+          "violated_claim": "Downstream consumer lanes import contract models",
+          "evidence": "No imports of y3.1 contract models in desktop/, workspace/, context/, local_inference/",
+          "required_repair": "Change to published contract models for future consumption",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "y3.1-pr-13",
+          "severity": "medium",
+          "violated_claim": "Canonical persistence backed by Y3 event schema",
+          "evidence": "docs/schemas/rig.relay.y3_profile_event.v1.schema.json did not exist",
+          "required_repair": "Create Y3 event schema or change canonical persistence to append-only evidence persistence",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "y3.1-pr-14",
+          "severity": "high",
+          "violated_claim": "prepublication_review_round_count is accurate",
+          "evidence": "Builder record had round_count=1 but this was round 2",
+          "required_repair": "Update round_count to 2",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "y3.1-pr-15",
+          "severity": "high",
+          "violated_claim": "prepublication_review_cycle_digest is computed from real artifact",
+          "evidence": "Review cycle artifact did not exist; digest was computed from non-existent file",
+          "required_repair": "Create review cycle artifact and recompute digest",
+          "classification": "blocking_inside_declared_boundary"
+        }
+      ],
+      "disposition": "repair_required"
+    },
+    {
+      "round_number": 3,
+      "reviewer_session_id": "prepublication-conductor-y3.1-r3",
+      "reviewed_candidate_digest": "",
+      "production_paths_inspected": [
+        "docs/json/evidence/y3.1_prepublication_review_cycle.v1.json",
+        "docs/json/evidence/y3.1_prepublication_review_findings.v1.jsonl"
+      ],
+      "falsifiers_attempted": [
+        {
+          "claim": "Review cycle artifact conforms to governing schema",
+          "attack": "Validate against rig.relay.prepublication_review_cycle.v1 schema with jsonschema Draft7Validator",
+          "evidence": "10 required fields missing; 5 non-canonical fields rejected by additionalProperties:false; falsifiers_attempted stored as integer not array; findings stored as integer not array; disposition used non-enum values; builder_responses missing required array fields; final_admission null not object; status absent",
+          "outcome": "succeeded",
+          "severity": "high",
+          "blocking": true
+        }
+      ],
+      "findings": [
+        {
+          "finding_id": "y3.1-pr-16",
+          "severity": "high",
+          "violated_claim": "Evidence chain: review cycle artifact binds to schema-valid evidence",
+          "evidence": "10 required fields missing, 5 non-canonical fields rejected by additionalProperties:false",
+          "required_repair": "Rewrite to conform to rig.relay.prepublication_review_cycle.v1 schema",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "y3.1-pr-17",
+          "severity": "high",
+          "violated_claim": "Evidence chain integrity",
+          "evidence": "Digest in builder record computed from non-conforming review cycle artifact",
+          "required_repair": "Recompute digest after schema repair",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "y3.1-pr-18",
+          "severity": "high",
+          "violated_claim": "15 findings claimed but only 11 in ledger",
+          "evidence": "Findings ledger has 11 rows; 4 round-2 findings absent",
+          "required_repair": "Append round-2 findings to ledger",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "y3.1-pr-19",
+          "severity": "medium",
+          "violated_claim": "Claim consistency across evidence artifacts",
+          "evidence": "Round-1 repair note says claim reduced to downstream_contract_models but builder record says published_contract_models",
+          "required_repair": "Change published_contract_models to downstream_contract_models",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "y3.1-pr-20",
+          "severity": "high",
+          "violated_claim": "Status vocabulary — prepublication_admitted is awarded by conductor, not self-claimed",
+          "evidence": "Review cycle artifact had final_disposition: prepublication_admitted before evidence integrity established",
+          "required_repair": "Remove final_disposition, use canonical status: in_review",
+          "classification": "blocking_inside_declared_boundary"
+        },
+        {
+          "finding_id": "y3.1-pr-21",
+          "severity": "high",
+          "violated_claim": "prepublication_review_round_count",
+          "evidence": "Builder record had round_count=2 but this is round 3",
+          "required_repair": "Update round_count to 3",
+          "classification": "blocking_inside_declared_boundary"
+        }
+      ],
+      "disposition": "repair_required"
+    },
+    {
+      "round_number": 4,
+      "reviewer_session_id": "prepublication-conductor-y3.1-r4",
+      "reviewed_candidate_digest": "",
+      "production_paths_inspected": [
+        "docs/json/evidence/y3.1_builder_publication_record.v1.json",
+        "docs/json/evidence/y3.1_prepublication_review_findings.v1.jsonl"
+      ],
+      "falsifiers_attempted": [
+        {
+          "claim": "Consumer purpose is production-proven and truthful",
+          "attack": "Audit intended_consumer_purpose and required_proof for overclaimed readiness language",
+          "evidence": "'ready for' contradicts 'consumer implementations deferred' in unimplemented_capabilities",
+          "outcome": "succeeded",
+          "severity": "medium",
+          "blocking": true
+        }
+      ],
+      "findings": [
+        {
+          "finding_id": "y3.1-pr-22",
+          "severity": "medium",
+          "violated_claim": "ready for Y0/Y1/Y2/Y4/analytics future consumption",
+          "evidence": "unimplemented_capabilities says 'consumer implementations deferred'; strongest_suspected_weakness says governance enforcement deferred to caller",
+          "required_repair": "Replace ready for with published as Pydantic contract models for",
+          "classification": "blocking_inside_declared_boundary"
+        }
+      ],
+      "disposition": "repair_required"
+    }
+  ],
+  "builder_responses": [
+    {
+      "round_number": 1,
+      "repaired_findings": [
+        "y3.1-pr-1",
+        "y3.1-pr-2",
+        "y3.1-pr-3",
+        "y3.1-pr-4",
+        "y3.1-pr-5",
+        "y3.1-pr-6",
+        "y3.1-pr-7",
+        "y3.1-pr-8",
+        "y3.1-pr-9",
+        "y3.1-pr-10",
+        "y3.1-pr-11"
+      ],
+      "changed_paths": [
+        "rig_relay/profiles/_resolver.py",
+        "rig_relay/profiles/_evaluation.py",
+        "rig_relay/profiles/_evidence_ledger.py",
+        "rig_relay/profiles/_governance_adapter.py",
+        "rig_relay/profiles/_capability_evidence.py",
+        "rig_relay/profiles/_downstream_contracts.py",
+        "rig_relay/profiles/models.py",
+        "rig_relay/profiles/__init__.py",
+        "docs/json/evidence/y3.1_builder_publication_record.v1.json",
+        "docs/json/evidence/y3.1_prepublication_review_findings.v1.jsonl"
+      ],
+      "validation_rerun": [
+        "uv run pytest tests/profiles/ -v",
+        "uv run pyright rig_relay/profiles/",
+        "uv run ruff check rig_relay/profiles/ tests/profiles/"
+      ]
+    },
+    {
+      "round_number": 2,
+      "repaired_findings": [
+        "y3.1-pr-12",
+        "y3.1-pr-13",
+        "y3.1-pr-14",
+        "y3.1-pr-15"
+      ],
+      "changed_paths": [
+        "docs/json/evidence/y3.1_builder_publication_record.v1.json",
+        "docs/json/evidence/y3.1_prepublication_review_cycle.v1.json",
+        "docs/json/evidence/y3.1_prepublication_review_findings.v1.jsonl",
+        "docs/schemas/rig.relay.y3_profile_event.v1.schema.json"
+      ],
+      "validation_rerun": [
+        "uv run pytest tests/profiles/ -v",
+        "uv run pyright rig_relay/profiles/",
+        "uv run ruff check rig_relay/profiles/ tests/profiles/"
+      ]
+    },
+    {
+      "round_number": 3,
+      "repaired_findings": [
+        "y3.1-pr-16",
+        "y3.1-pr-17",
+        "y3.1-pr-18",
+        "y3.1-pr-19",
+        "y3.1-pr-20",
+        "y3.1-pr-21"
+      ],
+      "changed_paths": [
+        "docs/json/evidence/y3.1_prepublication_review_cycle.v1.json",
+        "docs/json/evidence/y3.1_prepublication_review_findings.v1.jsonl",
+        "docs/json/evidence/y3.1_builder_publication_record.v1.json"
+      ],
+      "validation_rerun": [
+        "uv run pytest tests/profiles/ -v",
+        "uv run pyright rig_relay/profiles/",
+        "uv run ruff check rig_relay/profiles/ tests/profiles/"
+      ]
+    },
+    {
+      "round_number": 4,
+      "repaired_findings": [
+        "y3.1-pr-22"
+      ],
+      "changed_paths": [
+        "docs/json/evidence/y3.1_builder_publication_record.v1.json",
+        "docs/json/evidence/y3.1_prepublication_review_cycle.v1.json",
+        "docs/json/evidence/y3.1_prepublication_review_findings.v1.jsonl"
+      ],
+      "validation_rerun": [
+        "uv run pytest tests/profiles/ -v",
+        "uv run pyright rig_relay/profiles/",
+        "uv run ruff check rig_relay/profiles/ tests/profiles/"
+      ]
+    }
+  ],
+  "final_admission": {
+    "admitted_candidate_digest": null,
+    "admitted_boundary": null,
+    "permitted_consumer_purpose": null,
+    "unclaimed_capabilities": [],
+    "deferred_seams": [],
+    "review_round_count": 4,
+    "push_authorized": false
+  },
+  "status": "in_review"
+}

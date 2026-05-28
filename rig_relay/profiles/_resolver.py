@@ -2,20 +2,41 @@
 
 Matches a provider/model/role combination to the best-fitting
 harness compatibility profile from the built-in registry.
+
+Now includes capability evidence layer — profiles are admitted only when
+required capabilities are supported by admissible evidence.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
+import hashlib
+import json
 import re
+from typing import cast
 from uuid import uuid4
 
+from rig_relay.profiles._capability_evidence import (
+    BUILTIN_CAPABILITY_EVIDENCE,
+    CapabilityEvidenceItem,
+    CapabilityEvidenceSourceClass,
+    CapabilityPosture,
+    validate_profile_requirements_against_evidence,
+)
+from rig_relay.profiles._evidence_ledger import (
+    Y3ProfileEvent,
+    Y3ProfileEventKind,
+    persist_y3_event,
+)
+from rig_relay.profiles._governance_adapter import admit_profile_selection
 from rig_relay.profiles.models import (
+    GovernanceAdmissionState,
     HarnessCompatibilityProfile,
     ProfileResolutionError,
     ProfileResolutionInput,
     ProfileResolutionResult,
     ProfileStatus,
+    ResolutionOutcome,
 )
 
 _CONFIDENCE_HIGH_THRESHOLD = 5
@@ -28,6 +49,96 @@ def _determine_confidence(score: int) -> str:
     if score >= _CONFIDENCE_MEDIUM_THRESHOLD:
         return "medium"
     return "low"
+
+
+def _load_evidence_sources(
+    input: ProfileResolutionInput,
+) -> tuple[CapabilityEvidenceItem, ...]:
+    if input.capability_evidence_sources is None:
+        return BUILTIN_CAPABILITY_EVIDENCE
+    filtered: list[CapabilityEvidenceItem] = []
+    for eid in input.capability_evidence_sources:
+        for item in BUILTIN_CAPABILITY_EVIDENCE:
+            if item.evidence_id == eid:
+                filtered.append(item)
+                break
+    if not filtered:
+        return BUILTIN_CAPABILITY_EVIDENCE
+    return tuple(filtered)
+
+
+def _resolve_evidence_map(
+    profile: HarnessCompatibilityProfile,
+    provider: str,
+    model_id: str,
+    sources: tuple[CapabilityEvidenceItem, ...],
+) -> tuple[ResolutionOutcome | None, dict[str, object], list[str]]:
+    satisfied, evidence_items, warnings = (
+        validate_profile_requirements_against_evidence(
+            profile, provider, model_id, sources
+        )
+    )
+
+    map_for_result: dict[str, object] = {}
+    for cap_name, evidence in evidence_items.items():
+        if evidence is None:
+            map_for_result[cap_name] = {
+                "posture": CapabilityPosture.UNKNOWN.value,
+                "source_class": CapabilityEvidenceSourceClass.UNKNOWN.value,
+            }
+        else:
+            map_for_result[cap_name] = {
+                "posture": evidence.posture.value,
+                "source_class": evidence.source_class.value,
+                "evidence_digest": evidence.evidence_digest,
+            }
+
+    outcome: ResolutionOutcome | None = None
+
+    if not satisfied:
+        has_unsupported = any(
+            w.startswith("Required capability")
+            and ("unsupported" in w or "unavailable" in w)
+            for w in warnings
+        )
+        has_conflicting = any("conflicting" in w for w in warnings)
+        has_missing = any("has no evidence" in w for w in warnings)
+
+        if has_conflicting:
+            outcome = ResolutionOutcome.REFUSED_CONFLICTING_CAPABILITY_EVIDENCE
+        elif has_unsupported:
+            outcome = ResolutionOutcome.REFUSED_UNSUPPORTED_CAPABILITY
+        elif has_missing:
+            outcome = ResolutionOutcome.REFUSED_MISSING_CAPABILITY_EVIDENCE
+        else:
+            outcome = ResolutionOutcome.REFUSED_MISSING_CAPABILITY_EVIDENCE
+        return outcome, map_for_result, warnings
+
+    has_user_only = any(
+        e is not None
+        and e.source_class == CapabilityEvidenceSourceClass.USER_DECLARED_CONFIGURATION
+        for e in evidence_items.values()
+    )
+    all_user_only = has_user_only and all(
+        e is None
+        or e.source_class == CapabilityEvidenceSourceClass.USER_DECLARED_CONFIGURATION
+        for e in evidence_items.values()
+        if e is not None
+    )
+
+    if all_user_only:
+        outcome = ResolutionOutcome.SELECTED_RESTRICTED
+    elif profile.evaluation_status == ProfileStatus.EXPERIMENTAL:
+        outcome = ResolutionOutcome.SELECTED_EXPERIMENTAL
+    else:
+        outcome = ResolutionOutcome.SELECTED
+
+    return outcome, map_for_result, warnings
+
+
+def _compute_evidence_map_digest(evidence_map: dict[str, object]) -> str:
+    canonical = json.dumps(evidence_map, sort_keys=True, separators=(",", ":"))
+    return f"sha256:{hashlib.sha256(canonical.encode()).hexdigest()}"
 
 
 def _classify_and_score_profiles(
@@ -91,28 +202,122 @@ def resolve_profile(
 
         profiles = BUILTIN_PROFILES
 
+    evidence_sources = _load_evidence_sources(input)
     alternatives_considered: list[str] = []
     alternatives_rejected: dict[str, str] = {}
+    governance_state: str = GovernanceAdmissionState.NOT_EVALUATED.value
+
+    if input.require_governance_admission:
+        governance_state = GovernanceAdmissionState.REQUIRES_REVIEW.value
 
     if input.prefer_profile_id is not None:
         for p in profiles:
             if p.profile_id == input.prefer_profile_id:
-                if _capabilities_satisfied(p, input):
-                    return ProfileResolutionResult(
-                        resolution_id=str(uuid4()),
+                if not _capabilities_satisfied(p, input):
+                    alternatives_rejected[p.profile_id] = (
+                        "User override requested but capabilities not satisfied"
+                    )
+                    msg = (
+                        f"No profile matches prefer_profile_id "
+                        f"'{input.prefer_profile_id}'"
+                    )
+                    raise ProfileResolutionError(
+                        msg,
                         provider=input.provider,
                         model_id=input.model_id,
-                        task_role=input.task_role,
-                        selected_profile=p,
-                        selected_reason=f"User override: prefer_profile_id={input.prefer_profile_id}",
-                        confidence="high",
-                        alternatives_considered=[],
-                        is_user_override=True,
-                        override_source_profile_id=input.prefer_profile_id,
+                        reasons=list(alternatives_rejected.values()),
                     )
-                alternatives_rejected[p.profile_id] = (
-                    "User override requested but capabilities not satisfied"
+
+                evidence_outcome, evidence_map, evidence_warnings = (
+                    _resolve_evidence_map(
+                        p, input.provider, input.model_id, evidence_sources
+                    )
                 )
+                evidence_digest = _compute_evidence_map_digest(evidence_map)
+
+                if evidence_outcome in {
+                    ResolutionOutcome.REFUSED_MISSING_CAPABILITY_EVIDENCE,
+                    ResolutionOutcome.REFUSED_CONFLICTING_CAPABILITY_EVIDENCE,
+                    ResolutionOutcome.REFUSED_UNSUPPORTED_CAPABILITY,
+                }:
+                    outcome_val = cast(ResolutionOutcome, evidence_outcome)
+                    alternatives_rejected[p.profile_id] = (
+                        f"User override: evidence check failed — {outcome_val.value}"
+                    )
+                    msg = (
+                        f"No profile matches prefer_profile_id "
+                        f"'{input.prefer_profile_id}'"
+                    )
+                    raise ProfileResolutionError(
+                        msg,
+                        provider=input.provider,
+                        model_id=input.model_id,
+                        reasons=list(alternatives_rejected.values()),
+                    )
+
+                result = ProfileResolutionResult(
+                    resolution_id=str(uuid4()),
+                    provider=input.provider,
+                    model_id=input.model_id,
+                    task_role=input.task_role,
+                    selected_profile=p,
+                    selected_reason=(
+                        f"User override: prefer_profile_id={input.prefer_profile_id}"
+                    ),
+                    confidence="high",
+                    alternatives_considered=[],
+                    is_user_override=True,
+                    override_source_profile_id=input.prefer_profile_id,
+                    outcome=(
+                        evidence_outcome.value if evidence_outcome else "selected"
+                    ),
+                    capability_evidence_map=evidence_map,
+                    capability_evidence_digest=evidence_digest,
+                    governance_admission_state=governance_state,
+                    warnings=evidence_warnings,
+                )
+
+                admission_state, admission_digest = admit_profile_selection(
+                    result,
+                    input.provider,
+                    input.model_id,
+                    input.task_role.value,
+                    session_id=input.session_id,
+                )
+                result.governance_admission_state = admission_state
+                result.governance_admission_digest = admission_digest or ""
+
+                outcome_val = result.outcome
+                event_kind = {
+                    "selected": Y3ProfileEventKind.PROFILE_SELECTED,
+                    "selected_experimental": Y3ProfileEventKind.PROFILE_SELECTED,
+                    "selected_restricted": Y3ProfileEventKind.PROFILE_SELECTED,
+                    "refused_missing_capability_evidence": Y3ProfileEventKind.PROFILE_REFUSED,
+                    "refused_conflicting_capability_evidence": Y3ProfileEventKind.PROFILE_REFUSED,
+                    "refused_unsupported_capability": Y3ProfileEventKind.PROFILE_REFUSED,
+                    "fallback_rig_native": Y3ProfileEventKind.PROFILE_SELECTED,
+                    "unavailable_provider_capability_resolution": Y3ProfileEventKind.PROFILE_REFUSED,
+                }.get(outcome_val, Y3ProfileEventKind.PROFILE_RESOLUTION_ATTEMPTED)
+
+                event = Y3ProfileEvent(
+                    event_id=str(uuid4()),
+                    event_kind=event_kind,
+                    session_id=input.session_id,
+                    provider=input.provider,
+                    model_id=input.model_id,
+                    profile_id=result.selected_profile.profile_id,
+                    profile_digest=result.selected_profile.profile_digest,
+                    task_role=input.task_role.value,
+                    resolution_outcome=outcome_val,
+                    capability_evidence_digest=result.capability_evidence_digest,
+                    context_envelope_digest="",
+                    governance_admission_digest=result.governance_admission_digest,
+                    warnings=list(result.warnings),
+                )
+                persist_y3_event(event)
+
+                return result
+
         msg = f"No profile matches prefer_profile_id '{input.prefer_profile_id}'"
         raise ProfileResolutionError(
             msg,
@@ -126,6 +331,12 @@ def resolve_profile(
     )
 
     if not scored:
+        rig_native_result = _try_rig_native_fallback(
+            input, profiles, alternatives_rejected, evidence_sources, governance_state
+        )
+        if rig_native_result is not None:
+            return rig_native_result
+
         msg = (
             f"No profile found for provider={input.provider}, "
             f"model={input.model_id}, role={input.task_role.value}"
@@ -138,38 +349,228 @@ def resolve_profile(
         )
 
     scored.sort(key=lambda item: item[0], reverse=True)
-    best_score, best_profile = scored[0]
 
-    confidence = _determine_confidence(best_score)
+    for _, candidate in scored:
+        evidence_outcome, evidence_map, evidence_warnings = _resolve_evidence_map(
+            candidate, input.provider, input.model_id, evidence_sources
+        )
 
-    all_rejected: dict[str, str] = {}
-    for pid in alternatives_considered:
-        if pid != best_profile.profile_id and pid in alternatives_rejected:
-            all_rejected[pid] = alternatives_rejected[pid]
-    for pid, reason in alternatives_rejected.items():
-        if pid not in alternatives_considered and pid not in all_rejected:
-            all_rejected[pid] = reason
+        if evidence_outcome in {
+            ResolutionOutcome.REFUSED_MISSING_CAPABILITY_EVIDENCE,
+            ResolutionOutcome.REFUSED_CONFLICTING_CAPABILITY_EVIDENCE,
+            ResolutionOutcome.REFUSED_UNSUPPORTED_CAPABILITY,
+        }:
+            outcome_val = cast(ResolutionOutcome, evidence_outcome)
+            alternatives_rejected[candidate.profile_id] = (
+                f"Evidence check failed: {outcome_val.value}"
+            )
+            continue
 
-    warnings: list[str] = []
-    cap_warnings = _check_capabilities(best_profile, input)
-    if cap_warnings:
-        warnings = cap_warnings
+        evidence_digest = _compute_evidence_map_digest(evidence_map)
+        best_score, best_profile = scored[0]
+        confidence = _determine_confidence(best_score)
 
-    return ProfileResolutionResult(
-        resolution_id=str(uuid4()),
+        all_rejected: dict[str, str] = {}
+        for pid in alternatives_considered:
+            if pid != best_profile.profile_id and pid in alternatives_rejected:
+                all_rejected[pid] = alternatives_rejected[pid]
+        for pid, reason in alternatives_rejected.items():
+            if pid not in alternatives_considered and pid not in all_rejected:
+                all_rejected[pid] = reason
+
+        all_warnings: list[str] = []
+        cap_warnings = _check_capabilities(best_profile, input)
+        if cap_warnings:
+            all_warnings.extend(cap_warnings)
+        all_warnings.extend(evidence_warnings)
+
+        if (
+            evidence_outcome
+            in {
+                ResolutionOutcome.SELECTED_EXPERIMENTAL,
+                ResolutionOutcome.SELECTED_RESTRICTED,
+            }
+            and not all_warnings
+        ):
+            outcome_val = cast(ResolutionOutcome, evidence_outcome)
+            all_warnings.append(
+                f"Selected with restricted evidence: {outcome_val.value}"
+            )
+
+        result = ProfileResolutionResult(
+            resolution_id=str(uuid4()),
+            provider=input.provider,
+            model_id=input.model_id,
+            task_role=input.task_role,
+            selected_profile=best_profile,
+            selected_reason=(
+                f"Best match: score={best_score}, provider={input.provider}, "
+                f"model={input.model_id}, role={input.task_role.value}"
+            ),
+            confidence=confidence,
+            alternatives_considered=alternatives_considered,
+            alternatives_rejected_reasons=all_rejected,
+            warnings=all_warnings,
+            outcome=evidence_outcome.value if evidence_outcome else "selected",
+            capability_evidence_map=evidence_map,
+            capability_evidence_digest=evidence_digest,
+            governance_admission_state=governance_state,
+        )
+
+        admission_state, admission_digest = admit_profile_selection(
+            result,
+            input.provider,
+            input.model_id,
+            input.task_role.value,
+            session_id=input.session_id,
+        )
+        result.governance_admission_state = admission_state
+        result.governance_admission_digest = admission_digest or ""
+
+        outcome_val = result.outcome
+        event_kind = {
+            "selected": Y3ProfileEventKind.PROFILE_SELECTED,
+            "selected_experimental": Y3ProfileEventKind.PROFILE_SELECTED,
+            "selected_restricted": Y3ProfileEventKind.PROFILE_SELECTED,
+            "refused_missing_capability_evidence": Y3ProfileEventKind.PROFILE_REFUSED,
+            "refused_conflicting_capability_evidence": Y3ProfileEventKind.PROFILE_REFUSED,
+            "refused_unsupported_capability": Y3ProfileEventKind.PROFILE_REFUSED,
+            "fallback_rig_native": Y3ProfileEventKind.PROFILE_SELECTED,
+            "unavailable_provider_capability_resolution": Y3ProfileEventKind.PROFILE_REFUSED,
+        }.get(outcome_val, Y3ProfileEventKind.PROFILE_RESOLUTION_ATTEMPTED)
+
+        event = Y3ProfileEvent(
+            event_id=str(uuid4()),
+            event_kind=event_kind,
+            session_id=input.session_id,
+            provider=input.provider,
+            model_id=input.model_id,
+            profile_id=result.selected_profile.profile_id,
+            profile_digest=result.selected_profile.profile_digest,
+            task_role=input.task_role.value,
+            resolution_outcome=outcome_val,
+            capability_evidence_digest=result.capability_evidence_digest,
+            context_envelope_digest="",
+            governance_admission_digest=result.governance_admission_digest,
+            warnings=list(result.warnings),
+        )
+        persist_y3_event(event)
+
+        return result
+
+    rig_native_result = _try_rig_native_fallback(
+        input, profiles, alternatives_rejected, evidence_sources, governance_state
+    )
+    if rig_native_result is not None:
+        return rig_native_result
+
+    msg = (
+        f"No profile found for provider={input.provider}, "
+        f"model={input.model_id}, role={input.task_role.value}"
+    )
+    raise ProfileResolutionError(
+        msg,
         provider=input.provider,
         model_id=input.model_id,
-        task_role=input.task_role,
-        selected_profile=best_profile,
-        selected_reason=(
-            f"Best match: score={best_score}, provider={input.provider}, "
-            f"model={input.model_id}, role={input.task_role.value}"
-        ),
-        confidence=confidence,
-        alternatives_considered=alternatives_considered,
-        alternatives_rejected_reasons=all_rejected,
-        warnings=warnings,
+        reasons=list(alternatives_rejected.values()),
     )
+
+
+def _try_rig_native_fallback(
+    input: ProfileResolutionInput,
+    profiles: Sequence[HarnessCompatibilityProfile],
+    alternatives_rejected: dict[str, str],
+    evidence_sources: tuple[CapabilityEvidenceItem, ...],
+    governance_state: str,
+) -> ProfileResolutionResult | None:
+    for p in profiles:
+        if p.profile_id != "rig.native.governed.v1":
+            continue
+        if input.provider not in p.provider_families:
+            alternatives_rejected[p.profile_id] = (
+                "rig.native fallback: provider not supported"
+            )
+            return None
+
+        evidence_outcome, evidence_map, evidence_warnings = _resolve_evidence_map(
+            p, input.provider, input.model_id, evidence_sources
+        )
+        evidence_digest = _compute_evidence_map_digest(evidence_map)
+
+        if evidence_outcome in {
+            ResolutionOutcome.REFUSED_MISSING_CAPABILITY_EVIDENCE,
+            ResolutionOutcome.REFUSED_UNSUPPORTED_CAPABILITY,
+        }:
+            outcome_val = cast(ResolutionOutcome, evidence_outcome)
+            alternatives_rejected[p.profile_id] = "rig.native fallback: " + (
+                "evidence missing"
+                if outcome_val == ResolutionOutcome.REFUSED_MISSING_CAPABILITY_EVIDENCE
+                else "capability unsupported"
+            )
+            return None
+
+        result = ProfileResolutionResult(
+            resolution_id=str(uuid4()),
+            provider=input.provider,
+            model_id=input.model_id,
+            task_role=input.task_role,
+            selected_profile=p,
+            selected_reason=(
+                f"Fallback rig.native: no specialized profile passed "
+                f"evidence checks for {input.provider}/{input.model_id}"
+            ),
+            confidence="low",
+            alternatives_considered=[],
+            alternatives_rejected_reasons=alternatives_rejected,
+            warnings=evidence_warnings,
+            outcome=ResolutionOutcome.FALLBACK_RIG_NATIVE.value,
+            capability_evidence_map=evidence_map,
+            capability_evidence_digest=evidence_digest,
+            governance_admission_state=governance_state,
+        )
+
+        admission_state, admission_digest = admit_profile_selection(
+            result,
+            input.provider,
+            input.model_id,
+            input.task_role.value,
+            session_id=input.session_id,
+        )
+        result.governance_admission_state = admission_state
+        result.governance_admission_digest = admission_digest or ""
+
+        outcome_val = result.outcome
+        event_kind = {
+            "selected": Y3ProfileEventKind.PROFILE_SELECTED,
+            "selected_experimental": Y3ProfileEventKind.PROFILE_SELECTED,
+            "selected_restricted": Y3ProfileEventKind.PROFILE_SELECTED,
+            "refused_missing_capability_evidence": Y3ProfileEventKind.PROFILE_REFUSED,
+            "refused_conflicting_capability_evidence": Y3ProfileEventKind.PROFILE_REFUSED,
+            "refused_unsupported_capability": Y3ProfileEventKind.PROFILE_REFUSED,
+            "fallback_rig_native": Y3ProfileEventKind.PROFILE_SELECTED,
+            "unavailable_provider_capability_resolution": Y3ProfileEventKind.PROFILE_REFUSED,
+        }.get(outcome_val, Y3ProfileEventKind.PROFILE_RESOLUTION_ATTEMPTED)
+
+        event = Y3ProfileEvent(
+            event_id=str(uuid4()),
+            event_kind=event_kind,
+            session_id=input.session_id,
+            provider=input.provider,
+            model_id=input.model_id,
+            profile_id=result.selected_profile.profile_id,
+            profile_digest=result.selected_profile.profile_digest,
+            task_role=input.task_role.value,
+            resolution_outcome=outcome_val,
+            capability_evidence_digest=result.capability_evidence_digest,
+            context_envelope_digest="",
+            governance_admission_digest=result.governance_admission_digest,
+            warnings=list(result.warnings),
+        )
+        persist_y3_event(event)
+
+        return result
+
+    return None
 
 
 def resolve_profiles_batch(

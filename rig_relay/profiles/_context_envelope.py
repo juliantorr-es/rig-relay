@@ -14,6 +14,7 @@ from rig_relay.context.models import ContextEnvelopeReceipt
 from rig_relay.profiles.models import (
     ContextEnvelopeStrategy,
     HarnessCompatibilityProfile,
+    InstructionRenderingStrategy,
     TaskRole,
 )
 
@@ -73,6 +74,43 @@ def _read_file_safe(path: Path) -> str:
         return ""
 
 
+def _instruction_block(
+    strategy: InstructionRenderingStrategy, section_count: int
+) -> tuple[list[str], int]:
+    lines: list[str] = []
+    lines.append(f"\n**Instruction Rendering Strategy**: {strategy.value}\n")
+    section_count += 1
+
+    match strategy:
+        case InstructionRenderingStrategy.RIG_DEFAULT:
+            lines.append(
+                "AGENTS.md + PROJECT.md delivered as system message. "
+                "Standard Rig Relay governed context envelope.\n"
+            )
+        case InstructionRenderingStrategy.CODEX:
+            lines.append(
+                "Scope: AGENTS.md files govern the directory tree rooted at the "
+                "folder containing them. More-deeply-nested AGENTS.md take precedence.\n"
+                "Use citation format: 【F:file_path†Lstart(-Lend)】\n"
+            )
+        case InstructionRenderingStrategy.CLAUDE:
+            lines.append(
+                "CLAUDE.md loading order (broadest to most specific): "
+                "managed → user (~/.claude/CLAUDE.md) → project (./CLAUDE.md) → "
+                "local (./CLAUDE.local.md). Delivered as user message after system prompt.\n"
+            )
+        case InstructionRenderingStrategy.COPILOT:
+            lines.append(
+                "Custom instructions combine from: "
+                ".github/copilot-instructions.md, "
+                ".github/instructions/*.instructions.md (path-specific with glob frontmatter), "
+                "AGENTS.md. Custom agents are defined as Markdown+YAML files in "
+                ".github/agents/.\n"
+            )
+
+    return lines, section_count
+
+
 def _build_rig_governed(
     profile: HarnessCompatibilityProfile,
     role: TaskRole,
@@ -115,6 +153,11 @@ def _build_rig_governed(
             section_count += 1
     except OSError:
         pass
+
+    instr_lines, section_count = _instruction_block(
+        profile.instruction_rendering_strategy, section_count
+    )
+    sections.extend(instr_lines)
 
     if extra_context:
         sections.append("\n## Extra Context\n")
@@ -170,6 +213,11 @@ def _build_codex_compatible(
     )
     section_count += 1
 
+    instr_lines, section_count = _instruction_block(
+        profile.instruction_rendering_strategy, section_count
+    )
+    sections.extend(instr_lines)
+
     sections.append(f"\n## Task Role\n{role.value}\n")
     sections.append(f"\n## Profile\n{profile.profile_id} — {profile.display_name}\n")
     section_count += 1
@@ -223,6 +271,11 @@ def _build_claude_compatible(
         content = _read_file_safe(claude_md)
         sections.append(f"## CLAUDE.md (Project Layer)\n{content}")
         section_count += 1
+
+    instr_lines, section_count = _instruction_block(
+        profile.instruction_rendering_strategy, section_count
+    )
+    sections.extend(instr_lines)
 
     sections.append(f"\n## Task Role\n{role.value}\n")
     sections.append(f"\n## Profile\n{profile.profile_id} — {profile.display_name}\n")
@@ -307,6 +360,11 @@ def _build_copilot_compatible(
         "Rig Relay manages this through its own governed lifecycle.\n"
     )
     section_count += 1
+
+    instr_lines, section_count = _instruction_block(
+        profile.instruction_rendering_strategy, section_count
+    )
+    sections.extend(instr_lines)
 
     sections.append(f"\n## Task Role\n{role.value}\n")
     sections.append(f"\n## Profile\n{profile.profile_id} — {profile.display_name}\n")
