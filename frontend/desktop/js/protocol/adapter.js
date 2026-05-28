@@ -504,6 +504,13 @@ function _setAnalyticsReportsSurfaceState(proj) {
     trust: trust,
     provenance: ar.provenance || 'derived_projection',
     reason: ar.degraded_reason || '',
+    x_wave_providers: ar.x_wave_providers || [],
+    landed_and_visible: ar.landed_and_visible || 0,
+    remote_not_consumed: ar.remote_not_consumed || 0,
+    cannot_confirm_remotely: ar.cannot_confirm_remotely || 0,
+    dataset_count: ar.dataset_count || 0,
+    total_rows: ar.total_rows || 0,
+    report_count: ar.report_count || 0,
   };
 }
 
@@ -1192,7 +1199,116 @@ function _renderHarnessProfileSurface() {
 
 function _renderAnalyticsReportsSurface() {
   var state = _surfaceStates['analytics-reports'];
-  _renderDefaultUnavailableSurface('analytics-reports-chips', state, 'Analytics & Reports', 'Dataset summaries, refinement reports, and evidence exports');
+  if (!state) return;
+
+  var chipsEl = document.getElementById('analytics-reports-chips');
+  if (chipsEl) {
+    _clearEl(chipsEl);
+
+    var chip = document.createElement('span');
+    var status = state.status || 'unavailable';
+    chip.className = 'status-chip ' + (status === 'available' ? 'available' : 'setup-required');
+    chip.textContent = status === 'available' ? 'Available' : 'Setup Required';
+    chipsEl.appendChild(chip);
+
+    var summary = document.createElement('div');
+    summary.className = 'status-detail';
+    if (status === 'available' && state.x_wave_providers && state.x_wave_providers.length > 0) {
+      summary.textContent = String(state.landed_and_visible || 0) + ' providers landed, ' +
+        String(state.cannot_confirm_remotely || 0) + ' pending, ' +
+        String(state.remote_not_consumed || 0) + ' not consumed';
+    } else {
+      summary.textContent = 'Analytics & Reports data is initializing.';
+    }
+    chipsEl.appendChild(summary);
+  }
+
+  var providerEl = document.getElementById('analytics-provider-readiness');
+  if (providerEl) {
+    _clearEl(providerEl);
+    var providers = state.x_wave_providers || [];
+
+    if (providers.length === 0) {
+      var empty = document.createElement('div');
+      empty.className = 'status-detail';
+      empty.textContent = 'No provider readiness data available.';
+      providerEl.appendChild(empty);
+    } else {
+      var table = document.createElement('table');
+      table.className = 'kv readiness-table';
+
+      var thead = document.createElement('thead');
+      var headerRow = document.createElement('tr');
+      ['Provider', 'Product', 'Status', 'Desktop'].forEach(function(h) {
+        var th = document.createElement('th');
+        th.textContent = h;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      var tbody = document.createElement('tbody');
+      for (var pi = 0; pi < providers.length; pi++) {
+        var p = providers[pi];
+        var row = document.createElement('tr');
+
+        var laneCell = document.createElement('td');
+        laneCell.textContent = p.provider_lane || '';
+        laneCell.className = 'k';
+        row.appendChild(laneCell);
+
+        var nameCell = document.createElement('td');
+        nameCell.textContent = p.product_name || '';
+        row.appendChild(nameCell);
+
+        var statusCell = document.createElement('td');
+        var statusChip = document.createElement('span');
+        var pStatus = p.status || 'unavailable';
+        statusChip.className = 'status-chip ' + (pStatus === 'available' ? 'available' : pStatus === 'verification_pending' ? 'setup-required' : 'unavailable');
+        statusChip.textContent = pStatus === 'available' ? 'Available' : pStatus === 'verification_pending' ? 'Verification Pending' : pStatus === 'unavailable' ? 'Unavailable' : String(pStatus);
+        statusCell.appendChild(statusChip);
+        row.appendChild(statusCell);
+
+        var desktopCell = document.createElement('td');
+        var dState = p.desktop_consumption_state || 'unavailable';
+        var dChip = document.createElement('span');
+        dChip.className = 'status-chip ' + (dState === 'available' ? 'available' : 'setup-required');
+        dChip.textContent = dState === 'available' ? 'Active' : 'Pending';
+        desktopCell.appendChild(dChip);
+        row.appendChild(desktopCell);
+
+        tbody.appendChild(row);
+      }
+      table.appendChild(tbody);
+      providerEl.appendChild(table);
+    }
+  }
+
+  var summaryEl = document.getElementById('analytics-wave-summary');
+  if (summaryEl) {
+    _clearEl(summaryEl);
+
+    var cardsData = [
+      { label: 'Landed & Visible', value: String(state.landed_and_visible || 0), cls: 'ok' },
+      { label: 'Not Consumed', value: String(state.remote_not_consumed || 0), cls: 'warning' },
+      { label: 'Pending Confirmation', value: String(state.cannot_confirm_remotely || 0), cls: 'warning' },
+    ];
+
+    for (var ci = 0; ci < cardsData.length; ci++) {
+      var card = cardsData[ci];
+      var cardEl = document.createElement('div');
+      cardEl.className = 'stat-card';
+      var valEl = document.createElement('div');
+      valEl.className = 'stat-value ' + card.cls;
+      valEl.textContent = card.value;
+      var labelEl = document.createElement('div');
+      labelEl.className = 'stat-label';
+      labelEl.textContent = card.label;
+      cardEl.appendChild(valEl);
+      cardEl.appendChild(labelEl);
+      summaryEl.appendChild(cardEl);
+    }
+  }
 }
 
 function _renderDefaultUnavailableSurface(containerId, state, title, description) {
