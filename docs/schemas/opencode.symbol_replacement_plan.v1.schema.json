@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/opencode.symbol_replacement_plan.v1.schema.json",
+  "title": "OpenCode Symbol Replacement Plan v1",
+  "description": "Deterministic plan for replacing a symbol via the file context graph.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "plan_id",
+    "created_at",
+    "target_path",
+    "scope",
+    "source_symbol",
+    "replacement",
+    "occurrences",
+    "candidate_text",
+    "affected_contexts",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "opencode.symbol_replacement_plan.v1" },
+    "plan_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "target_path": { "type": "string" },
+    "scope": { "type": "string" },
+    "source_symbol": {
+      "type": "object",
+      "required": [
+        "symbol_id",
+        "ordinal",
+        "name",
+        "kind",
+        "start_line",
+        "end_line",
+        "snippet",
+        "references_out",
+        "references_in",
+        "replacement_key"
+      ],
+      "properties": {
+        "symbol_id": { "type": "string" },
+        "ordinal": { "type": "integer", "minimum": 1 },
+        "name": { "type": "string" },
+        "kind": { "type": "string" },
+        "start_line": { "type": "integer", "minimum": 1 },
+        "end_line": { "type": "integer", "minimum": 1 },
+        "snippet": { "type": "string" },
+        "references_out": { "type": "array", "items": { "type": "string" } },
+        "references_in": { "type": "array", "items": { "type": "string" } },
+        "replacement_key": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "replacement": {
+      "type": "object",
+      "required": ["text", "stable_digest"],
+      "properties": {
+        "text": { "type": "string" },
+        "stable_digest": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "occurrences": { "type": "integer", "minimum": 1 },
+    "candidate_text": { "type": "string" },
+    "affected_contexts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["target_path", "artifact_id", "artifact_path"],
+        "properties": {
+          "target_path": { "type": "string" },
+          "artifact_id": { "type": "string" },
+          "artifact_path": { "type": ["string", "null"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "post_change_context_artifact_id": { "type": ["string", "null"] },
+    "post_change_context_artifact_path": { "type": ["string", "null"] },
+    "change_event_id": { "type": ["string", "null"] },
+    "plan_digest": { "type": ["string", "null"] },
+    "content_light": { "type": "boolean", "const": true }
+  },
+  "additionalProperties": false
+}

@@ -32,6 +32,7 @@ Required inputs:
 
 - admitted `prepublication_admitted` disposition artifact
 - matching candidate packet digest
+- matching `candidate_packet_digest` field
 - matching checkpoint SHA
 - named publication authorization
 
@@ -67,3 +68,5 @@ What you may not do:
 If the chronology is wrong or the digest no longer matches, block publication and return the mismatch.
 
 Leverage the system tools (git, jq, yq, bat, eza) to quickly verify the git state, inspect logs/receipts, and validate JSON metadata structures.
+
+After the publication action completes, write the checkpoint publication artifact with `publish_checkpoint`, then generate the cumulative final report with `generate_published_checkpoint_report`. The publication artifact must include the target ref, pushed SHA, remote verification result, files published, post-push checks, and admitted candidate packet digest.

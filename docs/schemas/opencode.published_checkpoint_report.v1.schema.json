@@ -1,0 +1,210 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/opencode.published_checkpoint_report.v1.schema.json",
+  "title": "OpenCode Published Checkpoint Report v1",
+  "description": "Canonical final report for a pushed checkpoint, including cumulative checkpoint lineage and the publication story.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "created_at",
+    "plan_id",
+    "plan_revision",
+    "plan_digest",
+    "plan_path",
+    "plan_comment_count",
+    "plan_comment_summaries",
+    "publisher_name",
+    "remote_name",
+    "target_ref",
+    "publication_artifact_path",
+    "publication_artifact_sha256",
+    "candidate_packet_digest",
+    "review_artifact_path",
+    "review_artifact_sha256",
+    "admitted_review_status",
+    "checkpoint_commit_artifact_path",
+    "checkpoint_commit_receipt_sha256",
+    "checkpoint_commit_sha",
+    "checkpoint_sequence",
+    "parent_checkpoint_receipt_sha256",
+    "published_commit_sha",
+    "checkpoint_commit_lineage",
+    "checkpoint_preparation_lineage",
+    "execution_artifacts",
+    "validation_artifacts",
+    "stress_artifacts",
+    "publication_artifacts",
+    "coordination_messages",
+    "report_summary",
+    "next_steps",
+    "blocked_seams",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "opencode.published_checkpoint_report.v1" },
+    "artifact_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "plan_id": { "type": "string" },
+    "plan_revision": { "type": "integer", "minimum": 1 },
+    "plan_digest": { "type": "string" },
+    "plan_path": { "type": "string" },
+    "plan_comment_count": { "type": "integer", "minimum": 0 },
+    "plan_comment_summaries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "comment_id",
+          "critic_name",
+          "severity",
+          "category",
+          "wave_id",
+          "comment",
+          "suggested_change",
+          "references"
+        ],
+        "properties": {
+          "comment_id": { "type": "string" },
+          "critic_name": { "type": "string" },
+          "severity": { "type": "string" },
+          "category": { "type": "string" },
+          "wave_id": { "type": ["string", "null"] },
+          "comment": { "type": "string" },
+          "suggested_change": { "type": "string" },
+          "references": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": false
+      }
+    },
+    "publisher_name": { "type": "string" },
+    "remote_name": { "type": "string" },
+    "target_ref": { "type": "string" },
+    "publication_artifact_path": { "type": "string" },
+    "publication_artifact_sha256": { "type": "string" },
+    "candidate_packet_digest": { "type": "string" },
+    "review_artifact_path": { "type": "string" },
+    "review_artifact_sha256": { "type": "string" },
+    "admitted_review_status": { "type": "string", "enum": ["prepublication_admitted"] },
+    "checkpoint_commit_artifact_path": { "type": "string" },
+    "checkpoint_commit_receipt_sha256": { "type": "string" },
+    "checkpoint_commit_sha": { "type": "string" },
+    "checkpoint_sequence": { "type": "integer", "minimum": 1 },
+    "parent_checkpoint_receipt_sha256": { "type": ["string", "null"] },
+    "published_commit_sha": { "type": "string" },
+    "checkpoint_commit_lineage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["artifact_id", "path", "digest"],
+        "properties": {
+          "artifact_id": { "type": "string" },
+          "path": { "type": "string" },
+          "digest": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "checkpoint_preparation_lineage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["artifact_id", "path", "digest"],
+        "properties": {
+          "artifact_id": { "type": "string" },
+          "path": { "type": "string" },
+          "digest": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "execution_artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["artifact_id", "path", "digest"],
+        "properties": {
+          "artifact_id": { "type": "string" },
+          "path": { "type": "string" },
+          "digest": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "validation_artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["artifact_id", "path", "digest"],
+        "properties": {
+          "artifact_id": { "type": "string" },
+          "path": { "type": "string" },
+          "digest": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "stress_artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["artifact_id", "path", "digest"],
+        "properties": {
+          "artifact_id": { "type": "string" },
+          "path": { "type": "string" },
+          "digest": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "publication_artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["artifact_id", "path", "digest"],
+        "properties": {
+          "artifact_id": { "type": "string" },
+          "path": { "type": "string" },
+          "digest": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "coordination_messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "message_id",
+          "created_at",
+          "sender_session_id",
+          "sender_role",
+          "recipients",
+          "message_kind",
+          "subject",
+          "reply_to_message_id",
+          "wave_id",
+          "artifact_refs"
+        ],
+        "properties": {
+          "message_id": { "type": "string" },
+          "created_at": { "type": "string" },
+          "sender_session_id": { "type": "string" },
+          "sender_role": { "type": "string" },
+          "recipients": { "type": "array", "items": { "type": "string" } },
+          "message_kind": { "type": "string" },
+          "subject": { "type": "string" },
+          "reply_to_message_id": { "type": ["string", "null"] },
+          "wave_id": { "type": ["string", "null"] },
+          "artifact_refs": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": false
+      }
+    },
+    "report_summary": { "type": "string" },
+    "next_steps": { "type": "array", "items": { "type": "string" } },
+    "blocked_seams": { "type": "array", "items": { "type": "string" } },
+    "content_light": { "type": "boolean", "const": true }
+  },
+  "additionalProperties": false
+}

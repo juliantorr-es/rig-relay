@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/opencode.coordination_message.v1.schema.json",
+  "title": "OpenCode Coordination Message v1",
+  "description": "Append-only, artifact-backed coordination message for cross-session OpenCode communication.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "message_id",
+    "created_at",
+    "sender_session_id",
+    "sender_role",
+    "recipients",
+    "message_kind",
+    "subject",
+    "body",
+    "artifact_refs",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "opencode.coordination_message.v1" },
+    "message_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "conversation_id": { "type": ["string", "null"] },
+    "sender_session_id": { "type": "string" },
+    "sender_role": { "type": "string" },
+    "recipients": { "type": "array", "items": { "type": "string" } },
+    "message_kind": {
+      "type": "string",
+      "enum": [
+        "claim",
+        "question",
+        "answer",
+        "blocker",
+        "handoff",
+        "review",
+        "receipt",
+        "status",
+        "conflict",
+        "request",
+        "acknowledgment"
+      ]
+    },
+    "subject": { "type": "string" },
+    "body": { "type": "string" },
+    "reply_to_message_id": { "type": ["string", "null"] },
+    "wave_id": { "type": ["string", "null"] },
+    "artifact_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["artifact_kind", "artifact_id", "path", "digest"],
+        "properties": {
+          "artifact_kind": { "type": "string" },
+          "artifact_id": { "type": "string" },
+          "path": { "type": "string" },
+          "digest": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "content_light": { "type": "boolean", "const": true }
+  },
+  "additionalProperties": false
+}

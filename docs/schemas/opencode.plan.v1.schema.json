@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/opencode.plan.v1.schema.json",
+  "title": "OpenCode Plan v1",
+  "description": "Canonical immutable OpenCode plan artifact stored in docs/json/opencode/plans. The artifact captures the initial or revised plan version and points at its append-only comment ledger.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "plan_id",
+    "revision",
+    "created_at",
+    "title",
+    "objective",
+    "summary",
+    "assumptions",
+    "constraints",
+    "execution_waves",
+    "acceptance_criteria",
+    "risks",
+    "open_questions",
+    "revision_notes",
+    "parent_plan_id",
+    "parent_plan_path",
+    "canonical_path",
+    "comment_ledger_path",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "opencode.plan.v1" },
+    "plan_id": { "type": "string" },
+    "revision": { "type": "integer", "minimum": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "title": { "type": "string" },
+    "objective": { "type": "string" },
+    "summary": { "type": "string" },
+    "assumptions": { "type": "array", "items": { "type": "string" } },
+    "constraints": { "type": "array", "items": { "type": "string" } },
+    "execution_waves": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["wave_id", "name", "purpose", "parallelism", "target_agents", "exit_criteria", "notes"],
+        "properties": {
+          "wave_id": { "type": "string" },
+          "name": { "type": "string" },
+          "purpose": { "type": "string" },
+          "parallelism": { "type": "string", "enum": ["serial", "parallel"] },
+          "target_agents": { "type": "array", "items": { "type": "string" } },
+          "exit_criteria": { "type": "array", "items": { "type": "string" } },
+          "notes": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "acceptance_criteria": { "type": "array", "items": { "type": "string" } },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["risk", "impact", "mitigation"],
+        "properties": {
+          "risk": { "type": "string" },
+          "impact": { "type": "string" },
+          "mitigation": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "open_questions": { "type": "array", "items": { "type": "string" } },
+    "revision_notes": { "type": "array", "items": { "type": "string" } },
+    "parent_plan_id": { "type": ["string", "null"] },
+    "parent_plan_path": { "type": ["string", "null"] },
+    "canonical_path": { "type": "string" },
+    "comment_ledger_path": { "type": "string" },
+    "content_light": { "type": "boolean", "const": true }
+  },
+  "additionalProperties": false
+}
+

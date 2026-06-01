@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    base-uri 'self';
+    img-src 'self' data:;
+    style-src 'self';
+    script-src 'self';
+    connect-src 'self';
+    frame-ancestors 'self';
+  ">
+  <title>OpenCode Operations Dashboard</title>
+  <link rel="stylesheet" href="./dashboard.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">OpenCode</p>
+        <h1>Operations Dashboard</h1>
+        <p class="lede">
+          Live local read of roadmap, evidence, audit, and release artifacts.
+          Polls the JSON trees on a loop so the browser stays aligned with the
+          canonical files on disk.
+        </p>
+      </div>
+      <div class="hero-controls">
+        <button id="refresh-button" type="button">Refresh now</button>
+        <label class="toggle">
+          <input id="auto-refresh-toggle" type="checkbox" checked>
+          <span>Auto-refresh</span>
+        </label>
+        <label class="select">
+          <span>Interval</span>
+          <select id="refresh-interval">
+            <option value="10000">10s</option>
+            <option value="20000" selected>20s</option>
+            <option value="30000">30s</option>
+          </select>
+        </label>
+        <div class="status-pill" id="sync-status">Idle</div>
+        <div class="status-copy" id="sync-copy">Waiting for the first scan.</div>
+      </div>
+    </header>
+
+    <section class="kpis" id="kpi-grid" aria-label="Dashboard summary"></section>
+
+    <section class="editor-grid">
+      <article class="card editor-card">
+        <div class="card-heading">
+          <div>
+            <p class="section-label">Published roadmap</p>
+            <h2>Agent-facing current version</h2>
+          </div>
+          <div class="small-metric" id="published-version">Waiting for published state.</div>
+        </div>
+        <div id="published-roadmap" class="roadmap-view"></div>
+        <div id="published-history" class="history-list"></div>
+      </article>
+
+      <article class="card editor-card">
+        <div class="card-heading">
+          <div>
+            <p class="section-label">Draft editor</p>
+            <h2>Local, hidden until publish</h2>
+          </div>
+          <div class="editor-actions">
+            <button id="reconnect-storage-button" type="button">Reconnect storage</button>
+            <button id="save-draft-button" type="button">Save draft</button>
+            <button id="publish-roadmap-button" type="button">Publish roadmap</button>
+          </div>
+        </div>
+        <div class="editor-status" id="draft-status">Draft is local only until you reconnect the storage bridge.</div>
+        <div id="draft-editor" class="draft-editor"></div>
+      </article>
+    </section>
+
+    <section class="editor-grid secondary">
+      <article class="card editor-card">
+        <div class="card-heading">
+          <div>
+            <p class="section-label">Transition diff</p>
+            <h2>Human-readable changes and downstream context impact</h2>
+          </div>
+          <div class="small-metric" id="delta-version">No published delta yet.</div>
+        </div>
+        <div id="roadmap-diff" class="diff-view"></div>
+        <div id="delta-summary" class="delta-summary"></div>
+      </article>
+
+      <article class="card editor-card">
+        <div class="card-heading">
+          <div>
+            <p class="section-label">Agent questions</p>
+            <h2>Inbox, answers, and archive</h2>
+          </div>
+          <div class="small-metric" id="question-count">0 pending</div>
+        </div>
+        <div class="question-compose">
+          <label>
+            <span>Category</span>
+            <select id="question-category">
+              <option value="question" selected>Question</option>
+              <option value="comment">Comment</option>
+              <option value="timeline">Timeline</option>
+              <option value="context">Context</option>
+              <option value="note">Note</option>
+            </select>
+          </label>
+          <label class="question-compose-field">
+            <span>Linked contexts</span>
+            <input id="question-contexts" type="text" placeholder="docs/json/opencode/... , docs/json/reports/...">
+          </label>
+          <label class="question-compose-field full-width">
+            <span>Question or comment</span>
+            <textarea id="question-text" rows="3" placeholder="Add a question, comment, or note for the next publish bundle."></textarea>
+          </label>
+          <button id="add-question-button" type="button">Add to inbox</button>
+        </div>
+        <div id="question-list" class="question-list"></div>
+        <div class="answer-box">
+          <label class="question-compose-field full-width">
+            <span>Answer selected questions in one pass</span>
+            <textarea id="question-answer" rows="4" placeholder="Write one answer that will apply to the selected inbox items."></textarea>
+          </label>
+          <div class="editor-actions">
+            <button id="submit-answer-button" type="button">Submit answer</button>
+            <button id="clear-selection-button" type="button">Clear selection</button>
+          </div>
+        </div>
+        <div id="question-report" class="report-preview"></div>
+        <div id="question-archive" class="archive-list"></div>
+      </article>
+    </section>
+
+    <section class="progress-panel card">
+      <div class="card-heading">
+        <div>
+          <p class="section-label">Roadmap pulse</p>
+          <h2>Lifecycle coverage across the local artifact set</h2>
+        </div>
+        <div class="small-metric" id="artifact-count">0 artifacts scanned</div>
+      </div>
+      <div id="stage-track" class="stage-track"></div>
+    </section>
+
+    <section class="content-grid">
+      <article class="card feed-card">
+        <div class="card-heading">
+          <div>
+            <p class="section-label">Latest artifacts</p>
+            <h2>Recent JSON updates</h2>
+          </div>
+          <div class="small-metric" id="recent-count">0 recent</div>
+        </div>
+        <div id="recent-feed" class="feed"></div>
+      </article>
+
+      <article class="card feed-card">
+        <div class="card-heading">
+          <div>
+            <p class="section-label">Blockers</p>
+            <h2>Open issues and failures</h2>
+          </div>
+          <div class="small-metric" id="blocker-count">0 blockers</div>
+        </div>
+        <div id="blocker-feed" class="feed"></div>
+      </article>
+    </section>
+
+    <section class="content-grid secondary">
+      <article class="card">
+        <div class="card-heading">
+          <div>
+            <p class="section-label">Roadmap sources</p>
+            <h2>Family rollup</h2>
+          </div>
+          <div class="small-metric" id="family-count">0 families</div>
+        </div>
+        <div id="family-grid" class="family-grid"></div>
+      </article>
+
+      <article class="card">
+        <div class="card-heading">
+          <div>
+            <p class="section-label">Sync log</p>
+            <h2>Scan state</h2>
+          </div>
+        </div>
+        <div id="sync-log" class="sync-log"></div>
+      </article>
+    </section>
+
+    <footer class="footer-note">
+      Reads from local JSON and JSONL artifacts under <code>docs/json</code>.
+      Serve the repository over localhost to enable live refreshes.
+    </footer>
+  </div>
+
+  <script type="module" src="./dashboard.mjs"></script>
+</body>
+</html>

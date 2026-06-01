@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "opencode.issue_report.v1",
+  "title": "OpenCode Issue Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "created_at",
+    "kind",
+    "severity",
+    "summary",
+    "details",
+    "affected_paths",
+    "labels",
+    "recommended_next_step",
+    "report_digest",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": { "const": "opencode.issue_report.v1" },
+    "artifact_id": { "type": "string", "minLength": 1 },
+    "artifact_path": { "type": ["string", "null"] },
+    "created_at": { "type": "string", "minLength": 1 },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "tool_failure",
+        "out_of_scope_finding",
+        "disconnected_seam",
+        "test_regression",
+        "validation_failure"
+      ]
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["info", "minor", "major", "critical"]
+    },
+    "summary": { "type": "string", "minLength": 1 },
+    "details": { "type": "string" },
+    "source_tool": { "type": ["string", "null"] },
+    "source_command": { "type": ["string", "null"] },
+    "source_artifact_path": { "type": ["string", "null"] },
+    "inspection_artifact_path": { "type": ["string", "null"] },
+    "affected_paths": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "labels": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "recommended_next_step": { "type": "string" },
+    "report_digest": { "type": "string", "minLength": 1 },
+    "content_light": { "const": true }
+  }
+}

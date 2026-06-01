@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/opencode.dashboard.roadmap_delta.v1.schema.json",
+  "title": "Opencode Dashboard Roadmap Delta v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "roadmap_id", "from_version", "to_version", "generated_at", "before_artifact_path", "after_artifact_path", "changed_fields", "downstream_contexts", "human_summary", "content_light"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "opencode.dashboard.roadmap_delta.v1"
+    },
+    "roadmap_id": {
+      "type": "string"
+    },
+    "from_version": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "to_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "before_artifact_path": {
+      "type": "string"
+    },
+    "after_artifact_path": {
+      "type": "string"
+    },
+    "changed_fields": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "before", "after", "change_kind"],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "before": {},
+          "after": {},
+          "change_kind": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "downstream_contexts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "reason"],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "impact": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "human_summary": {
+      "type": "string"
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    }
+  }
+}

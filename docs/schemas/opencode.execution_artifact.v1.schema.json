@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/opencode.execution_artifact.v1.schema.json",
+  "title": "OpenCode Execution Artifact v1",
+  "description": "Canonical execution wave artifact emitted by the OpenCode executor. Records implementation summary, changed files, commands, proof refs, and declared deferred seams.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "created_at",
+    "plan_id",
+    "plan_revision",
+    "plan_digest",
+    "wave_id",
+    "executor_name",
+    "task_summary",
+    "files_changed",
+    "implementation_notes",
+    "commands_run",
+    "proof_artifacts",
+    "deferred_seams",
+    "open_risks",
+    "boundary_claim",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "opencode.execution_artifact.v1" },
+    "artifact_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "plan_id": { "type": "string" },
+    "plan_revision": { "type": "integer", "minimum": 1 },
+    "plan_digest": { "type": "string" },
+    "wave_id": { "type": "string" },
+    "executor_name": { "type": "string" },
+    "task_summary": { "type": "string" },
+    "files_changed": { "type": "array", "items": { "type": "string" } },
+    "implementation_notes": { "type": "array", "items": { "type": "string" } },
+    "commands_run": { "type": "array", "items": { "type": "string" } },
+    "proof_artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["label", "path", "digest"],
+        "properties": {
+          "label": { "type": "string" },
+          "path": { "type": "string" },
+          "digest": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "deferred_seams": { "type": "array", "items": { "type": "string" } },
+    "open_risks": { "type": "array", "items": { "type": "string" } },
+    "boundary_claim": { "type": "string" },
+    "content_light": { "type": "boolean", "const": true }
+  },
+  "additionalProperties": false
+}
+

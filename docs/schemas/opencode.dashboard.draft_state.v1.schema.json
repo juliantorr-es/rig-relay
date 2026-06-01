@@ -1,0 +1,173 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/opencode.dashboard.draft_state.v1.schema.json",
+  "title": "Opencode Dashboard Draft State v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "draft_id", "updated_at", "roadmap", "questions"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "opencode.dashboard.draft_state.v1"
+    },
+    "draft_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "draft_source": {
+      "type": "string",
+      "enum": ["local"]
+    },
+    "draft_notes": {
+      "type": "string"
+    },
+    "roadmap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "summary", "status", "timeline"],
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string"
+        },
+        "version_hint": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "timeline": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["item_id", "title", "status", "details", "impacted_contexts"],
+            "properties": {
+              "item_id": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "due": {
+                "type": "string"
+              },
+              "owner": {
+                "type": "string"
+              },
+              "details": {
+                "type": "string"
+              },
+              "impacted_contexts": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "notes": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "questions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pending", "archived"],
+      "properties": {
+        "pending": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["question_id", "category", "question", "linked_contexts", "status", "created_at"],
+            "properties": {
+              "question_id": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string"
+              },
+              "question": {
+                "type": "string"
+              },
+              "linked_contexts": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "status": {
+                "type": "string",
+                "enum": ["pending", "selected", "answered"]
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        },
+        "archived": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["question_id", "category", "question", "linked_contexts", "status", "created_at", "archived_at"],
+            "properties": {
+              "question_id": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string"
+              },
+              "question": {
+                "type": "string"
+              },
+              "linked_contexts": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "status": {
+                "type": "string",
+                "enum": ["archived"]
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "answered_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "archived_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "answer": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

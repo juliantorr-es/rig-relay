@@ -208,6 +208,10 @@ tests/playground/*
 *-profile.html
 *-profile.txt
 
+# Generated graphify artifacts
+graphify-out/
+.graphify_python
+
 # Node modules (frontend dependencies managed externally)
 node_modules/
 

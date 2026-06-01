@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/opencode.dashboard.roadmap.v1.schema.json",
+  "title": "Opencode Dashboard Roadmap v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "roadmap_id", "version", "publication_state", "title", "summary", "status", "updated_at", "published_at", "timeline"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "opencode.dashboard.roadmap.v1"
+    },
+    "roadmap_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "publication_state": {
+      "type": "string",
+      "enum": ["published"]
+    },
+    "title": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "published_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "supersedes_version": {
+      "type": ["integer", "null"],
+      "minimum": 1
+    },
+    "source_draft_id": {
+      "type": "string"
+    },
+    "transition_delta_path": {
+      "type": "string"
+    },
+    "downstream_contexts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "timeline": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["item_id", "title", "status", "details", "impacted_contexts"],
+        "properties": {
+          "item_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "due": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "details": {
+            "type": "string"
+          },
+          "impacted_contexts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

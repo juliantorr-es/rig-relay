@@ -24,18 +24,23 @@
     },
     "glob": "allow",
     "grep": "allow",
-    "lsp": "deny",
-    "edit": "deny",
-    "bash": "deny",
+    "lsp": "allow",
+    "edit": "allow",
+    "bash": "allow",
+    "boundary_claim_verify": "deny",
+    "publish_admitted_candidate": "deny",
+    "remote_boundary_inspect": "deny",
     "task": {
       "*": "deny",
       "plan": "allow",
       "explore": "allow",
       "scout": "allow",
+      "plan-critic": "allow",
       "execution": "allow",
       "validator": "allow",
       "prepublication-conductor": "allow",
       "publisher": "allow",
+      "remote-main-reviewer": "allow",
       "cleaner": "allow",
       "repairer": "allow",
       "claim-scope-adversary": "allow",
@@ -46,14 +51,14 @@
       "claim-adversary": "allow",
       "publication-truth-adversary": "allow",
       "lane-collision-adversary": "allow",
-      "security-adversary": "allow",
-      "remote-main-reviewer": "allow"
+      "security-adversary": "allow"
     },
-    "webfetch": "deny",
+    "webfetch": "allow",
     "websearch": "allow",
-    "external_directory": "deny",
+    "external_directory": "allow",
     "skill": {
-      "*": "deny"
+      "*": "deny",
+      "graphify": "allow"
     },
     "doom_loop": "deny"
   },

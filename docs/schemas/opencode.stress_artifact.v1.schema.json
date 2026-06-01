@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/opencode.stress_artifact.v1.schema.json",
+  "title": "OpenCode Stress Artifact v1",
+  "description": "Canonical red-team or stress-wave artifact emitted by the OpenCode adversary roster. Records attacks, surface, surviving weaknesses, and repaired seams.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "created_at",
+    "plan_id",
+    "plan_revision",
+    "plan_digest",
+    "wave_id",
+    "red_team_name",
+    "attacks",
+    "attack_surface",
+    "survived",
+    "breakages",
+    "repaired_seams",
+    "recommendations",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "opencode.stress_artifact.v1" },
+    "artifact_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "plan_id": { "type": "string" },
+    "plan_revision": { "type": "integer", "minimum": 1 },
+    "plan_digest": { "type": "string" },
+    "wave_id": { "type": "string" },
+    "red_team_name": { "type": "string" },
+    "attacks": { "type": "array", "items": { "type": "string" } },
+    "attack_surface": { "type": "array", "items": { "type": "string" } },
+    "survived": { "type": "boolean" },
+    "breakages": { "type": "array", "items": { "type": "string" } },
+    "repaired_seams": { "type": "array", "items": { "type": "string" } },
+    "recommendations": { "type": "array", "items": { "type": "string" } },
+    "content_light": { "type": "boolean", "const": true }
+  },
+  "additionalProperties": false
+}
+

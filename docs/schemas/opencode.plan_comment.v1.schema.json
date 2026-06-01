@@ -1,0 +1,39 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/opencode.plan_comment.v1.schema.json",
+  "title": "OpenCode Plan Comment v1",
+  "description": "Append-only JSONL comment row attached to a canonical OpenCode plan artifact.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "comment_id",
+    "created_at",
+    "plan_id",
+    "plan_revision",
+    "plan_digest",
+    "critic_name",
+    "severity",
+    "category",
+    "comment",
+    "references",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "opencode.plan_comment.v1" },
+    "comment_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "plan_id": { "type": "string" },
+    "plan_revision": { "type": "integer", "minimum": 1 },
+    "plan_digest": { "type": "string" },
+    "critic_name": { "type": "string" },
+    "wave_id": { "type": ["string", "null"] },
+    "severity": { "type": "string", "enum": ["blocking", "major", "minor", "nit"] },
+    "category": { "type": "string" },
+    "comment": { "type": "string" },
+    "suggested_change": { "type": "string" },
+    "references": { "type": "array", "items": { "type": "string" } },
+    "content_light": { "type": "boolean", "const": true }
+  },
+  "additionalProperties": false
+}
+

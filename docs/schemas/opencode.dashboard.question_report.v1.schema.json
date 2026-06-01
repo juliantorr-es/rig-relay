@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/opencode.dashboard.question_report.v1.schema.json",
+  "title": "Opencode Dashboard Question Report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "report_id", "generated_at", "roadmap_version", "selected_questions", "answer", "selection_count", "summary", "content_light"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "opencode.dashboard.question_report.v1"
+    },
+    "report_id": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "roadmap_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "selected_questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["question_id", "category", "question", "linked_contexts", "answer"],
+        "properties": {
+          "question_id": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "question": {
+            "type": "string"
+          },
+          "linked_contexts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "answer": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "answer": {
+      "type": "string"
+    },
+    "selection_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "summary": {
+      "type": "string"
+    },
+    "archived_question_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "downstream_contexts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "content_light": {
+      "type": "boolean",
+      "const": true
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "schema_version": "opencode.dashboard.roadmap.v1",
+  "roadmap_id": "ops-dashboard",
+  "version": 3,
+  "publication_state": "published",
+  "title": "Operations Dashboard Roadmap",
+  "summary": "Draft roadmap and timeline for the local dashboard. Publish creates a versioned artifact and transition delta.",
+  "status": "draft",
+  "owner": "ops-dashboard",
+  "updated_at": "2026-05-28T18:31:45Z",
+  "published_at": "2026-05-28T18:31:45Z",
+  "supersedes_version": 2,
+  "source_draft_id": "ops-dashboard",
+  "transition_delta_path": "docs/json/opencode/ops-dashboard/deltas/roadmap-delta.v003.json",
+  "downstream_contexts": [
+    "docs/json/opencode/ops-dashboard/published/",
+    "docs/json/opencode/ops-dashboard/deltas/"
+  ],
+  "timeline": [
+    {
+      "item_id": "roadmap-foundation",
+      "title": "Foundation",
+      "status": "active",
+      "due": "",
+      "owner": "ops-dashboard",
+      "details": "Establish the published roadmap, draft editor, question inbox, and delta artifacts.",
+      "impacted_contexts": [
+        "docs/json/opencode/ops-dashboard/published/",
+        "docs/json/opencode/ops-dashboard/deltas/"
+      ],
+      "notes": "Start from the current published state and keep the draft hidden until publish."
+    },
+    {
+      "item_id": "context-delta",
+      "title": "Context delta loop",
+      "status": "planned",
+      "due": "",
+      "owner": "ops-dashboard",
+      "details": "Publish versioned roadmap changes with explicit downstream context files so sessions can adopt the new version without losing the old one.",
+      "impacted_contexts": [
+        "docs/json/opencode/ops-dashboard/published/",
+        "docs/json/opencode/ops-dashboard/deltas/"
+      ],
+      "notes": "Agents should see the superseded version and the transition delta together."
+    }
+  ]
+}

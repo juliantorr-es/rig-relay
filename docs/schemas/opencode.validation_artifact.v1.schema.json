@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/opencode.validation_artifact.v1.schema.json",
+  "title": "OpenCode Validation Artifact v1",
+  "description": "Canonical validation wave artifact emitted by the OpenCode validator. Records the tested boundary, pass/fail state, failing seams, missing evidence, and recommendations.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "created_at",
+    "plan_id",
+    "plan_revision",
+    "plan_digest",
+    "wave_id",
+    "validator_name",
+    "commands_run",
+    "pass",
+    "tested_boundary",
+    "failed_seams",
+    "missing_evidence",
+    "recommendations",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "opencode.validation_artifact.v1" },
+    "artifact_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "plan_id": { "type": "string" },
+    "plan_revision": { "type": "integer", "minimum": 1 },
+    "plan_digest": { "type": "string" },
+    "wave_id": { "type": "string" },
+    "validator_name": { "type": "string" },
+    "commands_run": { "type": "array", "items": { "type": "string" } },
+    "pass": { "type": "boolean" },
+    "tested_boundary": { "type": "string" },
+    "failed_seams": { "type": "array", "items": { "type": "string" } },
+    "missing_evidence": { "type": "array", "items": { "type": "string" } },
+    "recommendations": { "type": "array", "items": { "type": "string" } },
+    "content_light": { "type": "boolean", "const": true }
+  },
+  "additionalProperties": false
+}
+

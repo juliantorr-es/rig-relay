@@ -1,0 +1,163 @@
+import { tool } from "@opencode-ai/plugin";
+
+const DASHBOARD_BASE_URL = "http://localhost:8000";
+let bridgeReadyPromise = null;
+
+function sleep(ms) {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function requestDashboard(path, init = {}) {
+	const response = await fetch(`${DASHBOARD_BASE_URL}${path}`, {
+		cache: "no-store",
+		...init,
+		headers: {
+			"Content-Type": "application/json",
+			...(init.headers || {}),
+		},
+	});
+	if (!response.ok) {
+		throw new Error(
+			`OpenCode dashboard bridge returned ${response.status} for ${path}`,
+		);
+	}
+	return response.json();
+}
+
+async function ensureBridge({ $ = null, worktree = null } = {}) {
+	if (bridgeReadyPromise) {
+		return bridgeReadyPromise;
+	}
+	bridgeReadyPromise = (async () => {
+		try {
+			await requestDashboard("/_ops-dashboard/state");
+			return true;
+		} catch (error) {
+			if (!$ || !worktree) {
+				bridgeReadyPromise = null;
+				throw new Error("OpenCode dashboard bridge is not reachable");
+			}
+			try {
+				await $`cd ${worktree} && nohup uv run python scripts/opencode_dashboard_server.py >/tmp/opencode-dashboard.log 2>&1 &`;
+				await sleep(500);
+				await requestDashboard("/_ops-dashboard/state");
+				return true;
+			} catch (startupError) {
+				bridgeReadyPromise = null;
+				throw startupError;
+			}
+		}
+	})();
+	return bridgeReadyPromise;
+}
+
+function parseDraftState(value) {
+	if (typeof value === "string") {
+		return JSON.parse(value);
+	}
+	return value;
+}
+
+export const OpenCodeDashboardPlugin = async ({ client, worktree, $ }) => {
+	await ensureBridge({ $, worktree });
+	await client.app.log({
+		body: {
+			service: "opencode-dashboard",
+			level: "info",
+			message: "OpenCode dashboard plugin initialized",
+			extra: {
+				baseUrl: DASHBOARD_BASE_URL,
+			},
+		},
+	});
+
+	return {
+		tool: {
+			dashboard_state: tool({
+				description:
+					"Read the current OpenCode operations dashboard state from the local bridge.",
+				args: {},
+				async execute(_args, context) {
+					await ensureBridge(context);
+					return JSON.stringify(
+						await requestDashboard("/_ops-dashboard/state"),
+						null,
+						2,
+					);
+				},
+			}),
+			dashboard_save_draft: tool({
+				description:
+					"Persist a draft roadmap state to the OpenCode dashboard bridge.",
+				args: {
+					draft_state: tool.schema
+						.any()
+						.describe("Draft state object or JSON string."),
+				},
+				async execute(args, context) {
+					await ensureBridge(context);
+					return JSON.stringify(
+						await requestDashboard("/_ops-dashboard/draft-state", {
+							method: "PUT",
+							body: JSON.stringify(parseDraftState(args.draft_state)),
+						}),
+						null,
+						2,
+					);
+				},
+			}),
+			dashboard_publish: tool({
+				description:
+					"Publish the current OpenCode roadmap draft and emit a transition delta.",
+				args: {
+					draft_state: tool.schema
+						.any()
+						.describe("Draft state object or JSON string."),
+				},
+				async execute(args, context) {
+					await ensureBridge(context);
+					return JSON.stringify(
+						await requestDashboard("/_ops-dashboard/publish-roadmap", {
+							method: "POST",
+							body: JSON.stringify({
+								draft_state: parseDraftState(args.draft_state),
+							}),
+						}),
+						null,
+						2,
+					);
+				},
+			}),
+			dashboard_submit_answer: tool({
+				description:
+					"Submit a shared answer for selected OpenCode dashboard questions.",
+				args: {
+					question_ids: tool.schema
+						.array(tool.schema.string())
+						.describe("Selected question IDs."),
+					answer: tool.schema
+						.string()
+						.describe("Answer text to archive against the selected questions."),
+					draft_state: tool.schema
+						.any()
+						.describe("Draft state object or JSON string."),
+				},
+				async execute(args, context) {
+					await ensureBridge(context);
+					return JSON.stringify(
+						await requestDashboard("/_ops-dashboard/submit-answer", {
+							method: "POST",
+							body: JSON.stringify({
+								question_ids: args.question_ids,
+								answer: args.answer,
+								draft_state: parseDraftState(args.draft_state),
+							}),
+						}),
+						null,
+						2,
+					);
+				},
+			}),
+		},
+	};
+};

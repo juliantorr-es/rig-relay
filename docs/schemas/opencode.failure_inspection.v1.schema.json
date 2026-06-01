@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "opencode.failure_inspection.v1",
+  "title": "OpenCode Failure Inspection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "created_at",
+    "source_kind",
+    "status",
+    "failure_type",
+    "report_kind",
+    "summary",
+    "detected_paths",
+    "detected_locations",
+    "log_excerpt",
+    "recommended_next_step",
+    "source_digest",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": { "const": "opencode.failure_inspection.v1" },
+    "artifact_id": { "type": "string", "minLength": 1 },
+    "artifact_path": { "type": ["string", "null"] },
+    "created_at": { "type": "string", "minLength": 1 },
+    "label": { "type": "string" },
+    "source_kind": {
+      "type": "string",
+      "enum": ["tool_result", "log_file", "raw_text"]
+    },
+    "source_tool": { "type": ["string", "null"] },
+    "source_command": { "type": ["string", "null"] },
+    "source_artifact_path": { "type": ["string", "null"] },
+    "source_log_path": { "type": ["string", "null"] },
+    "status": { "type": "string", "minLength": 1 },
+    "exit_code": { "type": ["integer", "null"] },
+    "failure_type": {
+      "type": "string",
+      "enum": [
+        "unknown",
+        "tool_failure",
+        "runtime_failure",
+        "typecheck_failure",
+        "lint_failure",
+        "validation_failure",
+        "test_failure"
+      ]
+    },
+    "report_kind": {
+      "type": "string",
+      "enum": ["tool_failure", "validation_failure", "test_regression"]
+    },
+    "summary": { "type": "string", "minLength": 1 },
+    "first_signal": { "type": ["string", "null"] },
+    "detected_paths": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "detected_locations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "line", "column"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "line": { "type": "integer", "minimum": 1 },
+          "column": { "type": ["integer", "null"] }
+        }
+      }
+    },
+    "log_excerpt": { "type": "string" },
+    "recommended_next_step": { "type": "string" },
+    "source_digest": { "type": "string", "minLength": 1 },
+    "content_light": { "const": true }
+  }
+}

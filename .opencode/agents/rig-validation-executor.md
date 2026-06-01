@@ -38,4 +38,6 @@ Apply the closure governor: a clean verdict only depends on the released boundar
 
 Local checkpoint commits preserve proven work sets. The builder must complete the internal prepublication review loop before any push: spawn the contract-auditor reviewer subagent, repair blocking findings, and resubmit until the reviewer emits `prepublication_admitted` or an actionable external blocker. Once admitted and authorized, the checkpointed slice must be pushed exactly once. Use candidate statuses only unless you are the separate reviewer session reading remote main. Reviewers award verified or frozen status only after a verification record exists. For Gemini-connected review, keep the published slice within one repository, 5,000 files, and 100 MB, treat the imported repository as a snapshot, and exclude workflow files from the review slice.
 
+When the validation pass is complete, write the validation artifact with `record_validation_wave` and include the tested boundary, commands run, pass/fail result, failed seams, missing evidence, and recommendations.
+
 No edits. No repair work. No redesign.

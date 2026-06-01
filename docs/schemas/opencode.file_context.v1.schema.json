@@ -1,0 +1,194 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/opencode.file_context.v1.schema.json",
+  "title": "OpenCode File Context v1",
+  "description": "Canonical machine-readable context digest for a single file. The artifact is content-light and captures structure, dependency hints, and the rolling recent-change ledger for concurrent OpenCode agents.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "created_at",
+    "artifact_path",
+    "target_path",
+    "kind",
+    "scope_root",
+    "scope_hash",
+    "target_hash",
+    "language",
+    "file_size_bytes",
+    "line_count",
+    "symbols",
+    "imports",
+    "exports",
+    "references_out",
+    "references_in",
+    "dependencies",
+    "dependents",
+    "entrypoints",
+    "edit_surfaces",
+    "symbol_records",
+    "linked_contexts",
+    "recent_events",
+    "unknowns",
+    "confidence",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "opencode.file_context.v1" },
+    "artifact_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "artifact_path": { "type": "string" },
+    "target_path": { "type": "string" },
+    "kind": { "type": "string", "enum": ["file", "module", "service"] },
+    "scope_root": { "type": "string" },
+    "scope_hash": { "type": "string" },
+    "target_hash": { "type": "string" },
+    "language": { "type": ["string", "null"] },
+    "file_size_bytes": { "type": "integer", "minimum": 0 },
+    "line_count": { "type": "integer", "minimum": 0 },
+    "symbols": { "type": "array", "items": { "type": "string" } },
+    "imports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["specifier", "resolved_path", "kind"],
+        "properties": {
+          "specifier": { "type": "string" },
+          "resolved_path": { "type": ["string", "null"] },
+          "kind": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "exports": { "type": "array", "items": { "type": "string" } },
+    "references_out": { "type": "array", "items": { "type": "string" } },
+    "references_in": { "type": "array", "items": { "type": "string" } },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["specifier", "resolved_path", "kind"],
+        "properties": {
+          "specifier": { "type": "string" },
+          "resolved_path": { "type": ["string", "null"] },
+          "kind": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "dependents": { "type": "array", "items": { "type": "string" } },
+    "entrypoints": { "type": "array", "items": { "type": "string" } },
+    "edit_surfaces": { "type": "array", "items": { "type": "string" } },
+    "symbol_records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "symbol_id",
+          "ordinal",
+          "name",
+          "kind",
+          "start_line",
+          "end_line",
+          "snippet",
+          "references_out",
+          "references_in",
+          "replacement_key"
+        ],
+        "properties": {
+          "symbol_id": { "type": "string" },
+          "ordinal": { "type": "integer", "minimum": 1 },
+          "name": { "type": "string" },
+          "kind": { "type": "string" },
+          "start_line": { "type": "integer", "minimum": 1 },
+          "end_line": { "type": "integer", "minimum": 1 },
+          "snippet": { "type": "string" },
+          "references_out": { "type": "array", "items": { "type": "string" } },
+          "references_in": { "type": "array", "items": { "type": "string" } },
+          "replacement_key": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "linked_contexts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "relation",
+          "target_path",
+          "artifact_id",
+          "artifact_path",
+          "kind",
+          "target_hash",
+          "depth",
+          "linked_contexts"
+        ],
+        "properties": {
+          "relation": { "type": "string", "enum": ["dependency", "dependent"] },
+          "target_path": { "type": "string" },
+          "artifact_id": { "type": "string" },
+          "artifact_path": { "type": "string" },
+          "kind": { "type": "string" },
+          "target_hash": { "type": "string" },
+          "depth": { "type": "integer", "minimum": 0 },
+          "linked_contexts": { "type": "array", "items": { "type": "object" } }
+        },
+        "additionalProperties": false
+      }
+    },
+    "recent_events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "schema_version",
+          "event_id",
+          "created_at",
+          "target_path",
+          "operation",
+          "summary",
+          "reason",
+          "before_sha256",
+          "after_sha256",
+          "before_line_count",
+          "after_line_count",
+          "before_byte_count",
+          "after_byte_count",
+          "search_text",
+          "replace_text",
+          "replace_all",
+          "context_artifact_path",
+          "context_artifact_id",
+          "content_light"
+        ],
+        "properties": {
+          "schema_version": { "type": "string" },
+          "event_id": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "target_path": { "type": "string" },
+          "operation": { "type": "string" },
+          "summary": { "type": "string" },
+          "reason": { "type": "string" },
+          "before_sha256": { "type": "string" },
+          "after_sha256": { "type": "string" },
+          "before_line_count": { "type": "integer", "minimum": 0 },
+          "after_line_count": { "type": "integer", "minimum": 0 },
+          "before_byte_count": { "type": "integer", "minimum": 0 },
+          "after_byte_count": { "type": "integer", "minimum": 0 },
+          "search_text": { "type": ["string", "null"] },
+          "replace_text": { "type": ["string", "null"] },
+          "replace_all": { "type": "boolean" },
+          "context_artifact_path": { "type": ["string", "null"] },
+          "context_artifact_id": { "type": ["string", "null"] },
+          "content_light": { "type": "boolean", "const": true }
+        },
+        "additionalProperties": false
+      }
+    },
+    "unknowns": { "type": "array", "items": { "type": "string" } },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "content_light": { "type": "boolean", "const": true }
+  },
+  "additionalProperties": false
+}

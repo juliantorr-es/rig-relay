@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/opencode.publication_artifact.v1.schema.json",
+  "title": "OpenCode Publication Artifact v1",
+  "description": "Canonical publication artifact emitted by the OpenCode publisher. Records the target ref, pushed SHA, verification result, and files published.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "created_at",
+    "plan_id",
+    "plan_revision",
+    "plan_digest",
+    "wave_id",
+    "publisher_name",
+    "target_ref",
+    "pushed_sha",
+    "remote_verified",
+    "publication_notes",
+    "files_published",
+    "post_push_checks",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "opencode.publication_artifact.v1" },
+    "artifact_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "plan_id": { "type": "string" },
+    "plan_revision": { "type": "integer", "minimum": 1 },
+    "plan_digest": { "type": "string" },
+    "wave_id": { "type": "string" },
+    "publisher_name": { "type": "string" },
+    "target_ref": { "type": "string" },
+    "pushed_sha": { "type": "string" },
+    "remote_verified": { "type": "boolean" },
+    "publication_notes": { "type": "array", "items": { "type": "string" } },
+    "files_published": { "type": "array", "items": { "type": "string" } },
+    "post_push_checks": { "type": "array", "items": { "type": "string" } },
+    "content_light": { "type": "boolean", "const": true }
+  },
+  "additionalProperties": false
+}
+

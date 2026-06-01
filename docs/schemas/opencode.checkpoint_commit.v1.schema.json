@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/opencode.checkpoint_commit.v1.schema.json",
+  "title": "OpenCode Checkpoint Commit v1",
+  "description": "Canonical artifact that records the git commit created from a prepared OpenCode executor slice.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "created_at",
+    "task_id",
+    "executor_name",
+    "checkpoint_summary",
+    "plan_id",
+    "wave_id",
+    "branch",
+    "checkpoint_sequence",
+    "parent_checkpoint_receipt_sha256",
+    "pre_commit_head",
+    "post_commit_head",
+    "commit_sha",
+    "preparation_receipt_sha256",
+    "preparation_artifact_path",
+    "files_committed",
+    "change_items",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "opencode.checkpoint_commit.v1" },
+    "artifact_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "task_id": { "type": "string" },
+    "executor_name": { "type": "string" },
+    "checkpoint_summary": { "type": "string" },
+    "plan_id": { "type": ["string", "null"] },
+    "wave_id": { "type": ["string", "null"] },
+    "branch": { "type": "string" },
+    "checkpoint_sequence": { "type": "integer", "minimum": 1 },
+    "parent_checkpoint_receipt_sha256": { "type": ["string", "null"] },
+    "pre_commit_head": { "type": "string" },
+    "post_commit_head": { "type": "string" },
+    "commit_sha": { "type": "string" },
+    "preparation_receipt_sha256": { "type": "string" },
+    "preparation_artifact_path": { "type": "string" },
+    "files_committed": { "type": "array", "items": { "type": "string" } },
+    "change_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "change_kind", "why", "current_sha256"],
+        "properties": {
+          "path": { "type": "string" },
+          "change_kind": { "type": "string" },
+          "why": { "type": "string" },
+          "current_sha256": { "type": ["string", "null"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "content_light": { "type": "boolean", "const": true }
+  },
+  "additionalProperties": false
+}

@@ -37,3 +37,5 @@ ARCHITECTURAL CONVERGENCE & SYMBIOSIS:
   "repair_instruction": "<specific actionable steps to resolve the issue>"
 }
 ```
+
+After the hostile pass, write the stress artifact with `record_stress_wave` and include the attacks attempted, attack surface, surviving weaknesses or breakages, repaired seams, and recommendations.

@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rig-relay.github.io/schemas/opencode.checkpoint_preparation.v1.schema.json",
+  "title": "OpenCode Checkpoint Preparation v1",
+  "description": "Canonical artifact that records the executor slice staged for checkpointing and why each path changed.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "created_at",
+    "task_id",
+    "executor_name",
+    "checkpoint_summary",
+    "plan_id",
+    "wave_id",
+    "branch",
+    "pre_commit_head",
+    "change_items",
+    "staged_paths",
+    "excluded_dirty_files",
+    "git_status_before",
+    "git_status_after",
+    "content_light"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "const": "opencode.checkpoint_preparation.v1" },
+    "artifact_id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "task_id": { "type": "string" },
+    "executor_name": { "type": "string" },
+    "checkpoint_summary": { "type": "string" },
+    "plan_id": { "type": ["string", "null"] },
+    "wave_id": { "type": ["string", "null"] },
+    "branch": { "type": "string" },
+    "pre_commit_head": { "type": "string" },
+    "change_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "change_kind", "why", "current_sha256"],
+        "properties": {
+          "path": { "type": "string" },
+          "change_kind": { "type": "string" },
+          "why": { "type": "string" },
+          "current_sha256": { "type": ["string", "null"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "staged_paths": { "type": "array", "items": { "type": "string" } },
+    "excluded_dirty_files": { "type": "array", "items": { "type": "string" } },
+    "git_status_before": { "type": "array", "items": { "type": "string" } },
+    "git_status_after": { "type": "array", "items": { "type": "string" } },
+    "content_light": { "type": "boolean", "const": true }
+  },
+  "additionalProperties": false
+}

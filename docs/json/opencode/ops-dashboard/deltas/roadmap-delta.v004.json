@@ -1,0 +1,24 @@
+{
+  "schema_version": "opencode.dashboard.roadmap_delta.v1",
+  "roadmap_id": "ops-dashboard",
+  "from_version": 3,
+  "to_version": 4,
+  "generated_at": "2026-05-28T18:32:45Z",
+  "before_artifact_path": "docs/json/opencode/ops-dashboard/published/roadmap.v003.json",
+  "after_artifact_path": "docs/json/opencode/ops-dashboard/published/roadmap.v004.json",
+  "changed_fields": [],
+  "downstream_contexts": [
+    {
+      "path": "docs/json/opencode/ops-dashboard/published/",
+      "reason": "Linked from published roadmap timeline",
+      "impact": "refresh"
+    },
+    {
+      "path": "docs/json/opencode/ops-dashboard/deltas/",
+      "reason": "Linked from published roadmap timeline",
+      "impact": "refresh"
+    }
+  ],
+  "human_summary": "Roadmap version 4 published with 0 field changes and 2 downstream context references.",
+  "content_light": true
+}
